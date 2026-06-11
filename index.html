@@ -46,6 +46,7 @@
   }
   .pet-card:hover { transform: translateY(-3px); border-color: var(--gold); }
   .pet-card .emoji { font-size: 44px; margin-bottom: 12px; display: block; }
+  .pet-card .photo { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; display: block; border: 2px solid var(--gold); }
   .pet-card .name { font-size: 20px; font-weight: 700; }
   .pet-card .nick { font-size: 13px; color: var(--gold); font-family: 'IBM Plex Mono', monospace; }
   .pet-card .breed { font-size: 13px; color: var(--text-dim); margin-top: 8px; }
@@ -109,7 +110,7 @@ async function load() {
       a.href = `pet.html?id=${p.id}`;
       a.className = 'pet-card';
       a.innerHTML = `
-        <span class="emoji">${p.emoji}</span>
+        ${p.photo ? `<img class="photo" src="${p.photo}" alt="${p.name}">` : `<span class="emoji">${p.emoji}</span>`}
         <div class="name">${p.name} <span class="nick">${p.nickname}</span></div>
         <div class="breed">${p.breed}</div>
         <div class="age">อายุ ${calcAge(p.birthDate)} ปี</div>

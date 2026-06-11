@@ -60,6 +60,10 @@
   .legend span { display: inline-flex; align-items: center; gap: 5px; }
   .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
   .dot-left { background: var(--blue); } .dot-right { background: var(--gold); } .dot-unknown { background: var(--text-muted); }
+  .cal-row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .chart-col { flex: 0 0 300px; max-width: 300px; }
+  .tumor-box { width: 300px; height: 250px; }
+  .tumor-box canvas { width: 300px !important; height: 250px !important; }
   .cal-nav { display: flex; align-items: center; justify-content: space-between; max-width: 300px; margin-bottom: 10px; }
   .cal-nav button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
   .cal-nav button:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
@@ -163,23 +167,25 @@ function render() {
           <div class="title">📋 สิ่งที่ต้องติดตาม</div>
           <ul>${p.watchList.map(x=>`<li>${x}</li>`).join('')}</ul>
         </div>
-        <div class="chart-wrap">
-          <div class="section-label">ขนาดก้อนในตับ (cm)</div>
-          <canvas id="tumorChart" height="180"></canvas>
-        </div>
-        <div class="chart-wrap">
-          <div class="section-label">ปฏิทินเลือดกำเดา</div>
-          <div class="legend">
-            <span><i class="dot dot-left"></i> รูจมูกซ้าย</span>
-            <span><i class="dot dot-right"></i> รูจมูกขวา</span>
-            <span><i class="dot dot-unknown"></i> ไม่ระบุ</span>
+        <div class="cal-row">
+          <div class="chart-wrap chart-col">
+            <div class="section-label">ปฏิทินเลือดกำเดา</div>
+            <div class="legend">
+              <span><i class="dot dot-left"></i> รูจมูกซ้าย</span>
+              <span><i class="dot dot-right"></i> รูจมูกขวา</span>
+              <span><i class="dot dot-unknown"></i> ไม่ระบุ</span>
+            </div>
+            <div class="cal-nav">
+              <button id="calPrev" title="เดือนก่อนหน้า">‹</button>
+              <div class="cal-title" id="calTitle"></div>
+              <button id="calNext" title="เดือนถัดไป">›</button>
+            </div>
+            <div id="calMonths"></div>
           </div>
-          <div class="cal-nav">
-            <button id="calPrev" title="เดือนก่อนหน้า">‹</button>
-            <div class="cal-title" id="calTitle"></div>
-            <button id="calNext" title="เดือนถัดไป">›</button>
+          <div class="chart-wrap chart-col">
+            <div class="section-label">ขนาดก้อนในตับ (cm)</div>
+            <div class="tumor-box"><canvas id="tumorChart"></canvas></div>
           </div>
-          <div id="calMonths"></div>
         </div>
         <div>
           <div class="tabs">
@@ -218,7 +224,7 @@ function renderTumorChart() {
   new Chart(ctx, {
     type: 'line',
     data: { labels: data.map(x=>fmtDate(x.date)), datasets: [{ data: data.map(x=>x.size), borderColor:'#e8b84b', backgroundColor:'rgba(232,184,75,0.08)', pointBackgroundColor:'#e8b84b', pointRadius:5, tension:0.3, fill:true }] },
-    options: { responsive:true, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.parsed.y} cm`}}}, scales:{ x:{ticks:{color:'#8892a4',font:{size:10}},grid:{color:'#2a3050'}}, y:{ticks:{color:'#8892a4',font:{size:11}},grid:{color:'#2a3050'}} } }
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.parsed.y} cm`}}}, scales:{ x:{ticks:{color:'#8892a4',font:{size:10}},grid:{color:'#2a3050'}}, y:{ticks:{color:'#8892a4',font:{size:11}},grid:{color:'#2a3050'}} } }
   });
 }
 
@@ -259,8 +265,8 @@ function drawMonth() {
 }
 
 function renderTreatments() {
-  document.getElementById('tab-treatments').innerHTML = petData.treatments.map((t,i) =>
-    `<div class="tl-acc${i===0?' open':''}"><div class="tl-acc-head" onclick="this.parentElement.classList.toggle('open')">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div></div>`
+  document.getElementById('tab-treatments').innerHTML = petData.treatments.map(t =>
+    `<div class="tl-acc"><div class="tl-acc-head" onclick="this.parentElement.classList.toggle('open')">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div></div>`
   ).join('');
 }
 
