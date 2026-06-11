@@ -4,6 +4,7 @@
     "name": "เฟรปเป้",
     "nickname": "เฟ่",
     "emoji": "🐶",
+    "photo": "img/frappe.jpg",
     "species": "dog",
     "breed": "Golden Retriever",
     "birthDate": "2013-04-11",
@@ -46,6 +47,16 @@
     "เช็คเลือด CBC ครบเดือนตามนัด อ.นิช",
     "Smecta: ถ้าท้องเสียอีกกิน 3 วัน ไม่ใช่กินนานๆ"
   ],
+  "leucoPlus": {
+    "title": "เกณฑ์ฉีด Leuco Plus",
+    "wbcInThousands": true,
+    "alwaysBelow": 4000,
+    "withSymptomsBelow": 4500,
+    "rules": [
+      "WBC ต่ำกว่า 4,500 + มีอาการอื่น → ฉีด Leuco Plus",
+      "WBC ต่ำกว่า 4,000 แม้อาการปกติ → ฉีด Leuco Plus"
+    ]
+  },
   "vitals": {
     "latest": {
       "date": "2026-05-30",

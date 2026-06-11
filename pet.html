@@ -24,6 +24,7 @@
   }
   .back { font-size: 20px; color: var(--text-dim); }
   .paw { font-size: 26px; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); flex-shrink: 0; }
   header h1 { font-size: 20px; font-weight: 700; }
   header .sub { font-size: 12px; color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; }
   .age-badge {
@@ -52,6 +53,15 @@
   .watch-box { background: var(--blue-dim); border: 1px solid var(--blue); border-radius: 10px; padding: 14px 16px; }
   .watch-box .title { font-weight: 600; color: var(--blue); font-size: 14px; margin-bottom: 8px; }
   .watch-box ul { padding-left: 16px; font-size: 13px; color: #b8c8f0; line-height: 1.8; }
+
+  .leuco-box { border: 1px solid var(--border); border-left: 4px solid var(--gold); border-radius: 10px; padding: 14px 16px; background: var(--surface); }
+  .leuco-box .lp-head { font-weight: 600; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .leuco-box .lp-verdict { font-size: 14px; font-weight: 600; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; line-height: 1.5; }
+  .leuco-box .lp-rules { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--text-dim); line-height: 1.7; }
+  .leuco-box.lp-red { border-left-color: var(--red); } .leuco-box.lp-red .lp-verdict { background: var(--red-dim); color: #ffb3b3; }
+  .leuco-box.lp-yellow { border-left-color: var(--gold); } .leuco-box.lp-yellow .lp-verdict { background: var(--gold-dim); color: #ffe39a; }
+  .leuco-box.lp-green { border-left-color: var(--green); } .leuco-box.lp-green .lp-verdict { background: var(--green-dim); color: #9be9c4; }
+  .leuco-box.lp-gray .lp-verdict { background: var(--surface2); color: var(--text-muted); }
 
   .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
 
@@ -137,37 +147,53 @@ async function load() {
 
 function render() {
   const p = petData;
-  const v = p.vitals.latest;
+  const v = (p.vitals && p.vitals.latest) || {};
   const app = document.getElementById('app');
 
-  app.innerHTML = `
-    <header>
-      <a href="index.html" class="back">←</a>
-      <div class="paw">${p.profile.emoji}</div>
-      <div>
-        <h1>${p.profile.name} <span style="color:var(--gold);font-size:14px">${p.profile.nickname}</span></h1>
-        <div class="sub">${p.profile.breed} · เกิด ${fmtDate(p.profile.birthDate)}</div>
-      </div>
-      <div class="age-badge">อายุ ${calcAge(p.profile.birthDate)} ปี</div>
-    </header>
-    <div class="main">
-      <div class="left">
+  // ---- เตรียมข้อมูลแบบปลอดภัย (ไม่มี = ว่าง ไม่พัง) ----
+  const statFields = ['ischemiaValue','heartRate','heartSize','wbc','lungXray','nervous'];
+  const hasStats = statFields.some(k => v[k] != null);
+  const danger = [ ...((p.dangerSigns && p.dangerSigns.liverFailure) || []), ...((p.dangerSigns && p.dangerSigns.wbc) || []) ];
+  const watch = p.watchList || [];
+  const nosebleed = (p.symptoms && p.symptoms.nosebleed) || [];
+  const tumor = ((p.vitals && p.vitals.liverTumor) || []).filter(x => x.size != null);
+  const treatments = p.treatments || [];
+  const diarrhea = (p.symptoms && p.symptoms.diarrhea) || [];
+
+  // ---- ประกอบแต่ละส่วน เฉพาะที่มีข้อมูล ----
+  const statusBlock = hasStats ? `
         <div>
-          <div class="section-label">สถานะล่าสุด — ${fmtDate(v.date)}</div>
+          <div class="section-label">สถานะล่าสุด${v.date ? ` — ${fmtDate(v.date)}` : ''}</div>
           <div class="stats-grid" id="stats"></div>
-        </div>
+        </div>` : '';
+
+  const dangerBlock = danger.length ? `
         <div class="alert-box">
           <div class="icon">🚨</div>
           <div>
             <div class="title">สัญญาณที่ต้องไปหาหมอทันที</div>
-            <ul>${p.dangerSigns.liverFailure.map(x=>`<li>${x}</li>`).join('')}${p.dangerSigns.wbc.map(x=>`<li>${x}</li>`).join('')}</ul>
+            <ul>${danger.map(x=>`<li>${x}</li>`).join('')}</ul>
           </div>
-        </div>
+        </div>` : '';
+
+  const lp = p.leucoPlus;
+  const leucoBlock = lp ? (() => {
+    const ver = leucoVerdict(lp, v);
+    return `
+        <div class="leuco-box ${ver.cls}">
+          <div class="lp-head">💉 ${lp.title || 'เกณฑ์ฉีด Leuco Plus'}</div>
+          <div class="lp-verdict">${ver.icon} ${ver.text}</div>
+          <ul class="lp-rules">${(lp.rules||[]).map(r=>`<li>${r}</li>`).join('')}</ul>
+        </div>`;
+  })() : '';
+
+  const watchBlock = watch.length ? `
         <div class="watch-box">
           <div class="title">📋 สิ่งที่ต้องติดตาม</div>
-          <ul>${p.watchList.map(x=>`<li>${x}</li>`).join('')}</ul>
-        </div>
-        <div class="cal-row">
+          <ul>${watch.map(x=>`<li>${x}</li>`).join('')}</ul>
+        </div>` : '';
+
+  const calCol = nosebleed.length ? `
           <div class="chart-wrap chart-col">
             <div class="section-label">ปฏิทินเลือดกำเดา</div>
             <div class="legend">
@@ -181,30 +207,64 @@ function render() {
               <button id="calNext" title="เดือนถัดไป">›</button>
             </div>
             <div id="calMonths"></div>
-          </div>
+          </div>` : '';
+
+  const tumorCol = tumor.length ? `
           <div class="chart-wrap chart-col">
             <div class="section-label">ขนาดก้อนในตับ (cm)</div>
             <div class="tumor-box"><canvas id="tumorChart"></canvas></div>
-          </div>
-        </div>
+          </div>` : '';
+
+  const calRow = (calCol || tumorCol) ? `<div class="cal-row">${calCol}${tumorCol}</div>` : '';
+
+  const tabsDef = [];
+  if (treatments.length) tabsDef.push({ id:'treatments', label:'การรักษา' });
+  if (diarrhea.length) tabsDef.push({ id:'diarrhea', label:'ท้องเสีย/Smecta' });
+  const tabsBlock = tabsDef.length ? `
         <div>
-          <div class="tabs">
-            <div class="tab active" data-tab="treatments">การรักษา</div>
-            <div class="tab" data-tab="diarrhea">ท้องเสีย/Smecta</div>
-          </div>
-          <div class="tab-content active" id="tab-treatments"></div>
-          <div class="tab-content" id="tab-diarrhea"></div>
-        </div>
+          <div class="tabs">${tabsDef.map((t,i)=>`<div class="tab${i===0?' active':''}" data-tab="${t.id}">${t.label}</div>`).join('')}</div>
+          ${tabsDef.map((t,i)=>`<div class="tab-content${i===0?' active':''}" id="tab-${t.id}"></div>`).join('')}
+        </div>` : '';
+
+  app.innerHTML = `
+    <header>
+      <a href="index.html" class="back">←</a>
+      ${p.profile.photo ? `<img class="avatar" src="${p.profile.photo}" alt="${p.profile.name}">` : `<div class="paw">${p.profile.emoji}</div>`}
+      <div>
+        <h1>${p.profile.name} <span style="color:var(--gold);font-size:14px">${p.profile.nickname}</span></h1>
+        <div class="sub">${p.profile.breed} · เกิด ${fmtDate(p.profile.birthDate)}</div>
+      </div>
+      <div class="age-badge">อายุ ${calcAge(p.profile.birthDate)} ปี</div>
+    </header>
+    <div class="main">
+      <div class="left">
+        ${statusBlock}
+        ${leucoBlock}
+        ${dangerBlock}
+        ${watchBlock}
+        ${calRow}
+        ${tabsBlock}
       </div>
     </div>
   `;
 
-  renderStats(v);
-  renderTumorChart();
-  renderCalendar();
-  renderTreatments();
-  renderDiarrhea();
+  if (hasStats) renderStats(v);
+  if (tumor.length) renderTumorChart(tumor);
+  if (nosebleed.length) renderCalendar(nosebleed);
+  if (treatments.length) renderTreatments(treatments);
+  if (diarrhea.length) renderDiarrhea(diarrhea);
   setupTabs();
+}
+
+function leucoVerdict(lp, v) {
+  const raw = (v.wbc == null) ? null : (lp.wbcInThousands ? v.wbc * 1000 : v.wbc);
+  if (raw == null) return { cls:'lp-gray', icon:'⚪', text:'ยังไม่มีค่า WBC ล่าสุด — กรอกค่าเพื่อให้ประเมินอัตโนมัติ' };
+  const f = n => n.toLocaleString('en-US');
+  if (raw < lp.alwaysBelow)
+    return { cls:'lp-red', icon:'🔴', text:`WBC = ${f(raw)} → ถึงเกณฑ์ฉีด Leuco Plus (ต่ำกว่า ${f(lp.alwaysBelow)} แม้อาการปกติ)` };
+  if (raw < lp.withSymptomsBelow)
+    return { cls:'lp-yellow', icon:'🟡', text:`WBC = ${f(raw)} → ถ้ามีอาการอื่นร่วม ให้ฉีด Leuco Plus (อยู่ระหว่าง ${f(lp.alwaysBelow)}–${f(lp.withSymptomsBelow)})` };
+  return { cls:'lp-green', icon:'🟢', text:`WBC = ${f(raw)} → ยังไม่ถึงเกณฑ์ฉีด (ตั้งแต่ ${f(lp.withSymptomsBelow)} ขึ้นไป)` };
 }
 
 function renderStats(v) {
@@ -218,8 +278,7 @@ function renderStats(v) {
   document.getElementById('stats').innerHTML = cards.join('');
 }
 
-function renderTumorChart() {
-  const data = petData.vitals.liverTumor.filter(x => x.size != null);
+function renderTumorChart(data) {
   const ctx = document.getElementById('tumorChart');
   new Chart(ctx, {
     type: 'line',
@@ -229,8 +288,7 @@ function renderTumorChart() {
 }
 
 let calMonths = [], calIdx = 0;
-function renderCalendar() {
-  const events = petData.symptoms.nosebleed;
+function renderCalendar(events) {
   const byMonth = {};
   events.forEach(e => { const k = e.date.slice(0,7); (byMonth[k]=byMonth[k]||[]).push(e); });
   calMonths = Object.keys(byMonth).sort().reverse().map(mk => ({ mk, evs: byMonth[mk] }));
@@ -264,14 +322,14 @@ function drawMonth() {
   document.getElementById('calNext').disabled = calIdx <= 0;
 }
 
-function renderTreatments() {
-  document.getElementById('tab-treatments').innerHTML = petData.treatments.map(t =>
+function renderTreatments(treatments) {
+  document.getElementById('tab-treatments').innerHTML = treatments.map(t =>
     `<div class="tl-acc"><div class="tl-acc-head" onclick="this.parentElement.classList.toggle('open')">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div></div>`
   ).join('');
 }
 
-function renderDiarrhea() {
-  document.getElementById('tab-diarrhea').innerHTML = '<div class="timeline"><div class="tl-items">' + petData.symptoms.diarrhea.map(d =>
+function renderDiarrhea(diarrhea) {
+  document.getElementById('tab-diarrhea').innerHTML = '<div class="timeline"><div class="tl-items">' + diarrhea.map(d =>
     `<div class="tl-item"><div class="doctor">${fmtDate(d.date)}</div><p>${d.detail}</p></div>`
   ).join('') + '</div></div>';
 }

@@ -155,6 +155,18 @@
       <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
     </div>
 
+    <div class="section-label">เกณฑ์ฉีด Leuco Plus</div>
+    <div class="card">
+      <div class="row">
+        <div><label>ฉีดเสมอเมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-always" placeholder="4000"></div>
+        <div><label>ฉีดถ้ามีอาการอื่น เมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-withsym" placeholder="4500"></div>
+      </div>
+      <label>ข้อความเกณฑ์ (บรรทัดละ 1 ข้อ)</label>
+      <textarea id="lp-rules" placeholder="WBC ต่ำกว่า 4,500 + มีอาการอื่น → ฉีด Leuco Plus&#10;WBC ต่ำกว่า 4,000 แม้อาการปกติ → ฉีด Leuco Plus"></textarea>
+      <div class="hint">ค่าเป็นจำนวนนับดิบ (เช่น 4000) — ระบบจะเทียบกับ WBC ที่กรอกหน่วย ×10³ ให้อัตโนมัติ · ค่าปัจจุบันจะถูกดึงมาแสดงหลังเลือกสัตว์เลี้ยง</div>
+      <button class="btn" onclick="addEntry('leucoPlus')">บันทึกเกณฑ์ + อัพขึ้น GitHub</button>
+    </div>
+
   </div>
 </div>
 
@@ -207,6 +219,14 @@ async function loadPet() {
     // fallback: โหลดจากไฟล์ใน repo โดยตรง (อ่านอย่างเดียว)
     try { currentData = await (await fetch(`data/${currentPetId}.json`)).json(); } catch(_) {}
   }
+  fillLeuco();
+}
+
+function fillLeuco() {
+  const lp = (currentData && currentData.leucoPlus) || {};
+  document.getElementById('lp-always').value = lp.alwaysBelow ?? '';
+  document.getElementById('lp-withsym').value = lp.withSymptomsBelow ?? '';
+  document.getElementById('lp-rules').value = (lp.rules || []).join('\n');
 }
 
 async function addEntry(type) {
@@ -252,6 +272,18 @@ async function addEntry(type) {
     currentData.vitals.liverTumor.push({ date, size: size?+size:null, note });
     currentData.vitals.liverTumor.sort((a,b)=>a.date.localeCompare(b.date));
     msg = `เพิ่มขนาดก้อนในตับ ${date}`;
+  } else if (type === 'leucoPlus') {
+    const ab=val('lp-always'), wb=val('lp-withsym');
+    const rules = document.getElementById('lp-rules').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const prev = currentData.leucoPlus || {};
+    currentData.leucoPlus = {
+      title: prev.title || 'เกณฑ์ฉีด Leuco Plus',
+      wbcInThousands: prev.wbcInThousands !== undefined ? prev.wbcInThousands : true,
+      alwaysBelow: ab ? +ab : prev.alwaysBelow,
+      withSymptomsBelow: wb ? +wb : prev.withSymptomsBelow,
+      rules: rules.length ? rules : (prev.rules || [])
+    };
+    msg = 'อัพเดทเกณฑ์ Leuco Plus';
   }
 
   await commit(msg);
@@ -273,7 +305,8 @@ async function commit(message) {
     const j = await res.json();
     currentSha = j.content.sha;
     toast('✓ ' + message);
-    document.querySelectorAll('textarea, input[type=date], input[type=number]').forEach(i=>{ if(i.id!=='ghToken') i.value=''; });
+    document.querySelectorAll('textarea, input[type=date], input[type=number]').forEach(i=>{ if(i.id!=='ghToken' && !i.id.startsWith('lp-')) i.value=''; });
+    fillLeuco();
   } catch(e) {
     toast('ผิดพลาด: ' + e.message, false);
   }
