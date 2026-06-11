@@ -1,0 +1,14 @@
+{
+  "pets": [
+    {
+      "id": "frappe",
+      "name": "เฟรปเป้",
+      "nickname": "เฟ่",
+      "emoji": "🐶",
+      "breed": "Golden Retriever",
+      "birthDate": "2013-04-11",
+      "status": "watch",
+      "statusNote": "เฝ้าระวังเลือดกำเดา + ก้อนในตับ"
+    }
+  ]
+}

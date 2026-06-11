@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>จัดการข้อมูล · Tammie Care</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  :root {
+    --bg:#0f1117; --surface:#181c27; --surface2:#1e2334; --border:#2a3050;
+    --gold:#e8b84b; --gold-dim:#9b7a2a; --red:#e85555; --green:#4ec994;
+    --blue:#5b9cf6; --text:#e8eaf0; --text-dim:#8892a4; --text-muted:#4a5568;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Sarabun',sans-serif; background:var(--bg); color:var(--text); font-size:15px; line-height:1.6; }
+  a { color:var(--gold); text-decoration:none; }
+
+  header { border-bottom:1px solid var(--border); padding:16px 28px; display:flex; align-items:center; gap:14px; background:var(--surface); }
+  header h1 { font-size:18px; font-weight:700; }
+  .back { font-size:20px; color:var(--text-dim); }
+
+  .container { max-width:640px; margin:0 auto; padding:32px 24px; }
+
+  /* gate */
+  .gate { max-width:360px; margin:80px auto; text-align:center; }
+  .gate .lock { font-size:44px; margin-bottom:16px; }
+  .gate h2 { font-size:20px; margin-bottom:8px; }
+  .gate p { color:var(--text-dim); font-size:13px; margin-bottom:24px; }
+
+  label { display:block; font-size:13px; color:var(--text-dim); margin-bottom:6px; margin-top:16px; }
+  input, select, textarea {
+    width:100%; background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; color:var(--text); font-family:'Sarabun',sans-serif;
+    font-size:14px; padding:10px 12px; outline:none;
+  }
+  input:focus, select:focus, textarea:focus { border-color:var(--gold); }
+  textarea { resize:vertical; min-height:70px; }
+  .hint { font-size:12px; color:var(--text-muted); margin-top:4px; }
+
+  .btn { background:var(--gold); color:#0f1117; border:none; border-radius:8px; padding:11px 20px; font-size:14px; font-weight:600; cursor:pointer; font-family:'Sarabun',sans-serif; margin-top:20px; width:100%; }
+  .btn:disabled { opacity:0.5; cursor:not-allowed; }
+  .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--text-dim); }
+
+  .section-label { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text-muted); letter-spacing:1.5px; text-transform:uppercase; margin:28px 0 4px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-top:12px; }
+
+  .tabs { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+  .tab { padding:8px 16px; border-radius:8px; background:var(--surface); border:1px solid var(--border); font-size:13px; cursor:pointer; color:var(--text-dim); }
+  .tab.active { background:var(--gold-dim); color:var(--gold); border-color:var(--gold-dim); }
+  .form-block { display:none; } .form-block.active { display:block; }
+
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); padding:12px 24px; border-radius:8px; font-size:14px; z-index:100; opacity:0; transition:opacity 0.3s; }
+  .toast.show { opacity:1; }
+  .toast-ok { background:var(--green); color:#0f1117; }
+  .toast-err { background:var(--red); color:#fff; }
+
+  .token-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px; margin-top:8px; font-size:13px; color:var(--text-dim); }
+  .row { display:flex; gap:10px; }
+  .row > * { flex:1; }
+</style>
+</head>
+<body>
+
+<!-- Password gate -->
+<div id="gate" class="gate">
+  <div class="lock">🔒</div>
+  <h2>จัดการข้อมูล</h2>
+  <p>ใส่รหัสผ่านเพื่อแก้ไขข้อมูลสัตว์เลี้ยง</p>
+  <input type="password" id="pwInput" placeholder="รหัสผ่าน" onkeydown="if(event.key==='Enter')checkPw()">
+  <button class="btn" onclick="checkPw()">เข้าสู่ระบบ</button>
+  <p style="margin-top:20px"><a href="index.html">← กลับหน้าแรก</a></p>
+</div>
+
+<!-- Admin panel -->
+<div id="panel" style="display:none">
+  <header>
+    <a href="index.html" class="back">←</a>
+    <h1>จัดการข้อมูล</h1>
+  </header>
+  <div class="container">
+
+    <div class="section-label">GitHub</div>
+    <div class="token-box">
+      <label style="margin-top:0">GitHub Token <span style="color:var(--text-muted)">(กรอกทุกครั้งที่ใช้ — ไม่ถูกบันทึก)</span></label>
+      <input type="password" id="ghToken" placeholder="ghp_...">
+      <div class="hint">สร้างที่ github.com → Settings → Developer settings → Personal access tokens → ให้สิทธิ์ Contents: Read and write บน repo tammie-care</div>
+    </div>
+
+    <div class="section-label">เลือกสัตว์เลี้ยง</div>
+    <select id="petSelect" onchange="loadPet()">
+      <option value="frappe">🐶 เฟรปเป้ (เฟ่)</option>
+    </select>
+
+    <div class="section-label">เพิ่มบันทึก</div>
+    <div class="tabs">
+      <div class="tab active" data-form="nosebleed">🩸 เลือดกำเดา</div>
+      <div class="tab" data-form="diarrhea">💊 ท้องเสีย</div>
+      <div class="tab" data-form="vitals">📊 ค่าตรวจล่าสุด</div>
+      <div class="tab" data-form="treatment">🏥 การรักษา</div>
+    </div>
+
+    <div class="card">
+      <!-- Nosebleed -->
+      <div class="form-block active" id="form-nosebleed">
+        <div class="row">
+          <div><label>วันที่</label><input type="date" id="nb-date"></div>
+          <div><label>รูจมูก</label><select id="nb-side"><option value="left">ซ้าย</option><option value="right">ขวา</option><option value="unknown">ไม่ระบุ</option></select></div>
+        </div>
+        <label>รายละเอียด</label>
+        <textarea id="nb-detail" placeholder="เช่น เลือดออกรูจมูกขวา ตอนตื่นนอน"></textarea>
+        <button class="btn" onclick="addEntry('nosebleed')">บันทึก + อัพขึ้น GitHub</button>
+      </div>
+      <!-- Diarrhea -->
+      <div class="form-block" id="form-diarrhea">
+        <label>วันที่</label><input type="date" id="dr-date">
+        <label>รายละเอียด</label>
+        <textarea id="dr-detail" placeholder="เช่น อึเป็นก้อนมีเลือดสดนิดนึง"></textarea>
+        <button class="btn" onclick="addEntry('diarrhea')">บันทึก + อัพขึ้น GitHub</button>
+      </div>
+      <!-- Vitals -->
+      <div class="form-block" id="form-vitals">
+        <label>วันที่ตรวจ</label><input type="date" id="vt-date">
+        <div class="row">
+          <div><label>ค่าหัวใจขาดเลือด</label><input type="number" step="0.01" id="vt-ischemia"></div>
+          <div><label>อัตราเต้นหัวใจ</label><input type="number" id="vt-hr"></div>
+        </div>
+        <div class="row">
+          <div><label>ขนาดหัวใจ</label><input type="number" step="0.1" id="vt-hs"></div>
+          <div><label>WBC (× 10³)</label><input type="number" step="0.01" id="vt-wbc"></div>
+        </div>
+        <label>X-Ray ปอด</label><input type="text" id="vt-lung" placeholder="เช่น เคลียร์">
+        <div class="hint">เว้นว่างช่องที่ไม่ได้ตรวจได้</div>
+        <button class="btn" onclick="addEntry('vitals')">อัพเดทค่าล่าสุด + อัพขึ้น GitHub</button>
+      </div>
+      <!-- Treatment -->
+      <div class="form-block" id="form-treatment">
+        <label>วันที่</label><input type="date" id="tr-date">
+        <div class="row">
+          <div><label>หมอ</label><input type="text" id="tr-doctor" placeholder="เช่น อ.กอล์ฟ"></div>
+          <div><label>แผนก</label><input type="text" id="tr-spec" placeholder="เช่น ตับ"></div>
+        </div>
+        <label>บันทึก</label>
+        <textarea id="tr-notes" placeholder="ผลการตรวจ / การรักษา"></textarea>
+        <button class="btn" onclick="addEntry('treatment')">บันทึก + อัพขึ้น GitHub</button>
+      </div>
+    </div>
+
+    <div class="section-label">ขนาดก้อนในตับ (ซาวด์)</div>
+    <div class="card">
+      <div class="row">
+        <div><label>วันที่</label><input type="date" id="lt-date"></div>
+        <div><label>ขนาด cm (เว้นว่างได้)</label><input type="number" step="0.1" id="lt-size"></div>
+      </div>
+      <label>หมายเหตุ</label><input type="text" id="lt-note" placeholder="เช่น ใหญ่ขึ้นนิดนึง">
+      <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ⚙️ ตั้งค่า
+const CONFIG = {
+  password: 'richie2407s',      // ← เปลี่ยนรหัสผ่านตรงนี้
+  owner: 'hommekid',
+  repo: 'tammie-care',
+  branch: 'main'
+};
+
+let currentData = null, currentSha = null, currentPetId = 'frappe';
+
+function checkPw() {
+  if (document.getElementById('pwInput').value === CONFIG.password) {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('panel').style.display = 'block';
+    loadPet();
+  } else toast('รหัสผ่านไม่ถูกต้อง', false);
+}
+
+function toast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${ok?'toast-ok':'toast-err'}`;
+  setTimeout(()=>t.className='toast', 3000);
+}
+
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.form-block').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('form-'+t.dataset.form).classList.add('active');
+});
+
+async function loadPet() {
+  currentPetId = document.getElementById('petSelect').value;
+  const token = document.getElementById('ghToken').value.trim();
+  try {
+    const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/data/${currentPetId}.json?ref=${CONFIG.branch}`;
+    const headers = token ? { Authorization:`token ${token}` } : {};
+    const res = await fetch(url, { headers });
+    const j = await res.json();
+    currentSha = j.sha;
+    currentData = JSON.parse(decodeURIComponent(escape(atob(j.content))));
+  } catch(e) {
+    // fallback: โหลดจากไฟล์ใน repo โดยตรง (อ่านอย่างเดียว)
+    try { currentData = await (await fetch(`data/${currentPetId}.json`)).json(); } catch(_) {}
+  }
+}
+
+async function addEntry(type) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) await loadPet();
+  if (!currentData) return toast('โหลดข้อมูลไม่สำเร็จ', false);
+
+  let msg = '';
+  if (type === 'nosebleed') {
+    const date=val('nb-date'), side=val('nb-side'), detail=val('nb-detail');
+    if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
+    currentData.symptoms.nosebleed.unshift({ date, side, detail });
+    currentData.symptoms.nosebleed.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `เพิ่มบันทึกเลือดกำเดา ${date}`;
+  } else if (type === 'diarrhea') {
+    const date=val('dr-date'), detail=val('dr-detail');
+    if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
+    currentData.symptoms.diarrhea.unshift({ date, detail });
+    currentData.symptoms.diarrhea.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `เพิ่มบันทึกท้องเสีย ${date}`;
+  } else if (type === 'vitals') {
+    const date=val('vt-date'); if(!date) return toast('กรอกวันที่', false);
+    const v = { date };
+    if(val('vt-ischemia')) { v.ischemiaValue=+val('vt-ischemia'); v.ischemiaNormalMax=currentData.vitals.latest.ischemiaNormalMax||0.07; }
+    if(val('vt-hr')) v.heartRate=+val('vt-hr');
+    if(val('vt-hs')) { v.heartSize=+val('vt-hs'); currentData.vitals.heartSize.unshift({date,value:+val('vt-hs')}); }
+    if(val('vt-wbc')) v.wbc=+val('vt-wbc');
+    if(val('vt-lung')) v.lungXray=val('vt-lung');
+    currentData.vitals.latest = { ...currentData.vitals.latest, ...v };
+    msg = `อัพเดทค่าตรวจ ${date}`;
+  } else if (type === 'treatment') {
+    const date=val('tr-date'), doctor=val('tr-doctor'), specialty=val('tr-spec'), notes=val('tr-notes');
+    if(!date||!notes) return toast('กรอกวันที่และบันทึก', false);
+    let grp = currentData.treatments.find(t=>t.date===date);
+    if(grp) grp.entries.push({doctor,specialty,notes});
+    else currentData.treatments.unshift({date,entries:[{doctor,specialty,notes}]});
+    currentData.treatments.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `เพิ่มบันทึกการรักษา ${date}`;
+  } else if (type === 'liverTumor') {
+    const date=val('lt-date'), size=val('lt-size'), note=val('lt-note');
+    if(!date) return toast('กรอกวันที่', false);
+    currentData.vitals.liverTumor.push({ date, size: size?+size:null, note });
+    currentData.vitals.liverTumor.sort((a,b)=>a.date.localeCompare(b.date));
+    msg = `เพิ่มขนาดก้อนในตับ ${date}`;
+  }
+
+  await commit(msg);
+}
+
+function val(id){ return document.getElementById(id).value.trim(); }
+
+async function commit(message) {
+  const token = document.getElementById('ghToken').value.trim();
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(currentData, null, 2))));
+  try {
+    const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/data/${currentPetId}.json`;
+    const res = await fetch(url, {
+      method:'PUT',
+      headers:{ Authorization:`token ${token}`, 'Content-Type':'application/json' },
+      body: JSON.stringify({ message, content, sha: currentSha, branch: CONFIG.branch })
+    });
+    if(!res.ok){ const e=await res.json(); throw new Error(e.message); }
+    const j = await res.json();
+    currentSha = j.content.sha;
+    toast('✓ ' + message);
+    document.querySelectorAll('textarea, input[type=date], input[type=number]').forEach(i=>{ if(i.id!=='ghToken') i.value=''; });
+  } catch(e) {
+    toast('ผิดพลาด: ' + e.message, false);
+  }
+}
+</script>
+</body>
+</html>

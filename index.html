@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tammie Care 🐾</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  :root {
+    --bg: #0f1117; --surface: #181c27; --surface2: #1e2334;
+    --border: #2a3050; --gold: #e8b84b; --gold-dim: #9b7a2a;
+    --red: #e85555; --green: #4ec994; --blue: #5b9cf6;
+    --text: #e8eaf0; --text-dim: #8892a4; --text-muted: #4a5568;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Sarabun', sans-serif; background: var(--bg);
+    color: var(--text); min-height: 100vh; font-size: 15px;
+  }
+  header {
+    padding: 40px 32px 28px; text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  header .logo { font-size: 40px; margin-bottom: 8px; }
+  header h1 {
+    font-size: 28px; font-weight: 700; letter-spacing: 1px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  header .sub { font-size: 14px; color: var(--text-dim); margin-top: 6px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+  .section-label {
+    font-size: 11px; font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-muted); letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+  .pet-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .pet-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px; cursor: pointer;
+    text-decoration: none; color: inherit; display: block;
+    transition: transform 0.15s, border-color 0.15s;
+    position: relative; overflow: hidden;
+  }
+  .pet-card:hover { transform: translateY(-3px); border-color: var(--gold); }
+  .pet-card .emoji { font-size: 44px; margin-bottom: 12px; display: block; }
+  .pet-card .name { font-size: 20px; font-weight: 700; }
+  .pet-card .nick { font-size: 13px; color: var(--gold); font-family: 'IBM Plex Mono', monospace; }
+  .pet-card .breed { font-size: 13px; color: var(--text-dim); margin-top: 8px; }
+  .pet-card .age { font-size: 13px; color: var(--text-dim); }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; padding: 4px 10px; border-radius: 20px;
+    margin-top: 14px; font-weight: 500;
+  }
+  .status-watch { background: rgba(232,184,75,0.15); color: var(--gold); border: 1px solid var(--gold-dim); }
+  .status-ok { background: rgba(78,201,148,0.15); color: var(--green); border: 1px solid #2a6b50; }
+  .status-alert { background: rgba(232,85,85,0.15); color: var(--red); border: 1px solid #6b2a2a; }
+  .status-note { font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
+  .add-card {
+    border: 1px dashed var(--border); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 8px; color: var(--text-muted);
+    min-height: 180px; border-radius: 14px; font-size: 14px;
+  }
+  .add-card .plus { font-size: 32px; }
+  footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
+  footer a { color: var(--text-dim); }
+  .loading { text-align: center; padding: 60px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🐾</div>
+  <h1>TAMMIE CARE</h1>
+  <div class="sub">ระบบดูแลสุขภาพสัตว์เลี้ยง</div>
+</header>
+
+<div class="container">
+  <div class="section-label">สมาชิกครอบครัว</div>
+  <div class="pet-grid" id="petGrid">
+    <div class="loading">กำลังโหลด...</div>
+  </div>
+</div>
+
+<footer>
+  Tammie Care · <a href="admin.html">จัดการข้อมูล</a>
+</footer>
+
+<script>
+function calcAge(birthDate) {
+  const b = new Date(birthDate), now = new Date();
+  let years = now.getFullYear() - b.getFullYear();
+  if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) years--;
+  return years;
+}
+const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ปกติ', alert: '🚨 ต้องดูแล' };
+
+async function load() {
+  const grid = document.getElementById('petGrid');
+  try {
+    const res = await fetch('data/pets.json');
+    const data = await res.json();
+    grid.innerHTML = '';
+    data.pets.forEach(p => {
+      const a = document.createElement('a');
+      a.href = `pet.html?id=${p.id}`;
+      a.className = 'pet-card';
+      a.innerHTML = `
+        <span class="emoji">${p.emoji}</span>
+        <div class="name">${p.name} <span class="nick">${p.nickname}</span></div>
+        <div class="breed">${p.breed}</div>
+        <div class="age">อายุ ${calcAge(p.birthDate)} ปี</div>
+        <div class="status-badge status-${p.status}">${statusLabel[p.status] || p.status}</div>
+        ${p.statusNote ? `<div class="status-note">${p.statusNote}</div>` : ''}
+      `;
+      grid.appendChild(a);
+    });
+    const add = document.createElement('a');
+    add.href = 'admin.html';
+    add.className = 'pet-card add-card';
+    add.innerHTML = '<span class="plus">+</span><span>เพิ่มสัตว์เลี้ยง</span>';
+    grid.appendChild(add);
+  } catch (e) {
+    grid.innerHTML = '<div class="loading">โหลดข้อมูลไม่สำเร็จ</div>';
+  }
+}
+load();
+</script>
+</body>
+</html>

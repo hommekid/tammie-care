@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard 🐾</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  :root {
+    --bg: #0f1117; --surface: #181c27; --surface2: #1e2334;
+    --border: #2a3050; --gold: #e8b84b; --gold-dim: #9b7a2a;
+    --red: #e85555; --red-dim: #5c2020; --green: #4ec994; --green-dim: #1a4535;
+    --blue: #5b9cf6; --blue-dim: #1a2d5c;
+    --text: #e8eaf0; --text-dim: #8892a4; --text-muted: #4a5568;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
+  a { color: var(--gold); text-decoration: none; }
+
+  header {
+    border-bottom: 1px solid var(--border); padding: 16px 28px;
+    display: flex; align-items: center; gap: 14px; background: var(--surface);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .back { font-size: 20px; color: var(--text-dim); }
+  .paw { font-size: 26px; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header .sub { font-size: 12px; color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; }
+  .age-badge {
+    margin-left: auto; background: var(--gold-dim); color: var(--gold);
+    font-size: 12px; font-family: 'IBM Plex Mono', monospace;
+    padding: 4px 12px; border-radius: 20px; font-weight: 500;
+  }
+
+  .main { display: grid; grid-template-columns: 1fr 360px; min-height: calc(100vh - 65px); }
+  .left { border-right: 1px solid var(--border); overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 24px; }
+  .right { display: flex; flex-direction: column; height: calc(100vh - 65px); position: sticky; top: 65px; }
+
+  .section-label { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .stat-card .label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .stat-card .value { font-size: 22px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+  .stat-card .note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .stat-red .value { color: var(--red); } .stat-green .value { color: var(--green); } .stat-gold .value { color: var(--gold); }
+
+  .alert-box { background: var(--red-dim); border: 1px solid var(--red); border-radius: 10px; padding: 14px 16px; display: flex; gap: 12px; }
+  .alert-box .icon { font-size: 18px; flex-shrink: 0; }
+  .alert-box .title { font-weight: 600; color: var(--red); font-size: 14px; margin-bottom: 6px; }
+  .alert-box ul { padding-left: 16px; font-size: 13px; color: #e8c0c0; line-height: 1.8; }
+
+  .watch-box { background: var(--blue-dim); border: 1px solid var(--blue); border-radius: 10px; padding: 14px 16px; }
+  .watch-box .title { font-weight: 600; color: var(--blue); font-size: 14px; margin-bottom: 8px; }
+  .watch-box ul { padding-left: 16px; font-size: 13px; color: #b8c8f0; line-height: 1.8; }
+
+  .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+
+  /* nosebleed calendar */
+  .legend { display: flex; gap: 16px; margin-bottom: 14px; font-size: 12px; color: var(--text-dim); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .dot-left { background: var(--blue); } .dot-right { background: var(--gold); } .dot-unknown { background: var(--text-muted); }
+  .cal-months { display: flex; flex-direction: column; gap: 16px; }
+  .cal-month { }
+  .cal-month .m-label { font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--gold); margin-bottom: 8px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-cell { aspect-ratio: 1; border-radius: 5px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted); position: relative; border: 1px solid transparent; }
+  .cal-cell.has-event { font-weight: 600; color: var(--text); }
+  .cal-cell.ev-left { background: var(--blue-dim); border-color: var(--blue); }
+  .cal-cell.ev-right { background: rgba(232,184,75,0.2); border-color: var(--gold-dim); }
+  .cal-cell.ev-unknown { background: var(--surface); border-color: var(--text-muted); }
+  .cal-cell .tip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #000; border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 12px; color: var(--text); white-space: normal; width: 180px; z-index: 20; font-weight: 400; line-height: 1.4; }
+  .cal-cell:hover .tip { display: block; }
+
+  .timeline { display: flex; flex-direction: column; }
+  .tl-date-group { margin-bottom: 18px; }
+  .tl-date { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .tl-date::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .tl-items { display: flex; flex-direction: column; gap: 8px; }
+  .tl-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .tl-item .doctor { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--gold); margin-bottom: 6px; font-weight: 500; }
+  .tl-item p { color: var(--text-dim); line-height: 1.7; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab { padding: 7px 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; cursor: pointer; color: var(--text-dim); }
+  .tab.active { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-dim); }
+  .tab-content { display: none; } .tab-content.active { display: block; }
+
+  /* chat */
+  .chat-header { padding: 16px 18px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .chat-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--bg); }
+  .msg { max-width: 88%; font-size: 13px; line-height: 1.6; }
+  .msg-ai { align-self: flex-start; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px 12px 12px 12px; padding: 10px 14px; }
+  .msg-user { align-self: flex-end; background: var(--gold-dim); border-radius: 12px 4px 12px 12px; padding: 10px 14px; color: var(--gold); }
+  .msg-loading { align-self: flex-start; display: flex; gap: 4px; padding: 14px; }
+  .dot-bounce { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); animation: bounce 1.2s ease-in-out infinite; }
+  .dot-bounce:nth-child(2) { animation-delay: 0.2s; } .dot-bounce:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+  .chat-input-wrap { padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input-wrap textarea { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Sarabun', sans-serif; font-size: 13px; padding: 9px 12px; resize: none; outline: none; min-height: 38px; max-height: 100px; }
+  .chat-input-wrap textarea:focus { border-color: var(--gold); }
+  .send-btn { background: var(--gold); color: #0f1117; border: none; border-radius: 8px; width: 38px; height: 38px; cursor: pointer; font-size: 16px; flex-shrink: 0; }
+  .send-btn:disabled { opacity: 0.4; }
+
+  .loading-full { padding: 60px; text-align: center; color: var(--text-dim); }
+
+  @media (max-width: 768px) {
+    .main { grid-template-columns: 1fr; }
+    .right { height: 440px; position: static; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .left { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"><div class="loading-full">กำลังโหลด...</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const petId = params.get('id') || 'frappe';
+const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function calcAge(b) { const d=new Date(b),n=new Date(); let y=n.getFullYear()-d.getFullYear(); if(n.getMonth()<d.getMonth()||(n.getMonth()===d.getMonth()&&n.getDate()<d.getDate()))y--; return y; }
+function fmtDate(s) { const d=new Date(s); return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${(d.getFullYear()+543)%100}`; }
+
+let petData = null;
+
+async function load() {
+  try {
+    const res = await fetch(`data/${petId}.json`);
+    petData = await res.json();
+    render();
+  } catch(e) {
+    document.getElementById('app').innerHTML = '<div class="loading-full">ไม่พบข้อมูลสัตว์เลี้ยงนี้ · <a href="index.html">กลับหน้าแรก</a></div>';
+  }
+}
+
+function render() {
+  const p = petData;
+  const v = p.vitals.latest;
+  const app = document.getElementById('app');
+
+  app.innerHTML = `
+    <header>
+      <a href="index.html" class="back">←</a>
+      <div class="paw">${p.profile.emoji}</div>
+      <div>
+        <h1>${p.profile.name} <span style="color:var(--gold);font-size:14px">${p.profile.nickname}</span></h1>
+        <div class="sub">${p.profile.breed} · เกิด ${fmtDate(p.profile.birthDate)}</div>
+      </div>
+      <div class="age-badge">อายุ ${calcAge(p.profile.birthDate)} ปี</div>
+    </header>
+    <div class="main">
+      <div class="left">
+        <div>
+          <div class="section-label">สถานะล่าสุด — ${fmtDate(v.date)}</div>
+          <div class="stats-grid" id="stats"></div>
+        </div>
+        <div class="alert-box">
+          <div class="icon">🚨</div>
+          <div>
+            <div class="title">สัญญาณที่ต้องไปหาหมอทันที</div>
+            <ul>${p.dangerSigns.liverFailure.map(x=>`<li>${x}</li>`).join('')}${p.dangerSigns.wbc.map(x=>`<li>${x}</li>`).join('')}</ul>
+          </div>
+        </div>
+        <div class="watch-box">
+          <div class="title">📋 สิ่งที่ต้องติดตาม</div>
+          <ul>${p.watchList.map(x=>`<li>${x}</li>`).join('')}</ul>
+        </div>
+        <div class="chart-wrap">
+          <div class="section-label">ขนาดก้อนในตับ (cm)</div>
+          <canvas id="tumorChart" height="180"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="section-label">ปฏิทินเลือดกำเดา</div>
+          <div class="legend">
+            <span><i class="dot dot-left"></i> รูจมูกซ้าย</span>
+            <span><i class="dot dot-right"></i> รูจมูกขวา</span>
+            <span><i class="dot dot-unknown"></i> ไม่ระบุ</span>
+          </div>
+          <div class="cal-months" id="calMonths"></div>
+        </div>
+        <div>
+          <div class="tabs">
+            <div class="tab active" data-tab="treatments">การรักษา</div>
+            <div class="tab" data-tab="diarrhea">ท้องเสีย/Smecta</div>
+          </div>
+          <div class="tab-content active" id="tab-treatments"></div>
+          <div class="tab-content" id="tab-diarrhea"></div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="chat-header"><div class="chat-dot"></div> ถามเรื่อง${p.profile.nickname}</div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg msg-ai">สวัสดีครับ 🐾 ถามเรื่องสุขภาพ${p.profile.nickname}ได้เลยนะครับ</div>
+        </div>
+        <div class="chat-input-wrap">
+          <textarea id="chatInput" placeholder="พิมพ์คำถาม..." rows="1"></textarea>
+          <button class="send-btn" id="sendBtn">➤</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderStats(v);
+  renderTumorChart();
+  renderCalendar();
+  renderTreatments();
+  renderDiarrhea();
+  setupTabs();
+  setupChat();
+}
+
+function renderStats(v) {
+  const cards = [];
+  if (v.ischemiaValue != null) cards.push(`<div class="stat-card stat-red"><div class="label">ค่าหัวใจขาดเลือด</div><div class="value">${v.ischemiaValue}</div><div class="note">⚠️ ไม่ควรเกิน ${v.ischemiaNormalMax}</div></div>`);
+  if (v.heartRate != null) cards.push(`<div class="stat-card stat-green"><div class="label">อัตราการเต้นหัวใจ</div><div class="value">${v.heartRate}</div><div class="note">ครั้ง/นาที</div></div>`);
+  if (v.heartSize != null) cards.push(`<div class="stat-card stat-gold"><div class="label">ขนาดหัวใจ</div><div class="value">${v.heartSize}</div><div class="note">&nbsp;</div></div>`);
+  if (v.wbc != null) cards.push(`<div class="stat-card stat-red"><div class="label">WBC</div><div class="value">${v.wbc}</div><div class="note">× 10³</div></div>`);
+  if (v.lungXray) cards.push(`<div class="stat-card stat-green"><div class="label">X-Ray ปอด</div><div class="value">✓</div><div class="note">${v.lungXray}</div></div>`);
+  if (v.nervous) cards.push(`<div class="stat-card stat-green"><div class="label">ระบบประสาท</div><div class="value">${v.nervous}</div><div class="note">&nbsp;</div></div>`);
+  document.getElementById('stats').innerHTML = cards.join('');
+}
+
+function renderTumorChart() {
+  const data = petData.vitals.liverTumor.filter(x => x.size != null);
+  const ctx = document.getElementById('tumorChart');
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels: data.map(x=>fmtDate(x.date)), datasets: [{ data: data.map(x=>x.size), borderColor:'#e8b84b', backgroundColor:'rgba(232,184,75,0.08)', pointBackgroundColor:'#e8b84b', pointRadius:5, tension:0.3, fill:true }] },
+    options: { responsive:true, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.parsed.y} cm`}}}, scales:{ x:{ticks:{color:'#8892a4',font:{size:10}},grid:{color:'#2a3050'}}, y:{ticks:{color:'#8892a4',font:{size:11}},grid:{color:'#2a3050'}} } }
+  });
+}
+
+function renderCalendar() {
+  const events = petData.symptoms.nosebleed;
+  const byMonth = {};
+  events.forEach(e => { const k = e.date.slice(0,7); (byMonth[k]=byMonth[k]||[]).push(e); });
+  const months = Object.keys(byMonth).sort().reverse();
+  const html = months.map(mk => {
+    const [y,m] = mk.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const firstDay = new Date(y, m-1, 1).getDay();
+    const evMap = {}; byMonth[mk].forEach(e => { evMap[new Date(e.date).getDate()] = e; });
+    let cells = '';
+    for (let i=0;i<firstDay;i++) cells += '<div></div>';
+    for (let d=1; d<=daysInMonth; d++) {
+      const ev = evMap[d];
+      if (ev) {
+        const cls = ev.side==='left'?'ev-left':ev.side==='right'?'ev-right':'ev-unknown';
+        cells += `<div class="cal-cell has-event ${cls}">${d}<span class="tip">${fmtDate(ev.date)}: ${ev.detail}</span></div>`;
+      } else cells += `<div class="cal-cell">${d}</div>`;
+    }
+    return `<div class="cal-month"><div class="m-label">${TH_MONTHS[m-1]} ${(y+543)%100}</div><div class="cal-grid">${cells}</div></div>`;
+  }).join('');
+  document.getElementById('calMonths').innerHTML = html;
+}
+
+function renderTreatments() {
+  document.getElementById('tab-treatments').innerHTML = '<div class="timeline">' + petData.treatments.map(t =>
+    `<div class="tl-date-group"><div class="tl-date">${fmtDate(t.date)}</div><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div>`
+  ).join('') + '</div>';
+}
+
+function renderDiarrhea() {
+  document.getElementById('tab-diarrhea').innerHTML = '<div class="timeline"><div class="tl-items">' + petData.symptoms.diarrhea.map(d =>
+    `<div class="tl-item"><div class="doctor">${fmtDate(d.date)}</div><p>${d.detail}</p></div>`
+  ).join('') + '</div></div>';
+}
+
+function setupTabs() {
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+  });
+}
+
+function setupChat() {
+  const chatEl = document.getElementById('chatMessages');
+  const inputEl = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+  let messages = [];
+
+  const ctx = `คุณคือผู้ช่วยดูแลสุขภาพสัตว์เลี้ยงชื่อ "${petData.profile.name}" (${petData.profile.nickname}) สายพันธุ์ ${petData.profile.breed}
+ตอบเป็นภาษาไทย กระชับ ห่วงใย ถ้าไม่มีข้อมูลให้บอกว่าไม่มีและแนะนำให้ปรึกษาสัตวแพทย์
+ข้อมูลทั้งหมด: ${JSON.stringify(petData)}`;
+
+  inputEl.addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();} });
+  inputEl.addEventListener('input', () => { inputEl.style.height='auto'; inputEl.style.height=Math.min(inputEl.scrollHeight,100)+'px'; });
+  sendBtn.onclick = send;
+
+  function add(text, role) {
+    const d = document.createElement('div');
+    d.className = `msg ${role==='user'?'msg-user':'msg-ai'}`;
+    d.textContent = text; chatEl.appendChild(d); chatEl.scrollTop = chatEl.scrollHeight;
+  }
+  async function send() {
+    const text = inputEl.value.trim(); if(!text) return;
+    inputEl.value=''; inputEl.style.height='auto'; sendBtn.disabled=true;
+    add(text,'user'); messages.push({role:'user',content:text});
+    const ld = document.createElement('div'); ld.className='msg-loading'; ld.id='ld';
+    ld.innerHTML='<div class="dot-bounce"></div><div class="dot-bounce"></div><div class="dot-bounce"></div>';
+    chatEl.appendChild(ld); chatEl.scrollTop=chatEl.scrollHeight;
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system:ctx, messages })
+      });
+      const data = await res.json();
+      document.getElementById('ld')?.remove();
+      const reply = data.content?.[0]?.text || 'ขอโทษครับ ตอบไม่ได้ตอนนี้';
+      add(reply,'ai'); messages.push({role:'assistant',content:reply});
+    } catch(e) {
+      document.getElementById('ld')?.remove();
+      add('เกิดข้อผิดพลาด ลองใหม่ครับ','ai');
+    }
+    sendBtn.disabled=false; inputEl.focus();
+  }
+}
+
+load();
+</script>
+</body>
+</html>
