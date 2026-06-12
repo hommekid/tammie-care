@@ -97,6 +97,14 @@
   .tl-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
   .tl-item .doctor { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--gold); margin-bottom: 6px; font-weight: 500; }
   .tl-item p { color: var(--text-dim); line-height: 1.7; }
+  .photo-link { color: var(--gold); cursor: pointer; font-size: 12px; white-space: nowrap; border-bottom: 1px dashed var(--gold-dim); }
+  .photo-link:hover { border-bottom-style: solid; }
+
+  .lightbox { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.88); align-items: center; justify-content: center; padding: 20px; }
+  .lightbox.show { display: flex; }
+  .lightbox img { max-width: 92vw; max-height: 88vh; width: auto; height: auto; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
+  .lightbox .lb-close { position: fixed; top: 16px; right: 20px; font-size: 26px; color: #fff; cursor: pointer; line-height: 1; opacity: 0.8; }
+  .lightbox .lb-close:hover { opacity: 1; }
 
   .tl-acc { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: var(--surface); }
   .tl-acc-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); user-select: none; }
@@ -123,6 +131,11 @@
 </head>
 <body>
 <div id="app"><div class="loading-full">กำลังโหลด...</div></div>
+
+<div id="lightbox" class="lightbox" onclick="closeLightbox()">
+  <span class="lb-close">✕</span>
+  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -219,7 +232,7 @@ function render() {
 
   const tabsDef = [];
   if (treatments.length) tabsDef.push({ id:'treatments', label:'การรักษา' });
-  if (diarrhea.length) tabsDef.push({ id:'diarrhea', label:'ท้องเสีย/Smecta' });
+  if (diarrhea.length) tabsDef.push({ id:'diarrhea', label:'ท้องเสีย' });
   const tabsBlock = tabsDef.length ? `
         <div>
           <div class="tabs">${tabsDef.map((t,i)=>`<div class="tab${i===0?' active':''}" data-tab="${t.id}">${t.label}</div>`).join('')}</div>
@@ -328,11 +341,29 @@ function renderTreatments(treatments) {
   ).join('');
 }
 
+function photoLinks(photos) {
+  if (!photos || !photos.length) return '';
+  return ' ' + photos.map((src,i) =>
+    `<span class="photo-link" onclick="openLightbox('${encodeURI(src)}')">📷 photo${i+1}</span>`
+  ).join(' ');
+}
+
 function renderDiarrhea(diarrhea) {
   document.getElementById('tab-diarrhea').innerHTML = '<div class="timeline"><div class="tl-items">' + diarrhea.map(d =>
-    `<div class="tl-item"><div class="doctor">${fmtDate(d.date)}</div><p>${d.detail}</p></div>`
+    `<div class="tl-item"><div class="doctor">${fmtDate(d.date)}</div><p>${d.detail}${photoLinks(d.photos)}</p></div>`
   ).join('') + '</div></div>';
 }
+
+function openLightbox(src) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightboxImg').src = decodeURI(src);
+  lb.classList.add('show');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('show');
+  document.getElementById('lightboxImg').src = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
 function setupTabs() {
   document.querySelectorAll('.tab').forEach(t => t.onclick = () => {

@@ -115,6 +115,9 @@
         <label>วันที่</label><input type="date" id="dr-date">
         <label>รายละเอียด</label>
         <textarea id="dr-detail" placeholder="เช่น อึเป็นก้อนมีเลือดสดนิดนึง"></textarea>
+        <label>รูปภาพ (เลือกได้หลายรูป)</label>
+        <input type="file" id="dr-photos" accept="image/*" multiple>
+        <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
         <button class="btn" onclick="addEntry('diarrhea')">บันทึก + อัพขึ้น GitHub</button>
       </div>
       <!-- Vitals -->
@@ -155,7 +158,7 @@
       <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
     </div>
 
-    <div class="section-label">เกณฑ์ฉีด Leuco Plus</div>
+    <div class="section-label">เกณฑ์ฉีด LeuFco Plus</div>
     <div class="card">
       <div class="row">
         <div><label>ฉีดเสมอเมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-always" placeholder="4000"></div>
@@ -245,9 +248,25 @@ async function addEntry(type) {
   } else if (type === 'diarrhea') {
     const date=val('dr-date'), detail=val('dr-detail');
     if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
-    currentData.symptoms.diarrhea.unshift({ date, detail });
+    const photos = [];
+    const files = document.getElementById('dr-photos').files;
+    if (files.length) {
+      toast(`กำลังอัพรูป ${files.length} รูป...`);
+      try {
+        for (let i=0; i<files.length; i++) {
+          const b64 = await resizeImage(files[i]);
+          const path = `img/diarrhea-${date}-${Date.now()}-${i}.jpg`;
+          await uploadImage(token, path, b64);
+          photos.push(path);
+        }
+      } catch(e) { return toast('อัพรูปไม่สำเร็จ: ' + e.message, false); }
+      document.getElementById('dr-photos').value = '';
+    }
+    const entry = { date, detail };
+    if (photos.length) entry.photos = photos;
+    currentData.symptoms.diarrhea.unshift(entry);
     currentData.symptoms.diarrhea.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `เพิ่มบันทึกท้องเสีย ${date}`;
+    msg = `เพิ่มบันทึกท้องเสีย ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
   } else if (type === 'vitals') {
     const date=val('vt-date'); if(!date) return toast('กรอกวันที่', false);
     const v = { date };
@@ -290,6 +309,36 @@ async function addEntry(type) {
 }
 
 function val(id){ return document.getElementById(id).value.trim(); }
+
+// ย่อรูปด้วย canvas แล้วคืน base64 (JPEG) — กันไฟล์ใหญ่ + ให้เป็น web-friendly
+function resizeImage(file, maxDim=1280, quality=0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {ff
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (Math.max(w,h) > maxDim) { const s = maxDim/Math.max(w,h); w = Math.round(w*s); h = Math.round(h*s); }
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality).split(',')[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('อ่านรูปไม่ได้')); };
+    img.src = url;
+  });
+}
+
+// อัพรูปขึ้น GitHub (ไฟล์ใหม่ ไม่ต้องมี sha)
+async function uploadImage(token, path, base64) {
+  const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/${path}`;
+  const res = await fetch(url, {
+    method:'PUT',
+    headers:{ Authorization:`token ${token}`, 'Content-Type':'application/json' },
+    body: JSON.stringify({ message:`upload ${path}`, content: base64, branch: CONFIG.branch })
+  });
+  if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+  return path;
+}
 
 async function commit(message) {
   const token = document.getElementById('ghToken').value.trim();
