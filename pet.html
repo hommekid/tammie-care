@@ -172,6 +172,7 @@ function render() {
   const tumor = ((p.vitals && p.vitals.liverTumor) || []).filter(x => x.size != null);
   const treatments = p.treatments || [];
   const diarrhea = (p.symptoms && p.symptoms.diarrhea) || [];
+  const general = (p.symptoms && p.symptoms.general) || [];
 
   // ---- ประกอบแต่ละส่วน เฉพาะที่มีข้อมูล ----
   const statusBlock = hasStats ? `
@@ -233,6 +234,7 @@ function render() {
   const tabsDef = [];
   if (treatments.length) tabsDef.push({ id:'treatments', label:'การรักษา' });
   if (diarrhea.length) tabsDef.push({ id:'diarrhea', label:'ท้องเสีย' });
+  if (general.length) tabsDef.push({ id:'general', label:'อาการทั่วไป' });
   const tabsBlock = tabsDef.length ? `
         <div>
           <div class="tabs">${tabsDef.map((t,i)=>`<div class="tab${i===0?' active':''}" data-tab="${t.id}">${t.label}</div>`).join('')}</div>
@@ -265,7 +267,8 @@ function render() {
   if (tumor.length) renderTumorChart(tumor);
   if (nosebleed.length) renderCalendar(nosebleed);
   if (treatments.length) renderTreatments(treatments);
-  if (diarrhea.length) renderDiarrhea(diarrhea);
+  if (diarrhea.length) renderSymptomTimeline('tab-diarrhea', diarrhea);
+  if (general.length) renderSymptomTimeline('tab-general', general);
   setupTabs();
 }
 
@@ -348,8 +351,8 @@ function photoLinks(photos) {
   ).join(' ');
 }
 
-function renderDiarrhea(diarrhea) {
-  document.getElementById('tab-diarrhea').innerHTML = '<div class="timeline"><div class="tl-items">' + diarrhea.map(d =>
+function renderSymptomTimeline(elId, items) {
+  document.getElementById(elId).innerHTML = '<div class="timeline"><div class="tl-items">' + items.map(d =>
     `<div class="tl-item"><div class="doctor">${fmtDate(d.date)}</div><p>${d.detail}${photoLinks(d.photos)}</p></div>`
   ).join('') + '</div></div>';
 }

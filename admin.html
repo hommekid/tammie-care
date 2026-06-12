@@ -95,6 +95,7 @@
     <div class="tabs">
       <div class="tab active" data-form="nosebleed">🩸 เลือดกำเดา</div>
       <div class="tab" data-form="diarrhea">💊 ท้องเสีย</div>
+      <div class="tab" data-form="general">🩺 อาการทั่วไป</div>
       <div class="tab" data-form="vitals">📊 ค่าตรวจล่าสุด</div>
       <div class="tab" data-form="treatment">🏥 การรักษา</div>
     </div>
@@ -119,6 +120,16 @@
         <input type="file" id="dr-photos" accept="image/*" multiple>
         <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
         <button class="btn" onclick="addEntry('diarrhea')">บันทึก + อัพขึ้น GitHub</button>
+      </div>
+      <!-- General symptoms -->
+      <div class="form-block" id="form-general">
+        <label>วันที่</label><input type="date" id="gn-date">
+        <label>รายละเอียด</label>
+        <textarea id="gn-detail" placeholder="เช่น ซึม ไม่ค่อยกินอาหาร / เดินขาเป๋"></textarea>
+        <label>รูปภาพ (เลือกได้หลายรูป)</label>
+        <input type="file" id="gn-photos" accept="image/*" multiple>
+        <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
+        <button class="btn" onclick="addEntry('general')">บันทึก + อัพขึ้น GitHub</button>
       </div>
       <!-- Vitals -->
       <div class="form-block" id="form-vitals">
@@ -269,6 +280,30 @@ async function addEntry(type) {
     currentData.symptoms.diarrhea.unshift(entry);
     currentData.symptoms.diarrhea.sort((a,b)=>b.date.localeCompare(a.date));
     msg = `เพิ่มบันทึกท้องเสีย ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
+  } else if (type === 'general') {
+    const date=val('gn-date'), detail=val('gn-detail');
+    if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
+    const photos = [];
+    const files = document.getElementById('gn-photos').files;
+    if (files.length) {
+      toast(`กำลังอัพรูป ${files.length} รูป...`);
+      try {
+        for (let i=0; i<files.length; i++) {
+          const b64 = await resizeImage(files[i]);
+          const path = `img/general-${date}-${Date.now()}-${i}.jpg`;
+          await uploadImage(token, path, b64);
+          photos.push(path);
+        }
+      } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
+      document.getElementById('gn-photos').value = '';
+    }
+    if (!currentData.symptoms) currentData.symptoms = {};
+    if (!currentData.symptoms.general) currentData.symptoms.general = [];
+    const entry = { date, detail };
+    if (photos.length) entry.photos = photos;
+    currentData.symptoms.general.unshift(entry);
+    currentData.symptoms.general.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `เพิ่มบันทึกอาการทั่วไป ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
   } else if (type === 'vitals') {
     const date=val('vt-date'); if(!date) return toast('กรอกวันที่', false);
     const v = { date };
