@@ -235,8 +235,10 @@ function fillLeuco() {
 async function addEntry(type) {
   const token = document.getElementById('ghToken').value.trim();
   if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
-  if (!currentData) await loadPet();
-  if (!currentData) return toast('โหลดข้อมูลไม่สำเร็จ', false);
+ try {
+  await loadPet();
+  if (!currentData) throw new Error('โหลดข้อมูลสัตว์เลี้ยงไม่สำเร็จ — เช็ค owner/repo/branch');
+  if (!currentSha) throw new Error('อ่าน sha ของไฟล์ไม่ได้ (โทเคนอาจไม่มีสิทธิ์ Contents หรือ repo/branch ผิด)');
 
   let msg = '';
   if (type === 'nosebleed') {
@@ -259,7 +261,7 @@ async function addEntry(type) {
           await uploadImage(token, path, b64);
           photos.push(path);
         }
-      } catch(e) { return toast('อัพรูปไม่สำเร็จ: ' + e.message, false); }
+      } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
       document.getElementById('dr-photos').value = '';
     }
     const entry = { date, detail };
@@ -306,6 +308,10 @@ async function addEntry(type) {
   }
 
   await commit(msg);
+ } catch(e) {
+   toast('ผิดพลาด: ' + e.message, false);
+   alert('เกิดข้อผิดพลาด:\n\n' + e.message);
+ }
 }
 
 function val(id){ return document.getElementById(id).value.trim(); }
@@ -315,7 +321,7 @@ function resizeImage(file, maxDim=1280, quality=0.85) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
-    img.onload = () => {ff
+    img.onload = () => {
       URL.revokeObjectURL(url);
       let w = img.naturalWidth, h = img.naturalHeight;
       if (Math.max(w,h) > maxDim) { const s = maxDim/Math.max(w,h); w = Math.round(w*s); h = Math.round(h*s); }
@@ -323,7 +329,8 @@ function resizeImage(file, maxDim=1280, quality=0.85) {
       c.getContext('2d').drawImage(img, 0, 0, w, h);
       resolve(c.toDataURL('image/jpeg', quality).split(',')[1]);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('อ่านรูปไม่ได้')); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('อ่านรูปไม่ได้ (รูปแบบไฟล์อาจไม่รองรับ เช่น HEIC บนคอม)')); };
+    setTimeout(() => reject(new Error('โหลดรูปนานเกินไป (timeout)')), 20000);
     img.src = url;
   });
 }
@@ -343,7 +350,6 @@ async function uploadImage(token, path, base64) {
 async function commit(message) {
   const token = document.getElementById('ghToken').value.trim();
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(currentData, null, 2))));
-  try {
     const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/data/${currentPetId}.json`;
     const res = await fetch(url, {
       method:'PUT',
@@ -356,9 +362,6 @@ async function commit(message) {
     toast('✓ ' + message);
     document.querySelectorAll('textarea, input[type=date], input[type=number]').forEach(i=>{ if(i.id!=='ghToken' && !i.id.startsWith('lp-')) i.value=''; });
     fillLeuco();
-  } catch(e) {
-    toast('ผิดพลาด: ' + e.message, false);
-  }
 }
 </script>
 </body>
