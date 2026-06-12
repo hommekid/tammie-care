@@ -169,7 +169,23 @@
       <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
     </div>
 
-    <div class="section-label">เกณฑ์ฉีด LeuFco Plus</div>
+    <div class="section-label">แก้ไข / ลบ รายการเดิม</div>
+    <div class="card">
+      <label>หมวด</label>
+      <select id="ed-cat" onchange="edLoadList()">
+        <option value="">— เลือกหมวด —</option>
+        <option value="nosebleed">🩸 เลือดกำเดา</option>
+        <option value="diarrhea">💊 ท้องเสีย</option>
+        <option value="general">🩺 อาการทั่วไป</option>
+        <option value="treatment">🏥 การรักษา</option>
+        <option value="liverTumor">🔬 ก้อนในตับ</option>
+      </select>
+      <label>รายการ</label>
+      <select id="ed-item" onchange="edSelect()"><option value="">— เลือกรายการ —</option></select>
+      <div id="ed-form" style="display:none"></div>
+    </div>
+
+    <div class="section-label">เกณฑ์ฉีด Leuco Plus</div>
     <div class="card">
       <div class="row">
         <div><label>ฉีดเสมอเมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-always" placeholder="4000"></div>
@@ -395,8 +411,139 @@ async function commit(message) {
     const j = await res.json();
     currentSha = j.content.sha;
     toast('✓ ' + message);
-    document.querySelectorAll('textarea, input[type=date], input[type=number]').forEach(i=>{ if(i.id!=='ghToken' && !i.id.startsWith('lp-')) i.value=''; });
+    document.querySelectorAll('textarea, input[type=date], input[type=number]').forEach(i=>{ if(i.id!=='ghToken' && !i.id.startsWith('lp-') && !i.id.startsWith('e-')) i.value=''; });
     fillLeuco();
+}
+
+// ===== แก้ไข / ลบ รายการเดิม =====
+function edArr(cat) {
+  if (!currentData) return [];
+  if (cat==='nosebleed') return (currentData.symptoms && currentData.symptoms.nosebleed) || [];
+  if (cat==='diarrhea')  return (currentData.symptoms && currentData.symptoms.diarrhea) || [];
+  if (cat==='general')   return (currentData.symptoms && currentData.symptoms.general) || [];
+  if (cat==='liverTumor') return (currentData.vitals && currentData.vitals.liverTumor) || [];
+  return [];
+}
+function edSnip(s, n=34) { s = s || ''; return s.length > n ? s.slice(0,n)+'…' : s; }
+function edEsc(s) { return (s||'').replace(/"/g,'&quot;'); }
+
+async function edLoadList() {
+  const cat = document.getElementById('ed-cat').value;
+  const sel = document.getElementById('ed-item');
+  const form = document.getElementById('ed-form');
+  form.style.display='none'; form.innerHTML='';
+  sel.innerHTML = '<option value="">— เลือกรายการ —</option>';
+  if (!cat) return;
+  try { await loadPet(); } catch(_) {}
+  if (!currentData) return toast('โหลดข้อมูลไม่สำเร็จ', false);
+  const opts = [];
+  if (cat==='treatment') {
+    (currentData.treatments||[]).forEach((g,gi) => (g.entries||[]).forEach((e,ei) =>
+      opts.push({ v:`${gi}.${ei}`, t:`${g.date} · ${edSnip((e.doctor||'')+' '+(e.notes||''))}` })));
+  } else if (cat==='liverTumor') {
+    edArr(cat).forEach((e,i) => opts.push({ v:i, t:`${e.date} · ${e.size!=null?e.size+'cm':'-'} ${edSnip(e.note,18)}` }));
+  } else {
+    edArr(cat).forEach((e,i) => opts.push({ v:i, t:`${e.date} · ${edSnip(e.detail)}` }));
+  }
+  if (!opts.length) { sel.innerHTML = '<option value="">(ยังไม่มีรายการ)</option>'; return; }
+  opts.forEach(o => { const op=document.createElement('option'); op.value=o.v; op.textContent=o.t; sel.appendChild(op); });
+}
+
+function edSelect() {
+  const cat = document.getElementById('ed-cat').value;
+  const v = document.getElementById('ed-item').value;
+  const form = document.getElementById('ed-form');
+  if (v==='') { form.style.display='none'; form.innerHTML=''; return; }
+  let html = '';
+  if (cat==='nosebleed') {
+    const e = edArr(cat)[+v];
+    html = `<label>วันที่</label><input type="date" id="e-date" value="${e.date||''}">
+    <label>รูจมูก</label><select id="e-side">
+      <option value="left"${e.side==='left'?' selected':''}>ซ้าย</option>
+      <option value="right"${e.side==='right'?' selected':''}>ขวา</option>
+      <option value="unknown"${e.side==='unknown'?' selected':''}>ไม่ระบุ</option></select>
+    <label>รายละเอียด</label><textarea id="e-detail">${e.detail||''}</textarea>`;
+  } else if (cat==='diarrhea' || cat==='general') {
+    const e = edArr(cat)[+v];
+    html = `<label>วันที่</label><input type="date" id="e-date" value="${e.date||''}">
+    <label>รายละเอียด</label><textarea id="e-detail">${e.detail||''}</textarea>
+    ${e.photos&&e.photos.length?`<div class="hint">มีรูปแนบ ${e.photos.length} รูป (รูปเดิมจะถูกเก็บไว้)</div>`:''}`;
+  } else if (cat==='liverTumor') {
+    const e = edArr(cat)[+v];
+    html = `<label>วันที่</label><input type="date" id="e-date" value="${e.date||''}">
+    <label>ขนาด cm (เว้นว่างได้)</label><input type="number" step="0.1" id="e-size" value="${e.size!=null?e.size:''}">
+    <label>หมายเหตุ</label><input type="text" id="e-note" value="${edEsc(e.note)}">`;
+  } else if (cat==='treatment') {
+    const [gi,ei] = v.split('.').map(Number);
+    const e = currentData.treatments[gi].entries[ei];
+    html = `<label>วันที่</label><input type="date" id="e-date" value="${currentData.treatments[gi].date||''}">
+    <label>หมอ</label><input type="text" id="e-doctor" value="${edEsc(e.doctor)}">
+    <label>แผนก</label><input type="text" id="e-spec" value="${edEsc(e.specialty)}">
+    <label>บันทึก</label><textarea id="e-notes">${e.notes||''}</textarea>`;
+  }
+  html += `<button class="btn" onclick="edSave()">บันทึกการแก้ไข + อัพขึ้น GitHub</button>
+  <button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="edDelete()">ลบรายการนี้</button>`;
+  form.innerHTML = html; form.style.display='block';
+}
+
+function edReset() {
+  document.getElementById('ed-item').value='';
+  const f = document.getElementById('ed-form'); f.style.display='none'; f.innerHTML='';
+}
+
+async function edSave() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  try {
+    const cat = document.getElementById('ed-cat').value;
+    const v = document.getElementById('ed-item').value;
+    if (v==='') return;
+    const date = val('e-date');
+    if (!date) throw new Error('กรอกวันที่');
+    if (cat==='nosebleed') {
+      const e = edArr(cat)[+v]; e.date=date; e.side=val('e-side'); e.detail=val('e-detail');
+      edArr(cat).sort((a,b)=>b.date.localeCompare(a.date));
+    } else if (cat==='diarrhea' || cat==='general') {
+      const e = edArr(cat)[+v]; e.date=date; e.detail=val('e-detail');
+      edArr(cat).sort((a,b)=>b.date.localeCompare(a.date));
+    } else if (cat==='liverTumor') {
+      const e = edArr(cat)[+v]; e.date=date; const s=val('e-size'); e.size=s?+s:null; e.note=val('e-note');
+      edArr(cat).sort((a,b)=>a.date.localeCompare(b.date));
+    } else if (cat==='treatment') {
+      const [gi,ei] = v.split('.').map(Number);
+      const g = currentData.treatments[gi]; const e = g.entries[ei];
+      e.doctor=val('e-doctor'); e.specialty=val('e-spec'); e.notes=val('e-notes');
+      if (date !== g.date) {
+        g.entries.splice(ei,1);
+        if (!g.entries.length) currentData.treatments.splice(gi,1);
+        const ng = currentData.treatments.find(t=>t.date===date);
+        if (ng) ng.entries.push(e); else currentData.treatments.unshift({date,entries:[e]});
+        currentData.treatments.sort((a,b)=>b.date.localeCompare(a.date));
+      }
+    }
+    await commit(`แก้ไขรายการ (${date})`);
+    edReset(); edLoadList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+
+async function edDelete() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const v = document.getElementById('ed-item').value;
+  if (v==='') return;
+  if (!confirm('ยืนยันลบรายการนี้?\nลบแล้วกู้คืนไม่ได้')) return;
+  try {
+    const cat = document.getElementById('ed-cat').value;
+    if (cat==='treatment') {
+      const [gi,ei] = v.split('.').map(Number);
+      currentData.treatments[gi].entries.splice(ei,1);
+      if (!currentData.treatments[gi].entries.length) currentData.treatments.splice(gi,1);
+    } else {
+      edArr(cat).splice(+v,1);
+    }
+    await commit('ลบรายการ');
+    edReset(); edLoadList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
 }
 </script>
 </body>
