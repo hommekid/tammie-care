@@ -59,6 +59,12 @@
   .toast-err { background:var(--red); color:#fff; }
 
   .token-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:14px; margin-top:8px; font-size:13px; color:var(--text-dim); }
+  .disp-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid var(--border); border-radius:8px; margin-top:8px; background:var(--surface2); }
+  .disp-row label { margin:0; flex:1; color:var(--text); font-size:14px; cursor:pointer; }
+  .disp-row input[type=checkbox] { width:auto; accent-color:var(--gold); }
+  .disp-row button { background:var(--surface); border:1px solid var(--border); color:var(--text-dim); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:14px; }
+  .disp-row button:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); }
+  .disp-row button:disabled { opacity:0.3; cursor:default; }
   .row { display:flex; gap:10px; }
   .row > * { flex:1; }
 </style>
@@ -201,6 +207,17 @@
       <button class="btn" onclick="addEntry('leucoPlus')">บันทึกเกณฑ์ + อัพขึ้น GitHub</button>
     </div>
 
+    <div class="section-label">ตั้งค่าหน้า Dashboard</div>
+    <div class="card">
+      <div class="hint" style="margin-top:0">เลือกว่าหน้าของตัวนี้จะแสดง section ไหนบ้าง · ติ๊กออก = ซ่อน · ปุ่ม ↑↓ จัดลำดับ · section ที่ไม่มีข้อมูลจะถูกซ่อนอัตโนมัติอยู่แล้ว</div>
+      <div id="dispList"></div>
+      <div class="row" style="margin-top:16px">
+        <div><label style="margin-top:0">ชื่อหัวปฏิทิน</label><input type="text" id="disp-cal-title" placeholder="เช่น ปฏิทินเลือดกำเดา (เว้นว่าง = อัตโนมัติ)"></div>
+        <div><label style="margin-top:0">แหล่งข้อมูลปฏิทิน</label><select id="disp-cal-source"></select></div>
+      </div>
+      <button class="btn" onclick="saveDisplay()">บันทึกการตั้งค่า + อัพขึ้น GitHub</button>
+    </div>
+
   </div>
 </div>
 
@@ -254,6 +271,7 @@ async function loadPet() {
     try { currentData = await (await fetch(`data/${currentPetId}.json`)).json(); } catch(_) {}
   }
   fillLeuco();
+  fillDisplay();
 }
 
 function fillLeuco() {
@@ -261,6 +279,75 @@ function fillLeuco() {
   document.getElementById('lp-always').value = lp.alwaysBelow ?? '';
   document.getElementById('lp-withsym').value = lp.withSymptomsBelow ?? '';
   document.getElementById('lp-rules').value = (lp.rules || []).join('\n');
+}
+
+// ===== ตั้งค่าหน้า Dashboard (display ต่อตัว) =====
+const DISP_SECTIONS = [
+  { key:'stats',    label:'📊 สถานะล่าสุด (การ์ดค่าตรวจ)' },
+  { key:'leuco',    label:'💉 เกณฑ์ฉีด Leuco Plus' },
+  { key:'danger',   label:'🚨 สัญญาณต้องไปหาหมอทันที' },
+  { key:'watch',    label:'📋 สิ่งที่ต้องติดตาม' },
+  { key:'calendar', label:'📆 ปฏิทินอาการ' },
+  { key:'tumor',    label:'📈 กราฟก้อนในตับ' },
+  { key:'tabs',     label:'🗂 แท็บบันทึก (การรักษา/อาการ)' }
+];
+let dispState = [];
+
+function fillDisplay() {
+  const d = (currentData && currentData.display) || {};
+  const hiddenSet = new Set(d.hidden || []);
+  const order = (d.order || []).filter(k => DISP_SECTIONS.some(s => s.key === k));
+  DISP_SECTIONS.forEach(s => { if (!order.includes(s.key)) order.push(s.key); });
+  dispState = order.map(k => ({ key:k, label: DISP_SECTIONS.find(s => s.key === k).label, visible: !hiddenSet.has(k) }));
+  renderDispList();
+  const cal = d.calendar || {};
+  document.getElementById('disp-cal-title').value = cal.title || '';
+  const keys = Object.keys((currentData && currentData.symptoms) || {});
+  if (!keys.length) keys.push('nosebleed');
+  document.getElementById('disp-cal-source').innerHTML =
+    keys.map(k => `<option value="${k}"${(cal.source || 'nosebleed') === k ? ' selected' : ''}>${k}</option>`).join('');
+}
+
+function renderDispList() {
+  document.getElementById('dispList').innerHTML = dispState.map((s,i) => `
+    <div class="disp-row">
+      <input type="checkbox" id="disp-${s.key}" ${s.visible?'checked':''} onchange="dispState[${i}].visible=this.checked">
+      <label for="disp-${s.key}">${s.label}</label>
+      <button onclick="dispMove(${i},-1)" ${i===0?'disabled':''}>↑</button>
+      <button onclick="dispMove(${i},1)" ${i===dispState.length-1?'disabled':''}>↓</button>
+    </div>`).join('');
+}
+
+function dispMove(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= dispState.length) return;
+  [dispState[i], dispState[j]] = [dispState[j], dispState[i]];
+  renderDispList();
+}
+
+async function saveDisplay() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  try {
+    // เก็บค่าจาก UI ก่อน เพราะ loadPet() จะรีเฟรชฟอร์มทับ
+    const state = dispState.map(s => ({ ...s }));
+    const calTitle = val('disp-cal-title');
+    const calSource = document.getElementById('disp-cal-source').value;
+    await loadPet();
+    if (!currentData) throw new Error('โหลดข้อมูลสัตว์เลี้ยงไม่สำเร็จ — เช็ค owner/repo/branch');
+    if (!currentSha) throw new Error('อ่าน sha ของไฟล์ไม่ได้ (โทเคนอาจไม่มีสิทธิ์ Contents หรือ repo/branch ผิด)');
+    const d = currentData.display || {};
+    d.order = state.map(s => s.key);
+    const hidden = state.filter(s => !s.visible).map(s => s.key);
+    if (hidden.length) d.hidden = hidden; else delete d.hidden;
+    const cal = d.calendar || {};
+    if (calTitle) cal.title = calTitle; else delete cal.title;
+    if (calSource) cal.source = calSource; else delete cal.source;
+    if (Object.keys(cal).length) d.calendar = cal; else delete d.calendar;
+    currentData.display = d;
+    await commit('อัพเดทการตั้งค่าหน้า dashboard');
+    fillDisplay();
+  } catch(e) { toast('ผิดพลาด: ' + e.message, false); alert('เกิดข้อผิดพลาด:\n\n' + e.message); }
 }
 
 async function addEntry(type) {

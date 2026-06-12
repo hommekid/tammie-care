@@ -74,6 +74,7 @@
   .legend span { display: inline-flex; align-items: center; gap: 5px; }
   .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
   .dot-left { background: var(--blue); } .dot-right { background: var(--gold); } .dot-unknown { background: var(--text-muted); }
+  .dot-any { background: var(--red); }
   .cal-row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
   .chart-col { flex: 0 0 300px; max-width: 300px; }
   .tumor-box { width: 300px; height: 250px; }
@@ -90,6 +91,7 @@
   .cal-cell.ev-left { background: var(--blue-dim); border-color: var(--blue); }
   .cal-cell.ev-right { background: rgba(232,184,75,0.2); border-color: var(--gold-dim); }
   .cal-cell.ev-unknown { background: var(--surface); border-color: var(--text-muted); }
+  .cal-cell.ev-any { background: rgba(232,85,85,0.18); border-color: var(--red); }
   .cal-cell .tip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #000; border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 12px; color: var(--text); white-space: normal; width: 180px; z-index: 20; font-weight: 400; line-height: 1.4; }
   .cal-cell:hover .tip { display: block; }
 
@@ -147,6 +149,22 @@ const params = new URLSearchParams(location.search);
 const petId = params.get('id') || 'frappe';
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
+// ค่า default — override ได้ต่อตัวผ่าน key `display` ใน data/<id>.json
+// display: { order:[...], hidden:[...], calendar:{source,title}, tabs:[{source,label}], stats:[{key,label,note,color,check}] }
+const DEFAULT_STATS = [
+  { key:'ischemiaValue', label:'ค่าหัวใจขาดเลือด', color:'red', note:'⚠️ ไม่ควรเกิน {ischemiaNormalMax}' },
+  { key:'heartRate', label:'อัตราการเต้นหัวใจ', color:'green', note:'ครั้ง/นาที' },
+  { key:'heartSize', label:'ขนาดหัวใจ', color:'gold' },
+  { key:'wbc', label:'WBC', color:'red', note:'× 10³' },
+  { key:'lungXray', label:'X-Ray ปอด', color:'green', check:true },
+  { key:'nervous', label:'ระบบประสาท', color:'green' }
+];
+const DEFAULT_TABS = [
+  { source:'treatments', label:'การรักษา' },
+  { source:'diarrhea', label:'ท้องเสีย' },
+  { source:'general', label:'อาการทั่วไป' }
+];
+
 function calcAge(b) { const d=new Date(b),n=new Date(); let y=n.getFullYear()-d.getFullYear(); if(n.getMonth()<d.getMonth()||(n.getMonth()===d.getMonth()&&n.getDate()<d.getDate()))y--; return y; }
 function fmtDate(s) { const d=new Date(s); return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${(d.getFullYear()+543)%100}`; }
 
@@ -168,15 +186,21 @@ function render() {
   const app = document.getElementById('app');
 
   // ---- เตรียมข้อมูลแบบปลอดภัย (ไม่มี = ว่าง ไม่พัง) ----
-  const statFields = ['ischemiaValue','heartRate','heartSize','wbc','lungXray','nervous'];
-  const hasStats = statFields.some(k => v[k] != null);
+  const disp = p.display || {};
+  const statDefs = disp.stats || DEFAULT_STATS;
+  const hasStats = statDefs.some(d => v[d.key] != null);
   const danger = [ ...((p.dangerSigns && p.dangerSigns.liverFailure) || []), ...((p.dangerSigns && p.dangerSigns.wbc) || []) ];
   const watch = p.watchList || [];
-  const nosebleed = (p.symptoms && p.symptoms.nosebleed) || [];
+  const calCfg = disp.calendar || {};
+  const calSource = calCfg.source || 'nosebleed';
+  const calEvents = (p.symptoms && p.symptoms[calSource]) || [];
+  const calTitle = calCfg.title || (calSource === 'nosebleed' ? 'ปฏิทินเลือดกำเดา' : 'ปฏิทินอาการ');
+  const calHasSide = calEvents.some(e => e.side);
   const tumor = ((p.vitals && p.vitals.liverTumor) || []).filter(x => x.size != null);
   const treatments = p.treatments || [];
-  const diarrhea = (p.symptoms && p.symptoms.diarrhea) || [];
-  const general = (p.symptoms && p.symptoms.general) || [];
+  const tabsDef = (disp.tabs || DEFAULT_TABS)
+    .map(t => ({ ...t, items: t.source === 'treatments' ? treatments : ((p.symptoms && p.symptoms[t.source]) || []) }))
+    .filter(t => t.items.length);
 
   // ---- ประกอบแต่ละส่วน เฉพาะที่มีข้อมูล ----
   const statusBlock = hasStats ? `
@@ -211,14 +235,17 @@ function render() {
           <ul>${watch.map(x=>`<li>${x}</li>`).join('')}</ul>
         </div>` : '';
 
-  const calCol = nosebleed.length ? `
-          <div class="chart-wrap chart-col">
-            <div class="section-label">ปฏิทินเลือดกำเดา</div>
+  const legend = calHasSide ? `
             <div class="legend">
               <span><i class="dot dot-left"></i> รูจมูกซ้าย</span>
               <span><i class="dot dot-right"></i> รูจมูกขวา</span>
               <span><i class="dot dot-unknown"></i> ไม่ระบุ</span>
-            </div>
+            </div>` : `
+            <div class="legend"><span><i class="dot dot-any"></i> วันที่มีอาการ</span></div>`;
+  const calCol = calEvents.length ? `
+          <div class="chart-wrap chart-col">
+            <div class="section-label">${calTitle}</div>
+            ${legend}
             <div class="cal-nav">
               <button id="calPrev" title="เดือนก่อนหน้า">‹</button>
               <div class="cal-title" id="calTitle"></div>
@@ -233,17 +260,26 @@ function render() {
             <div class="tumor-box"><canvas id="tumorChart"></canvas></div>
           </div>` : '';
 
-  const calRow = (calCol || tumorCol) ? `<div class="cal-row">${calCol}${tumorCol}</div>` : '';
-
-  const tabsDef = [];
-  if (treatments.length) tabsDef.push({ id:'treatments', label:'การรักษา' });
-  if (diarrhea.length) tabsDef.push({ id:'diarrhea', label:'ท้องเสีย' });
-  if (general.length) tabsDef.push({ id:'general', label:'อาการทั่วไป' });
   const tabsBlock = tabsDef.length ? `
         <div>
-          <div class="tabs">${tabsDef.map((t,i)=>`<div class="tab${i===0?' active':''}" data-tab="${t.id}">${t.label}</div>`).join('')}</div>
-          ${tabsDef.map((t,i)=>`<div class="tab-content${i===0?' active':''}" id="tab-${t.id}"></div>`).join('')}
+          <div class="tabs">${tabsDef.map((t,i)=>`<div class="tab${i===0?' active':''}" data-tab="${t.source}">${t.label}</div>`).join('')}</div>
+          ${tabsDef.map((t,i)=>`<div class="tab-content${i===0?' active':''}" id="tab-${t.source}"></div>`).join('')}
         </div>` : '';
+
+  // ---- ประกอบตาม display.order / display.hidden (ไม่มี = ลำดับเดิม โชว์ทุกอันที่มีข้อมูล) ----
+  const blocks = { stats: statusBlock, leuco: leucoBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock };
+  const hidden = new Set(disp.hidden || []);
+  const order = (disp.order || []).filter(k => k in blocks);
+  Object.keys(blocks).forEach(k => { if (!order.includes(k)) order.push(k); });
+  const parts = [];
+  let charts = [];
+  const flushCharts = () => { if (charts.length) { parts.push(`<div class="cal-row">${charts.join('')}</div>`); charts = []; } };
+  order.forEach(k => {
+    if (hidden.has(k) || !blocks[k]) return;
+    if (k === 'calendar' || k === 'tumor') charts.push(blocks[k]);
+    else { flushCharts(); parts.push(blocks[k]); }
+  });
+  flushCharts();
 
   app.innerHTML = `
     <header>
@@ -257,22 +293,19 @@ function render() {
     </header>
     <div class="main">
       <div class="left">
-        ${statusBlock}
-        ${leucoBlock}
-        ${dangerBlock}
-        ${watchBlock}
-        ${calRow}
-        ${tabsBlock}
+        ${parts.join('\n        ')}
       </div>
     </div>
   `;
 
-  if (hasStats) renderStats(v);
-  if (tumor.length) renderTumorChart(tumor);
-  if (nosebleed.length) renderCalendar(nosebleed);
-  if (treatments.length) renderTreatments(treatments);
-  if (diarrhea.length) renderSymptomTimeline('tab-diarrhea', diarrhea);
-  if (general.length) renderSymptomTimeline('tab-general', general);
+  const show = k => !hidden.has(k);
+  if (show('stats') && hasStats) renderStats(v, statDefs);
+  if (show('tumor') && tumor.length) renderTumorChart(tumor);
+  if (show('calendar') && calEvents.length) renderCalendar(calEvents);
+  if (show('tabs')) tabsDef.forEach(t => {
+    if (t.source === 'treatments') renderTreatments('tab-treatments', t.items);
+    else renderSymptomTimeline('tab-' + t.source, t.items);
+  });
   setupTabs();
 }
 
@@ -287,15 +320,14 @@ function leucoVerdict(lp, v) {
   return { cls:'lp-green', icon:'🟢', text:`WBC = ${f(raw)} → ยังไม่ถึงเกณฑ์ฉีด (ตั้งแต่ ${f(lp.withSymptomsBelow)} ขึ้นไป)` };
 }
 
-function renderStats(v) {
-  const cards = [];
-  if (v.ischemiaValue != null) cards.push(`<div class="stat-card stat-red"><div class="label">ค่าหัวใจขาดเลือด</div><div class="value">${v.ischemiaValue}</div><div class="note">⚠️ ไม่ควรเกิน ${v.ischemiaNormalMax}</div></div>`);
-  if (v.heartRate != null) cards.push(`<div class="stat-card stat-green"><div class="label">อัตราการเต้นหัวใจ</div><div class="value">${v.heartRate}</div><div class="note">ครั้ง/นาที</div></div>`);
-  if (v.heartSize != null) cards.push(`<div class="stat-card stat-gold"><div class="label">ขนาดหัวใจ</div><div class="value">${v.heartSize}</div><div class="note">&nbsp;</div></div>`);
-  if (v.wbc != null) cards.push(`<div class="stat-card stat-red"><div class="label">WBC</div><div class="value">${v.wbc}</div><div class="note">× 10³</div></div>`);
-  if (v.lungXray) cards.push(`<div class="stat-card stat-green"><div class="label">X-Ray ปอด</div><div class="value">✓</div><div class="note">${v.lungXray}</div></div>`);
-  if (v.nervous) cards.push(`<div class="stat-card stat-green"><div class="label">ระบบประสาท</div><div class="value">${v.nervous}</div><div class="note">&nbsp;</div></div>`);
-  document.getElementById('stats').innerHTML = cards.join('');
+function renderStats(v, defs) {
+  document.getElementById('stats').innerHTML = (defs || DEFAULT_STATS)
+    .filter(d => v[d.key] != null)
+    .map(d => {
+      const value = d.check ? '✓' : v[d.key];
+      const note = d.check ? v[d.key] : (d.note || '&nbsp;').replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '');
+      return `<div class="stat-card stat-${d.color || 'gold'}"><div class="label">${d.label}</div><div class="value">${value}</div><div class="note">${note}</div></div>`;
+    }).join('');
 }
 
 function renderTumorChart(data) {
@@ -332,8 +364,8 @@ function drawMonth() {
   for (let d=1; d<=daysInMonth; d++) {
     const ev = evMap[d];
     if (ev) {
-      const cls = ev.side==='left'?'ev-left':ev.side==='right'?'ev-right':'ev-unknown';
-      cells += `<div class="cal-cell has-event ${cls}">${d}<span class="tip">${fmtDate(ev.date)}: ${ev.detail}</span></div>`;
+      const cls = ev.side==='left'?'ev-left':ev.side==='right'?'ev-right':(ev.side?'ev-unknown':'ev-any');
+      cells += `<div class="cal-cell has-event ${cls}">${d}<span class="tip">${fmtDate(ev.date)}: ${ev.detail||''}</span></div>`;
     } else cells += `<div class="cal-cell">${d}</div>`;
   }
   titleEl.textContent = `${TH_MONTHS[m-1]} ${y+543}`;
@@ -342,8 +374,8 @@ function drawMonth() {
   document.getElementById('calNext').disabled = calIdx <= 0;
 }
 
-function renderTreatments(treatments) {
-  document.getElementById('tab-treatments').innerHTML = treatments.map(t =>
+function renderTreatments(elId, treatments) {
+  document.getElementById(elId).innerHTML = treatments.map(t =>
     `<div class="tl-acc"><div class="tl-acc-head" onclick="this.parentElement.classList.toggle('open')">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div></div>`
   ).join('');
 }
