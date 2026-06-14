@@ -79,6 +79,16 @@
   .chart-col { flex: 0 0 300px; max-width: 300px; }
   .tumor-box { width: 300px; height: 250px; }
   .tumor-box canvas { width: 300px !important; height: 250px !important; }
+  .lab-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.6; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; }
+  .lab-chart-box { width: 100%; max-width: 520px; height: 240px; }
+  .lab-chart-box canvas { width: 100% !important; height: 240px !important; }
+  .lab-select { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 9px; font-family: 'Sarabun', sans-serif; font-size: 12px; outline: none; }
+  details.lab-history { margin-top: 12px; }
+  details.lab-history > summary { cursor: pointer; font-size: 12px; color: var(--gold); font-family: 'IBM Plex Mono', monospace; user-select: none; }
+  .lab-tbl { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
+  .lab-tbl th, .lab-tbl td { border: 1px solid var(--border); padding: 6px 12px; text-align: center; white-space: nowrap; }
+  .lab-tbl th { color: var(--text-dim); font-weight: 500; background: var(--surface); }
+  .lab-tbl td:first-child, .lab-tbl th:first-child { position: sticky; left: 0; background: var(--surface2); }
   .cal-nav { display: flex; align-items: center; justify-content: space-between; max-width: 300px; margin-bottom: 10px; }
   .cal-nav button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
   .cal-nav button:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
@@ -155,7 +165,6 @@ const DEFAULT_STATS = [
   { key:'ischemiaValue', label:'ค่าหัวใจขาดเลือด', color:'red', note:'⚠️ ไม่ควรเกิน {ischemiaNormalMax}' },
   { key:'heartRate', label:'อัตราการเต้นหัวใจ', color:'green', note:'ครั้ง/นาที' },
   { key:'heartSize', label:'ขนาดหัวใจ', color:'gold' },
-  { key:'wbc', label:'WBC', color:'red', note:'× 10³' },
   { key:'lungXray', label:'X-Ray ปอด', color:'green', check:true },
   { key:'nervous', label:'ระบบประสาท', color:'green' }
 ];
@@ -197,6 +206,10 @@ function render() {
   const calTitle = calCfg.title || (calSource === 'nosebleed' ? 'ปฏิทินเลือดกำเดา' : 'ปฏิทินอาการ');
   const calHasSide = calEvents.some(e => e.side);
   const tumor = ((p.vitals && p.vitals.liverTumor) || []).filter(x => x.size != null);
+  const labConfig = p.labConfig || [];
+  const labs = p.labs || [];
+  const labPanels = p.labPanels || [];
+  const cbcWbc = labs.filter(r => r.panel==='cbc' && r.values && r.values.wbc != null).sort((a,b)=>b.date.localeCompare(a.date));
   const treatments = p.treatments || [];
   const tabsDef = (disp.tabs || DEFAULT_TABS)
     .map(t => ({ ...t, items: t.source === 'treatments' ? treatments : ((p.symptoms && p.symptoms[t.source]) || []) }))
@@ -219,8 +232,9 @@ function render() {
         </div>` : '';
 
   const lp = p.leucoPlus;
+  const wbcForLeuco = cbcWbc.length ? cbcWbc[0].values.wbc : v.wbc;
   const leucoBlock = lp ? (() => {
-    const ver = leucoVerdict(lp, v);
+    const ver = leucoVerdict(lp, { wbc: wbcForLeuco });
     return `
         <div class="leuco-box ${ver.cls}">
           <div class="lp-head">💉 ${lp.title || 'เกณฑ์ฉีด Leuco Plus'}</div>
@@ -234,6 +248,8 @@ function render() {
           <div class="title">📋 สิ่งที่ต้องติดตาม</div>
           <ul>${watch.map(x=>`<li>${x}</li>`).join('')}</ul>
         </div>` : '';
+
+  const labsBlock = (labConfig.length && labs.length) ? `<div id="labsWrap"></div>` : '';
 
   const legend = calHasSide ? `
             <div class="legend">
@@ -267,7 +283,7 @@ function render() {
         </div>` : '';
 
   // ---- ประกอบตาม display.order / display.hidden (ไม่มี = ลำดับเดิม โชว์ทุกอันที่มีข้อมูล) ----
-  const blocks = { stats: statusBlock, leuco: leucoBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock };
+  const blocks = { stats: statusBlock, leuco: leucoBlock, labs: labsBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock };
   const hidden = new Set(disp.hidden || []);
   const order = (disp.order || []).filter(k => k in blocks);
   Object.keys(blocks).forEach(k => { if (!order.includes(k)) order.push(k); });
@@ -300,6 +316,7 @@ function render() {
 
   const show = k => !hidden.has(k);
   if (show('stats') && hasStats) renderStats(v, statDefs);
+  if (show('labs') && labConfig.length && labs.length) renderLabs(labPanels, labConfig, labs);
   if (show('tumor') && tumor.length) renderTumorChart(tumor);
   if (show('calendar') && calEvents.length) renderCalendar(calEvents);
   if (show('tabs')) tabsDef.forEach(t => {
@@ -336,6 +353,85 @@ function renderTumorChart(data) {
     type: 'line',
     data: { labels: data.map(x=>fmtDate(x.date)), datasets: [{ data: data.map(x=>x.size), borderColor:'#e8b84b', backgroundColor:'rgba(232,184,75,0.08)', pointBackgroundColor:'#e8b84b', pointRadius:5, tension:0.3, fill:true }] },
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.parsed.y} cm`}}}, scales:{ x:{ticks:{color:'#8892a4',font:{size:10}},grid:{color:'#2a3050'}}, y:{ticks:{color:'#8892a4',font:{size:11}},grid:{color:'#2a3050'}} } }
+  });
+}
+
+let labCharts = {};
+function labFlag(c, v) {
+  if (v == null) return null;
+  if (c.min != null && v < c.min) return 'low';
+  if (c.max != null && v > c.max) return 'high';
+  return 'ok';
+}
+function renderLabs(panels, cfg, labs) {
+  // จัดลำดับหมวด: ตาม labPanels ก่อน แล้วต่อด้วยหมวดอื่นที่พบในข้อมูล
+  const order = panels.map(p => p.id);
+  [...new Set(cfg.map(c => c.panel || '_'))].forEach(pid => { if (!order.includes(pid)) order.push(pid); });
+  const nameOf = pid => (panels.find(p=>p.id===pid)||{}).name || 'ผลเลือด';
+  labCharts = {};
+  const sections = [];
+  const toDraw = [];
+  order.forEach(pid => {
+    const pcfg = cfg.filter(c => (c.panel||'_') === pid);
+    const recs = labs.filter(r => (r.panel||'_') === pid);
+    if (!pcfg.length || !recs.length) return;
+    const latest = [...recs].sort((a,b)=>b.date.localeCompare(a.date))[0];
+    const cards = pcfg.filter(c => latest.values[c.key] != null).map(c => {
+      const v = latest.values[c.key];
+      const fl = labFlag(c, v);
+      const cls = fl==='low'||fl==='high' ? 'red' : (fl==='ok' ? 'green' : 'gold');
+      const hasRange = c.min != null || c.max != null;
+      let note;
+      if (fl==='low') note = `⤓ ต่ำกว่าปกติ · ${c.unit||''}`;
+      else if (fl==='high') note = `⤒ สูงกว่าปกติ · ${c.unit||''}`;
+      else if (hasRange) note = `ปกติ ${c.min??''}–${c.max??''} ${c.unit||''}`;
+      else note = c.unit || '&nbsp;';
+      return `<div class="stat-card stat-${cls}"><div class="label">${c.label}</div><div class="value">${v}</div><div class="note">${note}</div></div>`;
+    }).join('');
+    const noteLine = latest.note ? `<div class="lab-note">📝 ${latest.note}</div>` : '';
+    const asc = [...recs].sort((a,b)=>b.date.localeCompare(a.date));
+    const header = '<th>วันที่</th>' + pcfg.map(c=>`<th>${c.label}</th>`).join('');
+    const trows = asc.map(r => `<tr><td>${fmtDate(r.date)}</td>` + pcfg.map(c => {
+      const v = r.values[c.key]; const fl = labFlag(c, v);
+      const style = (fl==='low'||fl==='high') ? ' style="color:var(--red);font-weight:600"' : '';
+      return `<td${style}>${v!=null?v:'-'}</td>`;
+    }).join('') + '</tr>').join('');
+    sections.push(`
+        <div style="margin-bottom:22px">
+          <div class="section-label">🧪 ${nameOf(pid)} — ${fmtDate(latest.date)}</div>
+          <div class="stats-grid">${cards}</div>
+          ${noteLine}
+          <div class="chart-wrap" style="margin-top:12px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <span class="section-label" style="margin:0">แนวโน้ม</span>
+              <select id="labParam-${pid}" class="lab-select"></select>
+            </div>
+            <div class="lab-chart-box"><canvas id="labChart-${pid}"></canvas></div>
+          </div>
+          <details class="lab-history">
+            <summary>ดูประวัติย้อนหลัง (ตาราง)</summary>
+            <div style="overflow-x:auto"><table class="lab-tbl"><thead><tr>${header}</tr></thead><tbody>${trows}</tbody></table></div>
+          </details>
+        </div>`);
+    toDraw.push({ pid, pcfg, recs });
+  });
+  document.getElementById('labsWrap').innerHTML = sections.join('');
+  toDraw.forEach(({pid, pcfg, recs}) => {
+    const sel = document.getElementById('labParam-'+pid);
+    sel.innerHTML = pcfg.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
+    sel.onchange = () => drawLabChart(pid, pcfg, recs, sel.value);
+    if (pcfg.length) drawLabChart(pid, pcfg, recs, pcfg[0].key);
+  });
+}
+function drawLabChart(pid, cfg, recs, key) {
+  if (!key) return;
+  const c = cfg.find(x=>x.key===key) || {};
+  const asc = [...recs].sort((a,b)=>a.date.localeCompare(b.date)).filter(r => r.values[key] != null);
+  if (labCharts[pid]) labCharts[pid].destroy();
+  labCharts[pid] = new Chart(document.getElementById('labChart-'+pid), {
+    type: 'line',
+    data: { labels: asc.map(r=>fmtDate(r.date)), datasets: [{ data: asc.map(r=>r.values[key]), borderColor:'#5b9cf6', backgroundColor:'rgba(91,156,246,0.08)', pointBackgroundColor:'#5b9cf6', pointRadius:5, tension:0.3, fill:true }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:cx=>`${cx.parsed.y} ${c.unit||''}`}}}, scales:{ x:{ticks:{color:'#8892a4',font:{size:10}},grid:{color:'#2a3050'}}, y:{ticks:{color:'#8892a4',font:{size:11}},grid:{color:'#2a3050'}} } }
   });
 }
 

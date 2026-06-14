@@ -106,6 +106,7 @@
       <div class="tab active" data-form="nosebleed">🩸 เลือดกำเดา</div>
       <div class="tab" data-form="diarrhea">💊 ท้องเสีย</div>
       <div class="tab" data-form="general">🩺 อาการทั่วไป</div>
+      <div class="tab" data-form="labs">🧪 ผลเลือด</div>
       <div class="tab" data-form="vitals">📊 ค่าตรวจล่าสุด</div>
       <div class="tab" data-form="treatment">🏥 การรักษา</div>
     </div>
@@ -140,6 +141,37 @@
         <input type="file" id="gn-photos" accept="image/*" multiple>
         <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
         <button class="btn" onclick="addEntry('general')">บันทึก + อัพขึ้น GitHub</button>
+      </div>
+      <!-- Labs (blood test) -->
+      <div class="form-block" id="form-labs">
+        <label>หมวด</label>
+        <select id="lb-panel" onchange="fillLabForm()"></select>
+        <label>วันที่ตรวจ</label><input type="date" id="lb-date">
+        <div id="lab-fields"><div class="hint">เลือกหมวดก่อน</div></div>
+        <button class="btn" onclick="addEntry('labs')">บันทึกผลเลือด + อัพขึ้น GitHub</button>
+
+        <div class="section-label" style="margin:24px 0 4px">เพิ่มหมวดใหม่</div>
+        <div class="row">
+          <div><label>id (อังกฤษ)</label><input type="text" id="lpan-id" placeholder="urine"></div>
+          <div><label>ชื่อหมวด</label><input type="text" id="lpan-name" placeholder="ปัสสาวะ (Urinalysis)"></div>
+        </div>
+        <button class="btn btn-ghost" onclick="addLabPanel()">+ เพิ่มหมวด</button>
+
+        <div class="section-label" style="margin:24px 0 4px">ตั้งค่าพารามิเตอร์ผลเลือด</div>
+        <div id="lab-config-list"></div>
+        <label>หมวดของพารามิเตอร์</label>
+        <select id="lc-panel"></select>
+        <div class="row">
+          <div><label>key (อังกฤษ)</label><input type="text" id="lc-key" placeholder="wbc"></div>
+          <div><label>ชื่อแสดง</label><input type="text" id="lc-label" placeholder="WBC"></div>
+        </div>
+        <div class="row">
+          <div><label>หน่วย</label><input type="text" id="lc-unit" placeholder="× 10³"></div>
+          <div><label>ปกติต่ำสุด</label><input type="number" step="any" id="lc-min"></div>
+          <div><label>ปกติสูงสุด</label><input type="number" step="any" id="lc-max"></div>
+        </div>
+        <div class="hint">ค่าต่ำ/สูงเว้นว่างได้ (ไม่ตั้งช่วงปกติ = ไม่เตือนแดง) · ค่าปกติแต่ละตัวควรเช็คกับสัตวแพทย์</div>
+        <button class="btn btn-ghost" onclick="addLabParam()">+ เพิ่มพารามิเตอร์</button>
       </div>
       <!-- Vitals -->
       <div class="form-block" id="form-vitals">
@@ -187,6 +219,7 @@
         <option value="nosebleed">🩸 เลือดกำเดา</option>
         <option value="diarrhea">💊 ท้องเสีย</option>
         <option value="general">🩺 อาการทั่วไป</option>
+        <option value="labs">🧪 ผลเลือด</option>
         <option value="treatment">🏥 การรักษา</option>
         <option value="liverTumor">🔬 ก้อนในตับ</option>
       </select>
@@ -272,6 +305,7 @@ async function loadPet() {
   }
   fillLeuco();
   fillDisplay();
+  fillLabForm();
 }
 
 function fillLeuco() {
@@ -281,10 +315,95 @@ function fillLeuco() {
   document.getElementById('lp-rules').value = (lp.rules || []).join('\n');
 }
 
+// ===== ผลเลือด (labs) =====
+function labPanelList() { return (currentData && currentData.labPanels) || []; }
+function fillPanelSelects() {
+  const panels = labPanelList();
+  const opts = panels.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  ['lb-panel','lc-panel'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    const cur = el.value;
+    el.innerHTML = opts || '<option value="">(ยังไม่มีหมวด)</option>';
+    if (cur && panels.some(p=>p.id===cur)) el.value = cur;
+  });
+}
+function fillLabForm() {
+  if (!document.getElementById('lab-fields')) return;
+  fillPanelSelects();
+  const cfgAll = (currentData && currentData.labConfig) || [];
+  const panel = document.getElementById('lb-panel').value;
+  const fields = document.getElementById('lab-fields');
+  const list = document.getElementById('lab-config-list');
+  const cfg = cfgAll.filter(c => (c.panel||'') === panel);
+  fields.innerHTML = !panel ? '<div class="hint">เลือกหมวดก่อน</div>'
+    : (!cfg.length ? '<div class="hint">หมวดนี้ยังไม่มีพารามิเตอร์ — เพิ่มด้านล่าง</div>'
+      : cfg.map(c => `<label>${c.label}${c.unit?` (${c.unit})`:''}${c.min!=null||c.max!=null?` · ปกติ ${c.min??''}–${c.max??''}`:''}</label>
+        <input type="number" step="any" id="lf-${c.key}">`).join(''));
+  const nameOf = pid => (labPanelList().find(p=>p.id===pid)||{}).name || pid || '(ไม่ระบุหมวด)';
+  list.innerHTML = cfgAll.length ? cfgAll.map(c =>
+    `<div class="token-box" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+       <span>${c.label} <span style="color:var(--text-muted)">(${nameOf(c.panel)} · ${c.key}${c.unit?', '+c.unit:''})</span></span>
+       <span style="color:var(--red);cursor:pointer" onclick="delLabParam('${c.key}','${c.panel||''}')">ลบ</span>
+     </div>`).join('') : '';
+}
+
+async function addLabPanel() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  try {
+    await loadPet();
+    if (!currentData) throw new Error('โหลดข้อมูลไม่สำเร็จ');
+    const id = val('lpan-id').toLowerCase().replace(/[^a-z0-9_]/g,'');
+    const name = val('lpan-name');
+    if (!id || !name) throw new Error('กรอก id และชื่อหมวด');
+    if (!currentData.labPanels) currentData.labPanels = [];
+    if (currentData.labPanels.some(p=>p.id===id)) throw new Error('มีหมวดนี้อยู่แล้ว');
+    currentData.labPanels.push({ id, name });
+    await commit(`เพิ่มหมวดผลเลือด ${name}`);
+    ['lpan-id','lpan-name'].forEach(i=>document.getElementById(i).value='');
+    fillLabForm();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+
+async function addLabParam() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  try {
+    await loadPet();
+    if (!currentData) throw new Error('โหลดข้อมูลไม่สำเร็จ');
+    const panel = document.getElementById('lc-panel').value;
+    if (!panel) throw new Error('เลือกหมวดของพารามิเตอร์');
+    const key = val('lc-key').toLowerCase().replace(/[^a-z0-9_]/g,'');
+    const label = val('lc-label');
+    if (!key || !label) throw new Error('กรอก key และชื่อแสดง');
+    if (!currentData.labConfig) currentData.labConfig = [];
+    if (currentData.labConfig.some(c=>c.key===key && (c.panel||'')===panel)) throw new Error('มี key นี้ในหมวดนี้แล้ว');
+    const c = { panel, key, label, unit: val('lc-unit') };
+    if (val('lc-min')!=='') c.min = +val('lc-min');
+    if (val('lc-max')!=='') c.max = +val('lc-max');
+    currentData.labConfig.push(c);
+    await commit(`เพิ่มพารามิเตอร์ผลเลือด ${label}`);
+    ['lc-key','lc-label','lc-unit','lc-min','lc-max'].forEach(id=>document.getElementById(id).value='');
+    fillLabForm();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+
+async function delLabParam(key, panel) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!confirm(`ลบพารามิเตอร์ "${key}"?\n(ค่าที่บันทึกไว้เดิมยังอยู่ แต่จะไม่แสดง)`)) return;
+  try {
+    currentData.labConfig = (currentData.labConfig||[]).filter(c=>!(c.key===key && (c.panel||'')===(panel||'')));
+    await commit(`ลบพารามิเตอร์ผลเลือด ${key}`);
+    fillLabForm();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+
 // ===== ตั้งค่าหน้า Dashboard (display ต่อตัว) =====
 const DISP_SECTIONS = [
   { key:'stats',    label:'📊 สถานะล่าสุด (การ์ดค่าตรวจ)' },
   { key:'leuco',    label:'💉 เกณฑ์ฉีด Leuco Plus' },
+  { key:'labs',     label:'🧪 ผลเลือด' },
   { key:'danger',   label:'🚨 สัญญาณต้องไปหาหมอทันที' },
   { key:'watch',    label:'📋 สิ่งที่ต้องติดตาม' },
   { key:'calendar', label:'📆 ปฏิทินอาการ' },
@@ -411,6 +530,21 @@ async function addEntry(type) {
     currentData.symptoms.general.unshift(entry);
     currentData.symptoms.general.sort((a,b)=>b.date.localeCompare(a.date));
     msg = `เพิ่มบันทึกอาการทั่วไป ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
+  } else if (type === 'labs') {
+    const panel = document.getElementById('lb-panel').value;
+    const date = val('lb-date');
+    if (!panel) return toast('เลือกหมวด', false);
+    if (!date) return toast('กรอกวันที่ตรวจ', false);
+    const values = {};
+    (currentData.labConfig||[]).filter(c=>(c.panel||'')===panel).forEach(c => {
+      const el = document.getElementById('lf-'+c.key);
+      if (el && el.value.trim() !== '') values[c.key] = +el.value;
+    });
+    if (!Object.keys(values).length) return toast('กรอกค่าผลเลือดอย่างน้อย 1 ค่า', false);
+    if (!currentData.labs) currentData.labs = [];
+    currentData.labs.unshift({ date, panel, values });
+    currentData.labs.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `เพิ่มผลเลือด ${panel} ${date}`;
   } else if (type === 'vitals') {
     const date=val('vt-date'); if(!date) return toast('กรอกวันที่', false);
     const v = { date };
@@ -513,6 +647,7 @@ function edArr(cat) {
   if (cat==='diarrhea')  return (currentData.symptoms && currentData.symptoms.diarrhea) || [];
   if (cat==='general')   return (currentData.symptoms && currentData.symptoms.general) || [];
   if (cat==='liverTumor') return (currentData.vitals && currentData.vitals.liverTumor) || [];
+  if (cat==='labs') return currentData.labs || [];
   return [];
 }
 function edSnip(s, n=34) { s = s || ''; return s.length > n ? s.slice(0,n)+'…' : s; }
@@ -533,6 +668,9 @@ async function edLoadList() {
       opts.push({ v:`${gi}.${ei}`, t:`${g.date} · ${edSnip((e.doctor||'')+' '+(e.notes||''))}` })));
   } else if (cat==='liverTumor') {
     edArr(cat).forEach((e,i) => opts.push({ v:i, t:`${e.date} · ${e.size!=null?e.size+'cm':'-'} ${edSnip(e.note,18)}` }));
+  } else if (cat==='labs') {
+    const pn = id => ((currentData.labPanels||[]).find(p=>p.id===id)||{}).name || id || '';
+    edArr(cat).forEach((e,i) => opts.push({ v:i, t:`${e.date} · ${pn(e.panel)} · ${edSnip(Object.entries(e.values||{}).map(([k,val])=>k+':'+val).join(' '),24)}` }));
   } else {
     edArr(cat).forEach((e,i) => opts.push({ v:i, t:`${e.date} · ${edSnip(e.detail)}` }));
   }
@@ -571,6 +709,14 @@ function edSelect() {
     <label>หมอ</label><input type="text" id="e-doctor" value="${edEsc(e.doctor)}">
     <label>แผนก</label><input type="text" id="e-spec" value="${edEsc(e.specialty)}">
     <label>บันทึก</label><textarea id="e-notes">${e.notes||''}</textarea>`;
+  } else if (cat==='labs') {
+    const e = edArr(cat)[+v];
+    const pname = ((currentData.labPanels||[]).find(p=>p.id===e.panel)||{}).name || e.panel || '';
+    html = `<div class="hint">หมวด: ${pname}</div><label>วันที่ตรวจ</label><input type="date" id="e-date" value="${e.date||''}">`;
+    (currentData.labConfig||[]).filter(c=>(c.panel||'')===(e.panel||'')).forEach(c => {
+      const val2 = e.values && e.values[c.key]!=null ? e.values[c.key] : '';
+      html += `<label>${c.label}${c.unit?` (${c.unit})`:''}</label><input type="number" step="any" id="e-lab-${c.key}" value="${val2}">`;
+    });
   }
   html += `<button class="btn" onclick="edSave()">บันทึกการแก้ไข + อัพขึ้น GitHub</button>
   <button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="edDelete()">ลบรายการนี้</button>`;
@@ -600,6 +746,13 @@ async function edSave() {
     } else if (cat==='liverTumor') {
       const e = edArr(cat)[+v]; e.date=date; const s=val('e-size'); e.size=s?+s:null; e.note=val('e-note');
       edArr(cat).sort((a,b)=>a.date.localeCompare(b.date));
+    } else if (cat==='labs') {
+      const e = edArr(cat)[+v]; e.date=date; e.values = e.values || {};
+      (currentData.labConfig||[]).filter(c=>(c.panel||'')===(e.panel||'')).forEach(c => {
+        const el = document.getElementById('e-lab-'+c.key);
+        if (el) { const x = el.value.trim(); if (x==='') delete e.values[c.key]; else e.values[c.key] = +x; }
+      });
+      edArr(cat).sort((a,b)=>b.date.localeCompare(a.date));
     } else if (cat==='treatment') {
       const [gi,ei] = v.split('.').map(Number);
       const g = currentData.treatments[gi]; const e = g.entries[ei];
