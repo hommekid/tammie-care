@@ -79,6 +79,14 @@
   .chart-col { flex: 0 0 300px; max-width: 300px; }
   .tumor-box { width: 300px; height: 250px; }
   .tumor-box canvas { width: 300px !important; height: 250px !important; }
+  .lab-acc { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; background: var(--surface); }
+  .lab-acc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 16px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text); user-select: none; }
+  .lab-acc-head:hover { background: var(--surface2); }
+  .lab-acc-meta { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .lab-acc-meta .chev { transition: transform 0.2s; font-size: 18px; color: var(--text-muted); }
+  .lab-acc.open .lab-acc-meta .chev { transform: rotate(90deg); }
+  .lab-acc-body { display: none; padding: 0 16px 16px; }
+  .lab-acc.open .lab-acc-body { display: block; }
   .lab-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.6; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; }
   .lab-chart-box { width: 100%; max-width: 520px; height: 240px; }
   .lab-chart-box canvas { width: 100% !important; height: 240px !important; }
@@ -139,6 +147,8 @@
   .dtab { padding: 9px 20px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-dim); }
   .dtab.active { background: var(--gold); color: #0f1117; border-color: var(--gold); }
   .dtab-panel { display: none; } .dtab-panel.active { display: block; }
+  footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 8px; }
+  footer a { color: var(--gold); }
   .dtab-panel > div { margin-bottom: 22px; }
 
 
@@ -158,6 +168,8 @@
   <span class="lb-close">✕</span>
   <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
 </div>
+
+<footer>Tammie Care · <a href="admin.html">จัดการข้อมูล</a></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -388,6 +400,12 @@ function renderTumorChart(data) {
 
 let labCharts = {};
 function labBlank(v) { return v == null || v === 0; }
+function labRange(c) {
+  if (c.min != null && c.max != null) return `ปกติ ${c.min}–${c.max}`;
+  if (c.max != null) return `ปกติ ≤${c.max}`;
+  if (c.min != null) return `ปกติ ≥${c.min}`;
+  return '';
+}
 function labFlag(c, v) {
   if (labBlank(v)) return null;
   if (c.min != null && v < c.min) return 'low';
@@ -411,38 +429,33 @@ function renderLabs(panels, cfg, labs) {
       const v = latest.values[c.key];
       const fl = labFlag(c, v);
       const cls = fl==='low'||fl==='high' ? 'red' : (fl==='ok' ? 'green' : 'gold');
-      const hasRange = c.min != null || c.max != null;
+      const rt = labRange(c);
       let note;
-      if (fl==='low') note = `⤓ ต่ำกว่าปกติ · ${c.unit||''}`;
-      else if (fl==='high') note = `⤒ สูงกว่าปกติ · ${c.unit||''}`;
-      else if (hasRange) note = `ปกติ ${c.min??''}–${c.max??''} ${c.unit||''}`;
+      if (fl==='low') note = `⤓ ต่ำกว่าปกติ${rt?` (${rt})`:''} · ${c.unit||''}`;
+      else if (fl==='high') note = `⤒ สูงกว่าปกติ${rt?` (${rt})`:''} · ${c.unit||''}`;
+      else if (rt) note = `${rt} ${c.unit||''}`;
       else note = c.unit || '&nbsp;';
       return `<div class="stat-card stat-${cls}"><div class="label">${c.label}</div><div class="value">${v}</div><div class="note">${note}</div></div>`;
     }).join('');
-    const noteLine = latest.note ? `<div class="lab-note">📝 ${latest.note}</div>` : '';
-    const asc = [...recs].sort((a,b)=>b.date.localeCompare(a.date));
-    const header = '<th>วันที่</th>' + pcfg.map(c=>`<th>${c.label}</th>`).join('');
-    const trows = asc.map(r => `<tr><td>${fmtDate(r.date)}</td>` + pcfg.map(c => {
-      const v = r.values[c.key]; const blank = labBlank(v); const fl = labFlag(c, v);
-      const style = (fl==='low'||fl==='high') ? ' style="color:var(--red);font-weight:600"' : '';
-      return `<td${style}>${blank ? '-' : v}</td>`;
-    }).join('') + '</tr>').join('');
+    const abn = pcfg.filter(c => { const fl = labFlag(c, latest.values[c.key]); return fl==='low'||fl==='high'; }).length;
+    const meta = abn > 0 ? `<span style="color:var(--red)">⚠️ ${abn} ค่าผิดปกติ</span>` : `<span style="color:var(--green)">✓ ปกติ</span>`;
+    const open = sections.length === 0 ? ' open' : '';
     sections.push(`
-        <div style="margin-bottom:22px">
-          <div class="section-label">🧪 ${nameOf(pid)} — ${fmtDate(latest.date)}</div>
-          <div class="stats-grid">${cards}</div>
-          ${noteLine}
-          <div class="chart-wrap" style="margin-top:12px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-              <span class="section-label" style="margin:0">แนวโน้ม</span>
-              <select id="labParam-${pid}" class="lab-select"></select>
-            </div>
-            <div class="lab-chart-box"><canvas id="labChart-${pid}"></canvas></div>
+        <div class="lab-acc${open}">
+          <div class="lab-acc-head" onclick="toggleLabAcc(this,'${pid}')">
+            <span>🧪 ${nameOf(pid)} <span style="color:var(--text-dim);font-weight:400">· ${fmtDate(latest.date)}</span></span>
+            <span class="lab-acc-meta">${meta} <span class="chev">›</span></span>
           </div>
-          <details class="lab-history">
-            <summary>ดูประวัติย้อนหลัง (ตาราง)</summary>
-            <div style="overflow-x:auto"><table class="lab-tbl"><thead><tr>${header}</tr></thead><tbody>${trows}</tbody></table></div>
-          </details>
+          <div class="lab-acc-body">
+            <div class="stats-grid">${cards}</div>
+            <div class="chart-wrap" style="margin-top:12px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span class="section-label" style="margin:0">แนวโน้ม</span>
+                <select id="labParam-${pid}" class="lab-select"></select>
+              </div>
+              <div class="lab-chart-box"><canvas id="labChart-${pid}"></canvas></div>
+            </div>
+          </div>
         </div>`);
     toDraw.push({ pid, pcfg, recs });
   });
@@ -453,6 +466,11 @@ function renderLabs(panels, cfg, labs) {
     sel.onchange = () => drawLabChart(pid, pcfg, recs, sel.value);
     if (pcfg.length) drawLabChart(pid, pcfg, recs, pcfg[0].key);
   });
+}
+function toggleLabAcc(head, pid) {
+  const acc = head.parentElement;
+  acc.classList.toggle('open');
+  if (acc.classList.contains('open') && labCharts[pid]) labCharts[pid].resize();
 }
 function drawLabChart(pid, cfg, recs, key) {
   if (!key) return;

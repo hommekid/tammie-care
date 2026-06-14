@@ -45,6 +45,13 @@
   .btn:disabled { opacity:0.5; cursor:not-allowed; }
   .btn-ghost { background:transparent; border:1px solid var(--border); color:var(--text-dim); }
 
+  details.acc { margin-top:14px; }
+  details.acc > summary { list-style:none; cursor:pointer; font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text-muted); letter-spacing:1.5px; text-transform:uppercase; padding:10px 0; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
+  details.acc > summary::-webkit-details-marker { display:none; }
+  details.acc > summary::after { content:'▸'; color:var(--gold); font-size:13px; }
+  details.acc[open] > summary::after { content:'▾'; }
+  details.acc > summary:hover { color:var(--text-dim); }
+
   .section-label { font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--text-muted); letter-spacing:1.5px; text-transform:uppercase; margin:28px 0 4px; }
   .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-top:12px; }
 
@@ -101,7 +108,7 @@
       <option value="frappe">🐶 เฟรปเป้ (เฟ่)</option>
     </select>
 
-    <div class="section-label">เพิ่มบันทึก</div>
+    <details class="acc"><summary>เพิ่มบันทึก</summary>
     <div class="tabs">
       <div class="tab active" data-form="nosebleed">🩸 เลือดกำเดา</div>
       <div class="tab" data-form="diarrhea">💊 ท้องเสีย</div>
@@ -199,9 +206,9 @@
         <textarea id="tr-notes" placeholder="ผลการตรวจ / การรักษา"></textarea>
         <button class="btn" onclick="addEntry('treatment')">บันทึก + อัพขึ้น GitHub</button>
       </div>
-    </div>
+    </div></details>
 
-    <div class="section-label">ขนาดก้อนในตับ (ซาวด์)</div>
+    <details class="acc"><summary>ขนาดก้อนในตับ (ซาวด์)</summary>
     <div class="card">
       <div class="row">
         <div><label>วันที่</label><input type="date" id="lt-date"></div>
@@ -209,9 +216,9 @@
       </div>
       <label>หมายเหตุ</label><input type="text" id="lt-note" placeholder="เช่น ใหญ่ขึ้นนิดนึง">
       <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
-    </div>
+    </div></details>
 
-    <div class="section-label">แก้ไข / ลบ รายการเดิม</div>
+    <details class="acc"><summary>แก้ไข / ลบ รายการเดิม</summary>
     <div class="card">
       <label>หมวด</label>
       <select id="ed-cat" onchange="edLoadList()">
@@ -226,9 +233,9 @@
       <label>รายการ</label>
       <select id="ed-item" onchange="edSelect()"><option value="">— เลือกรายการ —</option></select>
       <div id="ed-form" style="display:none"></div>
-    </div>
+    </div></details>
 
-    <div class="section-label">เกณฑ์ฉีด Leuco Plus</div>
+    <details class="acc"><summary>เกณฑ์ฉีด Leuco Plus</summary>
     <div class="card">
       <div class="row">
         <div><label>ฉีดเสมอเมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-always" placeholder="4000"></div>
@@ -238,9 +245,9 @@
       <textarea id="lp-rules" placeholder="WBC ต่ำกว่า 4,500 + มีอาการอื่น → ฉีด Leuco Plus&#10;WBC ต่ำกว่า 4,000 แม้อาการปกติ → ฉีด Leuco Plus"></textarea>
       <div class="hint">ค่าเป็นจำนวนนับดิบ (เช่น 4000) — ระบบจะเทียบกับ WBC ที่กรอกหน่วย ×10³ ให้อัตโนมัติ · ค่าปัจจุบันจะถูกดึงมาแสดงหลังเลือกสัตว์เลี้ยง</div>
       <button class="btn" onclick="addEntry('leucoPlus')">บันทึกเกณฑ์ + อัพขึ้น GitHub</button>
-    </div>
+    </div></details>
 
-    <div class="section-label">ตั้งค่าหน้า Dashboard</div>
+    <details class="acc"><summary>ตั้งค่าหน้า Dashboard</summary>
     <div class="card">
       <div class="hint" style="margin-top:0">เลือกว่าหน้าของตัวนี้จะแสดง section ไหนบ้าง · ติ๊กออก = ซ่อน · ปุ่ม ↑↓ จัดลำดับ · section ที่ไม่มีข้อมูลจะถูกซ่อนอัตโนมัติอยู่แล้ว</div>
       <div id="dispList"></div>
@@ -249,7 +256,7 @@
         <div><label style="margin-top:0">แหล่งข้อมูลปฏิทิน</label><select id="disp-cal-source"></select></div>
       </div>
       <button class="btn" onclick="saveDisplay()">บันทึกการตั้งค่า + อัพขึ้น GitHub</button>
-    </div>
+    </div></details>
 
   </div>
 </div>

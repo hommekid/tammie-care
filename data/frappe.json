@@ -399,6 +399,51 @@
       "unit": "µ/L",
       "min": 8,
       "max": 216
+    },
+    {
+      "panel": "coag",
+      "key": "pt",
+      "label": "PT (Prothrombin)",
+      "unit": "sec",
+      "min": 3.5,
+      "max": 7.5
+    },
+    {
+      "panel": "coag",
+      "key": "ptt",
+      "label": "PTT",
+      "unit": "sec",
+      "min": 10.8,
+      "max": 18.4
+    },
+    {
+      "panel": "coag",
+      "key": "tt",
+      "label": "TT (Thrombin)",
+      "unit": "sec",
+      "min": 11.3,
+      "max": 28.1
+    },
+    {
+      "panel": "coag",
+      "key": "antithrombin",
+      "label": "Antithrombin III",
+      "unit": "%"
+    },
+    {
+      "panel": "coag",
+      "key": "fibrinogen",
+      "label": "Fibrinogen",
+      "unit": "mg/dL",
+      "min": 100,
+      "max": 400
+    },
+    {
+      "panel": "coag",
+      "key": "ddimer",
+      "label": "D-Dimer",
+      "unit": "ng/mL",
+      "max": 250
     }
   ],
   "labs": [
@@ -578,6 +623,78 @@
         "plasmaProtein": 7.0
       },
       "note": "WBC: Hypersegmented neutrophil · Neu 61% Lym 31% Mono 7% Eos 1%"
+    },
+    {
+      "date": "2026-01-25",
+      "panel": "cbc",
+      "values": {
+        "rbc": 6.3,
+        "hgb": 13.7,
+        "hct": 41.0,
+        "mcv": 65.1,
+        "mch": 21.8,
+        "mchc": 33.5,
+        "rdw": 14.5,
+        "wbc": 5300,
+        "neu": 4134,
+        "lym": 1060,
+        "mono": 106,
+        "eosi": 0,
+        "baso": 0,
+        "plt": 363,
+        "mpv": 10.0,
+        "plasmaProtein": 6.4
+      },
+      "note": "WBC: Hypersegmented neutrophil · Neu 78% Lym 20% Mono 2% Eos 0%"
+    },
+    {
+      "date": "2026-01-20",
+      "panel": "coag",
+      "values": {
+        "pt": 5.7,
+        "ptt": 9.6,
+        "fibrinogen": 325.4
+      }
+    },
+    {
+      "date": "2026-01-10",
+      "panel": "chem",
+      "values": {
+        "bun": 11.0,
+        "creatinine": 0.76,
+        "alt": 42.0,
+        "alp": 182.0,
+        "ast": 56.0,
+        "totalProtein": 5.2,
+        "albumin": 2.3,
+        "globulin": 2.9,
+        "amylase": 700.0,
+        "cholesterol": 278.0,
+        "triglyceride": 193.0
+      }
+    },
+    {
+      "date": "2026-01-10",
+      "panel": "cbc",
+      "values": {
+        "rbc": 5.77,
+        "hgb": 13.2,
+        "hct": 38.6,
+        "mcv": 66.9,
+        "mch": 23.0,
+        "mchc": 34.3,
+        "rdw": 14.2,
+        "wbc": 2790,
+        "neu": 1786,
+        "lym": 949,
+        "mono": 55,
+        "eosi": 0,
+        "baso": 0,
+        "plt": 328,
+        "mpv": 9.2,
+        "plasmaProtein": 6.2
+      },
+      "note": "WBC: Hypersegmented neutrophil · Neu 64% Lym 34% Mono 2% Eos 0%"
     }
   ],
   "treatments": [
@@ -894,6 +1011,15 @@
     {
       "id": "cardiac",
       "name": "Cardiac Marker"
+    },
+    {
+      "id": "coag",
+      "name": "การแข็งตัวของเลือด (Coagulation)"
     }
-  ]
+  ],
+  "display": {
+    "hidden": [
+      "stats"
+    ]
+  }
 }
