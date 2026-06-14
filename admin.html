@@ -218,6 +218,18 @@
       <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
     </div></details>
 
+    <details class="acc"><summary>💊 ยาประจำ</summary>
+    <div class="card">
+      <div id="med-list"></div>
+      <label>ชื่อยา</label><input type="text" id="md-name" placeholder="เช่น Palladia">
+      <div class="row">
+        <div><label>เช้า</label><input type="text" id="md-am" placeholder="เช่น 1, 65mg, เว้นว่างได้"></div>
+        <div><label>เย็น</label><input type="text" id="md-pm" placeholder="เช่น 1, เว้นว่างได้"></div>
+      </div>
+      <label>หมายเหตุ</label><input type="text" id="md-note" placeholder="เช่น ก่อนอาหาร / Mon Wed Fri">
+      <button class="btn" id="md-btn" onclick="addMed()">เพิ่มยา + อัพขึ้น GitHub</button>
+    </div></details>
+
     <details class="acc"><summary>แก้ไข / ลบ รายการเดิม</summary>
     <div class="card">
       <label>หมวด</label>
@@ -259,6 +271,9 @@
     </div></details>
 
   </div>
+  <footer style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px;border-top:1px solid var(--border)">
+    Tammie Care · <a href="index.html" style="color:var(--gold)">หน้าแรก</a>
+  </footer>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -313,6 +328,58 @@ async function loadPet() {
   fillLeuco();
   fillDisplay();
   fillLabForm();
+  fillMedList();
+}
+
+// ===== ยาประจำ (meds) =====
+let medEditIdx = null;
+function fillMedList() {
+  const list = document.getElementById('med-list');
+  if (!list) return;
+  const meds = (currentData && currentData.meds) || [];
+  list.innerHTML = meds.length ? meds.map((m,i) =>
+    `<div class="token-box" style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:8px">
+       <span><b>${m.name}</b> <span style="color:var(--text-muted)">เช้า ${m.am||'–'} / เย็น ${m.pm||'–'}${m.note?' · '+m.note:''}</span></span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="medEdit(${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="medDel(${i})">ลบ</span></span>
+     </div>`).join('') : '<div class="hint">ยังไม่มียา</div>';
+}
+function medEdit(i) {
+  const m = (currentData.meds||[])[i]; if (!m) return;
+  document.getElementById('md-name').value = m.name||'';
+  document.getElementById('md-am').value = m.am||'';
+  document.getElementById('md-pm').value = m.pm||'';
+  document.getElementById('md-note').value = m.note||'';
+  medEditIdx = i;
+  document.getElementById('md-btn').textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+}
+async function addMed() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  try {
+    const name = val('md-name');
+    if (!name) throw new Error('กรอกชื่อยา');
+    if (!currentData.meds) currentData.meds = [];
+    const m = { name, am: val('md-am'), pm: val('md-pm'), note: val('md-note') };
+    if (medEditIdx != null && currentData.meds[medEditIdx]) currentData.meds[medEditIdx] = m;
+    else currentData.meds.push(m);
+    await commit(medEditIdx != null ? `แก้ไขยา ${name}` : `เพิ่มยา ${name}`);
+    medEditIdx = null;
+    ['md-name','md-am','md-pm','md-note'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('md-btn').textContent = 'เพิ่มยา + อัพขึ้น GitHub';
+    fillMedList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+async function medDel(i) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const m = (currentData.meds||[])[i]; if (!m) return;
+  if (!confirm(`ลบยา "${m.name}"?`)) return;
+  try {
+    currentData.meds.splice(i,1);
+    await commit(`ลบยา ${m.name}`);
+    fillMedList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
 }
 
 function fillLeuco() {
@@ -410,6 +477,7 @@ async function delLabParam(key, panel) {
 const DISP_SECTIONS = [
   { key:'stats',    label:'📊 สถานะล่าสุด (การ์ดค่าตรวจ)' },
   { key:'leuco',    label:'💉 เกณฑ์ฉีด Leuco Plus' },
+  { key:'meds',     label:'💊 ยาประจำ' },
   { key:'labs',     label:'🧪 ผลเลือด' },
   { key:'danger',   label:'🚨 สัญญาณต้องไปหาหมอทันที' },
   { key:'watch',    label:'📋 สิ่งที่ต้องติดตาม' },

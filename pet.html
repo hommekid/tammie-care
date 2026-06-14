@@ -147,6 +147,16 @@
   .dtab { padding: 9px 20px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-dim); }
   .dtab.active { background: var(--gold); color: #0f1117; border-color: var(--gold); }
   .dtab-panel { display: none; } .dtab-panel.active { display: block; }
+  .med-acc { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .med-acc > summary { list-style: none; cursor: pointer; padding: 13px 16px; font-size: 14px; font-weight: 500; color: var(--text); display: flex; justify-content: space-between; align-items: center; user-select: none; }
+  .med-acc > summary::-webkit-details-marker { display: none; }
+  .med-acc > summary::after { content: '›'; color: var(--text-muted); font-size: 18px; transition: transform 0.2s; }
+  .med-acc[open] > summary::after { transform: rotate(90deg); }
+  .med-tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .med-tbl th, .med-tbl td { border-top: 1px solid var(--border); padding: 8px 12px; text-align: center; }
+  .med-tbl th { color: var(--text-dim); font-weight: 500; font-size: 12px; }
+  .med-tbl .med-name { text-align: left; font-weight: 500; white-space: nowrap; }
+  .med-tbl .med-note { text-align: left; color: var(--text-dim); font-size: 12px; }
   footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 8px; }
   footer a { color: var(--gold); }
   .dtab-panel > div { margin-bottom: 22px; }
@@ -169,7 +179,7 @@
   <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
 </div>
 
-<footer>Tammie Care · <a href="admin.html">จัดการข้อมูล</a></footer>
+<footer>Tammie Care · <a href="index.html">หน้าแรก</a> · <a href="admin.html">จัดการข้อมูล</a></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -218,6 +228,7 @@ function render() {
   const hasStats = statDefs.some(d => v[d.key] != null);
   const danger = [ ...((p.dangerSigns && p.dangerSigns.liverFailure) || []), ...((p.dangerSigns && p.dangerSigns.wbc) || []) ];
   const watch = p.watchList || [];
+  const meds = p.meds || [];
   const calCfg = disp.calendar || {};
   const calSource = calCfg.source || 'nosebleed';
   const calEvents = (p.symptoms && p.symptoms[calSource]) || [];
@@ -269,6 +280,15 @@ function render() {
 
   const labsBlock = (labConfig.length && labs.length) ? `<div id="labsWrap"></div>` : '';
 
+  const medsBlock = meds.length ? `
+        <details class="med-acc">
+          <summary>💊 ยาประจำ · ${meds.length} รายการ</summary>
+          <div style="overflow-x:auto"><table class="med-tbl">
+            <thead><tr><th>ยา</th><th>เช้า</th><th>เย็น</th><th>หมายเหตุ</th></tr></thead>
+            <tbody>${meds.map(m=>`<tr><td class="med-name">${m.name}</td><td>${m.am||'–'}</td><td>${m.pm||'–'}</td><td class="med-note">${m.note||''}</td></tr>`).join('')}</tbody>
+          </table></div>
+        </details>` : '';
+
   const legend = calHasSide ? `
             <div class="legend">
               <span><i class="dot dot-left"></i> รูจมูกซ้าย</span>
@@ -301,14 +321,14 @@ function render() {
         </div>` : '';
 
   // ---- ประกอบตาม display.order / display.hidden แล้วจัดลงแท็บใหญ่ ----
-  const blocks = { stats: statusBlock, leuco: leucoBlock, labs: labsBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock };
+  const blocks = { stats: statusBlock, leuco: leucoBlock, meds: medsBlock, labs: labsBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock };
   const hidden = new Set(disp.hidden || []);
   const order = (disp.order || []).filter(k => k in blocks);
   Object.keys(blocks).forEach(k => { if (!order.includes(k)) order.push(k); });
 
   // กลุ่มแท็บใหญ่ (override ได้ผ่าน display.dashGroups)
   const dashGroups = disp.dashGroups || [
-    { id:'overview', label:'สรุป', keys:['stats','leuco','danger','watch'] },
+    { id:'overview', label:'สรุป', keys:['stats','leuco','meds','danger','watch'] },
     { id:'labs', label:'ผลเลือด', keys:['labs'] },
     { id:'track', label:'ติดตามอาการ', keys:['calendar','tumor','tabs'] },
   ];

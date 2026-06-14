@@ -1021,5 +1021,121 @@
     "hidden": [
       "stats"
     ]
-  }
+  },
+  "meds": [
+    {
+      "name": "Palladia",
+      "am": "65mg",
+      "pm": "",
+      "note": "Mon Wed Fri"
+    },
+    {
+      "name": "Samylin",
+      "am": "",
+      "pm": "1",
+      "note": "ก่อนอาหาร"
+    },
+    {
+      "name": "Synoquin",
+      "am": "",
+      "pm": "1",
+      "note": ""
+    },
+    {
+      "name": "Aktivait",
+      "am": "",
+      "pm": "2",
+      "note": ""
+    },
+    {
+      "name": "B1-B6-B12",
+      "am": "",
+      "pm": "2",
+      "note": ""
+    },
+    {
+      "name": "Urinaid",
+      "am": "",
+      "pm": "1",
+      "note": ""
+    },
+    {
+      "name": "Albumin",
+      "am": "3",
+      "pm": "3",
+      "note": ""
+    },
+    {
+      "name": "LPS",
+      "am": "",
+      "pm": "6",
+      "note": ""
+    },
+    {
+      "name": "BCAA",
+      "am": "2",
+      "pm": "2",
+      "note": "เว้นเดือนละ 1 อาทิตย์"
+    },
+    {
+      "name": "วิตามิน E",
+      "am": "1",
+      "pm": "",
+      "note": "เว้นเดือนละ 1 อาทิตย์"
+    },
+    {
+      "name": "วิตามิน K",
+      "am": "0.5",
+      "pm": "",
+      "note": ""
+    },
+    {
+      "name": "โปรตีนเม็ด",
+      "am": "3",
+      "pm": "3",
+      "note": ""
+    },
+    {
+      "name": "Ursolin",
+      "am": "1.5",
+      "pm": "1.5",
+      "note": ""
+    },
+    {
+      "name": "Cardisure",
+      "am": "0.5",
+      "pm": "0.5",
+      "note": ""
+    },
+    {
+      "name": "โปรตีนบำรุงหัวใจ",
+      "am": "1",
+      "pm": "1",
+      "note": ""
+    },
+    {
+      "name": "EZ",
+      "am": "1",
+      "pm": "",
+      "note": ""
+    },
+    {
+      "name": "Q10",
+      "am": "1",
+      "pm": "1",
+      "note": ""
+    },
+    {
+      "name": "Ulcafate",
+      "am": "1",
+      "pm": "1",
+      "note": "ก่อนอาหาร"
+    },
+    {
+      "name": "Smecta",
+      "am": "1",
+      "pm": "1",
+      "note": ""
+    }
+  ]
 }
