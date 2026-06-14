@@ -135,6 +135,12 @@
   .tab.active { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-dim); }
   .tab-content { display: none; } .tab-content.active { display: block; }
 
+  .dash-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+  .dtab { padding: 9px 20px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-dim); }
+  .dtab.active { background: var(--gold); color: #0f1117; border-color: var(--gold); }
+  .dtab-panel { display: none; } .dtab-panel.active { display: block; }
+  .dtab-panel > div { margin-bottom: 22px; }
+
 
   .loading-full { padding: 60px; text-align: center; color: var(--text-dim); }
 
@@ -282,20 +288,29 @@ function render() {
           ${tabsDef.map((t,i)=>`<div class="tab-content${i===0?' active':''}" id="tab-${t.source}"></div>`).join('')}
         </div>` : '';
 
-  // ---- ประกอบตาม display.order / display.hidden (ไม่มี = ลำดับเดิม โชว์ทุกอันที่มีข้อมูล) ----
+  // ---- ประกอบตาม display.order / display.hidden แล้วจัดลงแท็บใหญ่ ----
   const blocks = { stats: statusBlock, leuco: leucoBlock, labs: labsBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock };
   const hidden = new Set(disp.hidden || []);
   const order = (disp.order || []).filter(k => k in blocks);
   Object.keys(blocks).forEach(k => { if (!order.includes(k)) order.push(k); });
-  const parts = [];
-  let charts = [];
-  const flushCharts = () => { if (charts.length) { parts.push(`<div class="cal-row">${charts.join('')}</div>`); charts = []; } };
-  order.forEach(k => {
-    if (hidden.has(k) || !blocks[k]) return;
-    if (k === 'calendar' || k === 'tumor') charts.push(blocks[k]);
-    else { flushCharts(); parts.push(blocks[k]); }
-  });
-  flushCharts();
+
+  // กลุ่มแท็บใหญ่ (override ได้ผ่าน display.dashGroups)
+  const dashGroups = disp.dashGroups || [
+    { id:'overview', label:'สรุป', keys:['stats','leuco','danger','watch'] },
+    { id:'labs', label:'ผลเลือด', keys:['labs'] },
+    { id:'track', label:'ติดตามอาการ', keys:['calendar','tumor','tabs'] },
+  ];
+  const buildGroup = keys => {
+    const ks = order.filter(k => keys.includes(k) && !hidden.has(k) && blocks[k]);
+    const out = []; let charts = [];
+    const flush = () => { if (charts.length) { out.push(`<div class="cal-row">${charts.join('')}</div>`); charts = []; } };
+    ks.forEach(k => { if (k==='calendar'||k==='tumor') charts.push(blocks[k]); else { flush(); out.push(blocks[k]); } });
+    flush();
+    return out.join('\n        ');
+  };
+  const groups = dashGroups.map(g => ({ ...g, html: buildGroup(g.keys) })).filter(g => g.html.trim());
+  const dashBar = groups.length > 1 ? `<div class="dash-tabs">${groups.map((g,i)=>`<div class="dtab${i===0?' active':''}" data-dtab="${g.id}">${g.label}</div>`).join('')}</div>` : '';
+  const dashPanels = groups.map((g,i)=>`<div class="dtab-panel${i===0?' active':''}" id="dpanel-${g.id}">${g.html}</div>`).join('');
 
   app.innerHTML = `
     <header>
@@ -309,7 +324,8 @@ function render() {
     </header>
     <div class="main">
       <div class="left">
-        ${parts.join('\n        ')}
+        ${dashBar}
+        ${dashPanels}
       </div>
     </div>
   `;
@@ -324,6 +340,18 @@ function render() {
     else renderSymptomTimeline('tab-' + t.source, t.items);
   });
   setupTabs();
+  setupDashTabs();
+}
+
+function setupDashTabs() {
+  document.querySelectorAll('.dtab').forEach(t => t.onclick = () => {
+    document.querySelectorAll('.dtab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.dtab-panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('dpanel-' + t.dataset.dtab).classList.add('active');
+    Object.values(labCharts).forEach(c => c && c.resize());
+    if (tumorChartRef) tumorChartRef.resize();
+  });
 }
 
 function leucoVerdict(lp, v) {
@@ -347,9 +375,11 @@ function renderStats(v, defs) {
     }).join('');
 }
 
+let tumorChartRef = null;
 function renderTumorChart(data) {
   const ctx = document.getElementById('tumorChart');
-  new Chart(ctx, {
+  if (tumorChartRef) tumorChartRef.destroy();
+  tumorChartRef = new Chart(ctx, {
     type: 'line',
     data: { labels: data.map(x=>fmtDate(x.date)), datasets: [{ data: data.map(x=>x.size), borderColor:'#e8b84b', backgroundColor:'rgba(232,184,75,0.08)', pointBackgroundColor:'#e8b84b', pointRadius:5, tension:0.3, fill:true }] },
     options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.parsed.y} cm`}}}, scales:{ x:{ticks:{color:'#8892a4',font:{size:10}},grid:{color:'#2a3050'}}, y:{ticks:{color:'#8892a4',font:{size:11}},grid:{color:'#2a3050'}} } }
@@ -357,8 +387,9 @@ function renderTumorChart(data) {
 }
 
 let labCharts = {};
+function labBlank(v) { return v == null || v === 0; }
 function labFlag(c, v) {
-  if (v == null) return null;
+  if (labBlank(v)) return null;
   if (c.min != null && v < c.min) return 'low';
   if (c.max != null && v > c.max) return 'high';
   return 'ok';
@@ -376,7 +407,7 @@ function renderLabs(panels, cfg, labs) {
     const recs = labs.filter(r => (r.panel||'_') === pid);
     if (!pcfg.length || !recs.length) return;
     const latest = [...recs].sort((a,b)=>b.date.localeCompare(a.date))[0];
-    const cards = pcfg.filter(c => latest.values[c.key] != null).map(c => {
+    const cards = pcfg.filter(c => !labBlank(latest.values[c.key])).map(c => {
       const v = latest.values[c.key];
       const fl = labFlag(c, v);
       const cls = fl==='low'||fl==='high' ? 'red' : (fl==='ok' ? 'green' : 'gold');
@@ -392,9 +423,9 @@ function renderLabs(panels, cfg, labs) {
     const asc = [...recs].sort((a,b)=>b.date.localeCompare(a.date));
     const header = '<th>วันที่</th>' + pcfg.map(c=>`<th>${c.label}</th>`).join('');
     const trows = asc.map(r => `<tr><td>${fmtDate(r.date)}</td>` + pcfg.map(c => {
-      const v = r.values[c.key]; const fl = labFlag(c, v);
+      const v = r.values[c.key]; const blank = labBlank(v); const fl = labFlag(c, v);
       const style = (fl==='low'||fl==='high') ? ' style="color:var(--red);font-weight:600"' : '';
-      return `<td${style}>${v!=null?v:'-'}</td>`;
+      return `<td${style}>${blank ? '-' : v}</td>`;
     }).join('') + '</tr>').join('');
     sections.push(`
         <div style="margin-bottom:22px">
@@ -426,7 +457,7 @@ function renderLabs(panels, cfg, labs) {
 function drawLabChart(pid, cfg, recs, key) {
   if (!key) return;
   const c = cfg.find(x=>x.key===key) || {};
-  const asc = [...recs].sort((a,b)=>a.date.localeCompare(b.date)).filter(r => r.values[key] != null);
+  const asc = [...recs].sort((a,b)=>a.date.localeCompare(b.date)).filter(r => !labBlank(r.values[key]));
   if (labCharts[pid]) labCharts[pid].destroy();
   labCharts[pid] = new Chart(document.getElementById('labChart-'+pid), {
     type: 'line',
