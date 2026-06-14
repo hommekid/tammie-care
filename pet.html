@@ -439,9 +439,8 @@ function renderLabs(panels, cfg, labs) {
     }).join('');
     const abn = pcfg.filter(c => { const fl = labFlag(c, latest.values[c.key]); return fl==='low'||fl==='high'; }).length;
     const meta = abn > 0 ? `<span style="color:var(--red)">⚠️ ${abn} ค่าผิดปกติ</span>` : `<span style="color:var(--green)">✓ ปกติ</span>`;
-    const open = sections.length === 0 ? ' open' : '';
     sections.push(`
-        <div class="lab-acc${open}">
+        <div class="lab-acc">
           <div class="lab-acc-head" onclick="toggleLabAcc(this,'${pid}')">
             <span>🧪 ${nameOf(pid)} <span style="color:var(--text-dim);font-weight:400">· ${fmtDate(latest.date)}</span></span>
             <span class="lab-acc-meta">${meta} <span class="chev">›</span></span>
