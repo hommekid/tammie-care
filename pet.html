@@ -97,6 +97,10 @@
   .lab-tbl th, .lab-tbl td { border: 1px solid var(--border); padding: 6px 12px; text-align: center; white-space: nowrap; }
   .lab-tbl th { color: var(--text-dim); font-weight: 500; background: var(--surface); }
   .lab-tbl td:first-child, .lab-tbl th:first-child { position: sticky; left: 0; background: var(--surface2); }
+  .lab-page { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--text-dim); }
+  .lab-page button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: 'Sarabun', sans-serif; }
+  .lab-page button:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+  .lab-page button:disabled { opacity: 0.3; cursor: default; }
   .cal-nav { display: flex; align-items: center; justify-content: space-between; max-width: 300px; margin-bottom: 10px; }
   .cal-nav button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
   .cal-nav button:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
@@ -151,9 +155,12 @@
   .nb-cal { flex: 0 0 300px; max-width: 300px; }
   .nb-detail { flex: 1; min-width: 200px; }
   .nb-detail-empty { color: var(--text-muted); font-size: 13px; padding: 10px 0; }
-  .nb-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-bottom: 8px; }
-  .nb-detail-card .nb-detail-date { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); margin-bottom: 6px; }
-  .nb-detail-card p { color: var(--text-dim); line-height: 1.7; }
+  .nb-detail-card { background: var(--surface2); border: 1px solid var(--border); border-left: 4px solid var(--gold); border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-bottom: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+  .nb-detail-card.nb-left { border-left-color: var(--blue); background: var(--blue-dim); }
+  .nb-detail-card.nb-right { border-left-color: var(--gold); background: rgba(232,184,75,0.16); }
+  .nb-detail-card.nb-unknown { border-left-color: var(--text-muted); }
+  .nb-detail-card .nb-detail-date { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); font-weight: 600; margin-bottom: 6px; }
+  .nb-detail-card p { color: var(--text); line-height: 1.7; }
   .nb-list { margin-top: 18px; }
   .cal-cell.has-event { cursor: pointer; }
   .med-box { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow-x: auto; }
@@ -481,6 +488,7 @@ function renderLabs(panels, cfg, labs) {
               </div>
               <div class="lab-chart-box"><canvas id="labChart-${pid}"></canvas></div>
             </div>
+            ${(pid==='cbc'||pid==='chem') ? `<details class="lab-history"><summary>ตารางสรุปทุกวันที่</summary><div id="labTableWrap-${pid}"></div></details>` : ''}
           </div>
         </div>`);
     toDraw.push({ pid, pcfg, recs });
@@ -491,8 +499,33 @@ function renderLabs(panels, cfg, labs) {
     sel.innerHTML = pcfg.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
     sel.onchange = () => drawLabChart(pid, pcfg, recs, sel.value);
     if (pcfg.length) drawLabChart(pid, pcfg, recs, pcfg[0].key);
+    if (pid==='cbc' || pid==='chem') { labTableData[pid] = { pcfg, recs }; drawLabTable(pid, 0); }
   });
 }
+let labTableData = {}, labTablePage = {};
+function drawLabTable(pid, page) {
+  const { pcfg, recs } = labTableData[pid];
+  const sorted = [...recs].sort((a,b)=>b.date.localeCompare(a.date));
+  const total = sorted.length, size = 10, pages = Math.max(1, Math.ceil(total/size));
+  page = Math.max(0, Math.min(page, pages-1));
+  labTablePage[pid] = page;
+  const slice = sorted.slice(page*size, page*size+size);
+  const header = '<th>วันที่</th>' + pcfg.map(c=>`<th>${c.label}</th>`).join('');
+  const rows = slice.map(r => `<tr><td>${fmtDate(r.date)}</td>` + pcfg.map(c => {
+    const v = r.values[c.key]; const blank = labBlank(v); const fl = labFlag(c, v);
+    const style = (fl==='low'||fl==='high') ? ' style="color:var(--red);font-weight:600"' : '';
+    return `<td${style}>${blank ? '-' : v}</td>`;
+  }).join('') + '</tr>').join('');
+  const start = page*size+1, end = Math.min(total, page*size+size);
+  const nav = pages > 1 ? `<div class="lab-page">
+      <button onclick="changeLabPage('${pid}',-1)" ${page===0?'disabled':''}>‹ ใหม่กว่า</button>
+      <span>${start}-${end} จาก ${total} ครั้ง</span>
+      <button onclick="changeLabPage('${pid}',1)" ${page>=pages-1?'disabled':''}>เก่ากว่า ›</button>
+    </div>` : '';
+  document.getElementById('labTableWrap-'+pid).innerHTML =
+    `<div style="overflow-x:auto"><table class="lab-tbl"><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>${nav}`;
+}
+function changeLabPage(pid, d) { drawLabTable(pid, (labTablePage[pid]||0) + d); }
 function toggleLabAcc(head, pid) {
   const acc = head.parentElement;
   acc.classList.toggle('open');
@@ -595,9 +628,10 @@ function showNbDetail(date) {
   const el = document.getElementById('nbDetail');
   if (!el) return;
   const evs = nbEvents.filter(e => e.date === date);
-  el.innerHTML = evs.map(e =>
-    `<div class="nb-detail-card"><div class="nb-detail-date">${fmtDate(e.date)}${e.side?' · '+sideLabel(e.side):''}</div><p>${e.detail||''}${photoLinks(e.photos)}</p></div>`
-  ).join('');
+  el.innerHTML = evs.map(e => {
+    const sc = e.side==='left' ? 'nb-left' : e.side==='right' ? 'nb-right' : 'nb-unknown';
+    return `<div class="nb-detail-card ${sc}"><div class="nb-detail-date">${fmtDate(e.date)}${e.side?' · '+sideLabel(e.side):''}</div><p>${e.detail||''}${photoLinks(e.photos)}</p></div>`;
+  }).join('');
 }
 
 function openLightbox(src) {
