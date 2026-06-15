@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>จัดการข้อมูล · Tammie Care</title>
-<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
-<link rel="apple-touch-icon" sizes="180x180" href="img/favicon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="img/favicon-180.png?v=2">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#0f1117">
 <style>
@@ -112,6 +112,7 @@
     <div class="tabs">
       <div class="tab active" data-form="nosebleed">🩸 เลือดกำเดา</div>
       <div class="tab" data-form="diarrhea">💊 ท้องเสีย</div>
+      <div class="tab" data-form="vomiting">🤢 อาเจียน</div>
       <div class="tab" data-form="general">🩺 อาการทั่วไป</div>
       <div class="tab" data-form="labs">🧪 ผลเลือด</div>
       <div class="tab" data-form="vitals">📊 ค่าตรวจล่าสุด</div>
@@ -138,6 +139,16 @@
         <input type="file" id="dr-photos" accept="image/*" multiple>
         <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
         <button class="btn" onclick="addEntry('diarrhea')">บันทึก + อัพขึ้น GitHub</button>
+      </div>
+      <!-- Vomiting -->
+      <div class="form-block" id="form-vomiting">
+        <label>วันที่</label><input type="date" id="vo-date">
+        <label>รายละเอียด</label>
+        <textarea id="vo-detail" placeholder="เช่น อาเจียนน้ำย่อยก่อนอาหารเช้า"></textarea>
+        <label>รูปภาพ (เลือกได้หลายรูป)</label>
+        <input type="file" id="vo-photos" accept="image/*" multiple>
+        <div class="hint">เว้นว่างได้ถ้าไม่มีรูป · ระบบย่อขนาดรูปแล้วอัพขึ้น GitHub ให้</div>
+        <button class="btn" onclick="addEntry('vomiting')">บันทึก + อัพขึ้น GitHub</button>
       </div>
       <!-- General symptoms -->
       <div class="form-block" id="form-general">
@@ -237,6 +248,7 @@
         <option value="">— เลือกหมวด —</option>
         <option value="nosebleed">🩸 เลือดกำเดา</option>
         <option value="diarrhea">💊 ท้องเสีย</option>
+        <option value="vomiting">🤢 อาเจียน</option>
         <option value="general">🩺 อาการทั่วไป</option>
         <option value="labs">🧪 ผลเลือด</option>
         <option value="treatment">🏥 การรักษา</option>
@@ -289,12 +301,27 @@ const CONFIG = {
 
 let currentData = null, currentSha = null, currentPetId = 'frappe';
 
-function checkPw() {
+async function checkPw() {
   if (document.getElementById('pwInput').value === CONFIG.password) {
     document.getElementById('gate').style.display = 'none';
     document.getElementById('panel').style.display = 'block';
+    await loadPetList();
     loadPet();
   } else toast('รหัสผ่านไม่ถูกต้อง', false);
+}
+
+// ดึงรายชื่อสัตว์เลี้ยงจาก pets.json มาใส่ตัวเลือก (เพิ่มตัวใหม่ใน pets.json แล้วขึ้นเองอัตโนมัติ)
+async function loadPetList() {
+  try {
+    const res = await fetch('data/pets.json');
+    const data = await res.json();
+    if (!data.pets || !data.pets.length) return;
+    const sel = document.getElementById('petSelect');
+    const cur = sel.value;
+    sel.innerHTML = data.pets.map(p =>
+      `<option value="${p.id}">${p.emoji||'🐾'} ${p.name}${p.nickname?` (${p.nickname})`:''}</option>`).join('');
+    if (cur && data.pets.some(p=>p.id===cur)) sel.value = cur;
+  } catch(e) { /* ใช้ตัวเลือก fallback ที่อยู่ใน HTML */ }
 }
 
 function toast(msg, ok=true) {
@@ -556,6 +583,8 @@ async function addEntry(type) {
   if (type === 'nosebleed') {
     const date=val('nb-date'), side=val('nb-side'), detail=val('nb-detail');
     if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
+    if (!currentData.symptoms) currentData.symptoms = {};
+    if (!currentData.symptoms.nosebleed) currentData.symptoms.nosebleed = [];
     currentData.symptoms.nosebleed.unshift({ date, side, detail });
     currentData.symptoms.nosebleed.sort((a,b)=>b.date.localeCompare(a.date));
     msg = `เพิ่มบันทึกเลือดกำเดา ${date}`;
@@ -578,9 +607,35 @@ async function addEntry(type) {
     }
     const entry = { date, detail };
     if (photos.length) entry.photos = photos;
+    if (!currentData.symptoms) currentData.symptoms = {};
+    if (!currentData.symptoms.diarrhea) currentData.symptoms.diarrhea = [];
     currentData.symptoms.diarrhea.unshift(entry);
     currentData.symptoms.diarrhea.sort((a,b)=>b.date.localeCompare(a.date));
     msg = `เพิ่มบันทึกท้องเสีย ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
+  } else if (type === 'vomiting') {
+    const date=val('vo-date'), detail=val('vo-detail');
+    if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
+    const photos = [];
+    const files = document.getElementById('vo-photos').files;
+    if (files.length) {
+      toast(`กำลังอัพรูป ${files.length} รูป...`);
+      try {
+        for (let i=0; i<files.length; i++) {
+          const b64 = await resizeImage(files[i]);
+          const path = `img/vomiting-${date}-${Date.now()}-${i}.jpg`;
+          await uploadImage(token, path, b64);
+          photos.push(path);
+        }
+      } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
+      document.getElementById('vo-photos').value = '';
+    }
+    if (!currentData.symptoms) currentData.symptoms = {};
+    if (!currentData.symptoms.vomiting) currentData.symptoms.vomiting = [];
+    const entry = { date, detail };
+    if (photos.length) entry.photos = photos;
+    currentData.symptoms.vomiting.unshift(entry);
+    currentData.symptoms.vomiting.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `เพิ่มบันทึกอาเจียน ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
   } else if (type === 'general') {
     const date=val('gn-date'), detail=val('gn-detail');
     if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
@@ -622,6 +677,9 @@ async function addEntry(type) {
     msg = `เพิ่มผลเลือด ${panel} ${date}`;
   } else if (type === 'vitals') {
     const date=val('vt-date'); if(!date) return toast('กรอกวันที่', false);
+    if (!currentData.vitals) currentData.vitals = { latest:{}, heartSize:[], liverTumor:[] };
+    if (!currentData.vitals.latest) currentData.vitals.latest = {};
+    if (!currentData.vitals.heartSize) currentData.vitals.heartSize = [];
     const v = { date };
     if(val('vt-ischemia')) { v.ischemiaValue=+val('vt-ischemia'); v.ischemiaNormalMax=currentData.vitals.latest.ischemiaNormalMax||0.07; }
     if(val('vt-hr')) v.heartRate=+val('vt-hr');
@@ -633,6 +691,7 @@ async function addEntry(type) {
   } else if (type === 'treatment') {
     const date=val('tr-date'), doctor=val('tr-doctor'), specialty=val('tr-spec'), notes=val('tr-notes');
     if(!date||!notes) return toast('กรอกวันที่และบันทึก', false);
+    if (!currentData.treatments) currentData.treatments = [];
     let grp = currentData.treatments.find(t=>t.date===date);
     if(grp) grp.entries.push({doctor,specialty,notes});
     else currentData.treatments.unshift({date,entries:[{doctor,specialty,notes}]});
@@ -641,6 +700,8 @@ async function addEntry(type) {
   } else if (type === 'liverTumor') {
     const date=val('lt-date'), size=val('lt-size'), note=val('lt-note');
     if(!date) return toast('กรอกวันที่', false);
+    if (!currentData.vitals) currentData.vitals = { latest:{}, heartSize:[], liverTumor:[] };
+    if (!currentData.vitals.liverTumor) currentData.vitals.liverTumor = [];
     currentData.vitals.liverTumor.push({ date, size: size?+size:null, note });
     currentData.vitals.liverTumor.sort((a,b)=>a.date.localeCompare(b.date));
     msg = `เพิ่มขนาดก้อนในตับ ${date}`;
@@ -721,6 +782,7 @@ function edArr(cat) {
   if (cat==='nosebleed') return (currentData.symptoms && currentData.symptoms.nosebleed) || [];
   if (cat==='diarrhea')  return (currentData.symptoms && currentData.symptoms.diarrhea) || [];
   if (cat==='general')   return (currentData.symptoms && currentData.symptoms.general) || [];
+  if (cat==='vomiting')  return (currentData.symptoms && currentData.symptoms.vomiting) || [];
   if (cat==='liverTumor') return (currentData.vitals && currentData.vitals.liverTumor) || [];
   if (cat==='labs') return currentData.labs || [];
   return [];
@@ -767,7 +829,7 @@ function edSelect() {
       <option value="right"${e.side==='right'?' selected':''}>ขวา</option>
       <option value="unknown"${e.side==='unknown'?' selected':''}>ไม่ระบุ</option></select>
     <label>รายละเอียด</label><textarea id="e-detail">${e.detail||''}</textarea>`;
-  } else if (cat==='diarrhea' || cat==='general') {
+  } else if (cat==='diarrhea' || cat==='general' || cat==='vomiting') {
     const e = edArr(cat)[+v];
     html = `<label>วันที่</label><input type="date" id="e-date" value="${e.date||''}">
     <label>รายละเอียด</label><textarea id="e-detail">${e.detail||''}</textarea>
@@ -815,7 +877,7 @@ async function edSave() {
     if (cat==='nosebleed') {
       const e = edArr(cat)[+v]; e.date=date; e.side=val('e-side'); e.detail=val('e-detail');
       edArr(cat).sort((a,b)=>b.date.localeCompare(a.date));
-    } else if (cat==='diarrhea' || cat==='general') {
+    } else if (cat==='diarrhea' || cat==='general' || cat==='vomiting') {
       const e = edArr(cat)[+v]; e.date=date; e.detail=val('e-detail');
       edArr(cat).sort((a,b)=>b.date.localeCompare(a.date));
     } else if (cat==='liverTumor') {
