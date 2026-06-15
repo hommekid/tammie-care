@@ -12,7 +12,7 @@
       "ก้อนในตับและม้าม",
       "ก้อนที่อก (Cutaneous Histiocytoma — ผ่าตัดออกแล้ว ไม่ใช่มะเร็ง)",
       "สงสัยท่อน้ำเหลืองอักเสบ / โปรตีนต่ำ",
-      "หัวใจมีก้อน (ติดตาม)"
+      "ติดตามหัวใจ/ปอดทุก 2 เดือน เนื่องจากมีก้อนที่หน้าอก (ที่ตัดไปแล้ว) อยู่ใกล้หัวใจและปอด"
     ],
     "medications": [
       "Synoquin",
@@ -27,7 +27,7 @@
     "ก้อนที่อก (Cutaneous Histiocytoma) — ผ่าตัดออกแล้ว ไม่ใช่มะเร็ง เฝ้าระวังอาจขึ้นใหม่",
     "ก้อนขาขวาหลัง (ขนคุด / Follicular Cyst) — อาจเกิดซ้ำได้อีกตามตัว คอยคลำสังเกต",
     "โปรตีนต่ำ / สงสัยท่อน้ำเหลืองอักเสบ — ครบ 1 เดือนหลังผ่าตัด (~20 มิ.ย.) เจาะโปรตีน + ตรวจปัสสาวะ",
-    "หัวใจมีก้อน — นัด Echo 19 ก.ค. / ตรวจ 25 ก.ค."
+    "ติดตามหัวใจ/ปอดทุก 2 เดือน (เนื่องจากมีก้อนที่หน้าอกที่ตัดไปแล้วอยู่ใกล้หัวใจและปอด) — นัด Echo 19 ก.ค. / ตรวจ 25 ก.ค."
   ],
   "treatments": [
     {
@@ -140,9 +140,104 @@
       }
     ]
   },
+  "labPanels": [
+    { "id": "cbc", "name": "CBC (Hematology)" },
+    { "id": "chem", "name": "ค่าชีวเคมี (Blood Chemistry)" }
+  ],
+  "labConfig": [
+    { "panel": "cbc", "key": "rbc", "label": "RBC", "unit": "×10⁶/µL", "min": 5, "max": 9 },
+    { "panel": "cbc", "key": "hgb", "label": "HGB", "unit": "g/dL", "min": 10, "max": 18 },
+    { "panel": "cbc", "key": "hct", "label": "HCT", "unit": "%", "min": 35, "max": 55 },
+    { "panel": "cbc", "key": "mcv", "label": "MCV", "unit": "fL", "min": 60, "max": 77 },
+    { "panel": "cbc", "key": "mch", "label": "MCH", "unit": "pg", "min": 19.5, "max": 24.5 },
+    { "panel": "cbc", "key": "mchc", "label": "MCHC", "unit": "g/dL", "min": 32, "max": 36 },
+    { "panel": "cbc", "key": "rdw", "label": "RDW", "unit": "%" },
+    { "panel": "cbc", "key": "wbc", "label": "WBC", "unit": "/µL", "min": 6000, "max": 17000 },
+    { "panel": "cbc", "key": "neu", "label": "NEU", "unit": "/µL", "min": 3000, "max": 11400 },
+    { "panel": "cbc", "key": "lym", "label": "LYM", "unit": "/µL", "min": 1000, "max": 4800 },
+    { "panel": "cbc", "key": "mono", "label": "MONO", "unit": "/µL", "min": 150, "max": 1350 },
+    { "panel": "cbc", "key": "eosi", "label": "EOSI", "unit": "/µL", "min": 100, "max": 750 },
+    { "panel": "cbc", "key": "baso", "label": "BASO", "unit": "/µL" },
+    { "panel": "cbc", "key": "plt", "label": "PLT", "unit": "×10³/µL", "min": 200, "max": 500 },
+    { "panel": "cbc", "key": "mpv", "label": "MPV", "unit": "fL" },
+    { "panel": "cbc", "key": "plasmaProtein", "label": "Plasma Protein", "unit": "g/dL", "min": 6, "max": 7.5 },
+    { "panel": "chem", "key": "bun", "label": "BUN", "unit": "mg/dL", "min": 10, "max": 26 },
+    { "panel": "chem", "key": "creatinine", "label": "Creatinine", "unit": "mg/dL", "min": 0.5, "max": 1.3 },
+    { "panel": "chem", "key": "alt", "label": "ALT (SGPT)", "unit": "µ/L", "min": 6, "max": 70 },
+    { "panel": "chem", "key": "alp", "label": "ALP", "unit": "µ/L", "min": 8, "max": 76 },
+    { "panel": "chem", "key": "ast", "label": "AST (SGOT)", "unit": "µ/L", "min": 10, "max": 43 },
+    { "panel": "chem", "key": "ggt", "label": "GGT", "unit": "µ/L", "min": 0, "max": 6 },
+    { "panel": "chem", "key": "totalProtein", "label": "Total Protein", "unit": "g/dL", "min": 5.3, "max": 7.8 },
+    { "panel": "chem", "key": "albumin", "label": "Albumin", "unit": "g/dL", "min": 2.3, "max": 3.2 },
+    { "panel": "chem", "key": "globulin", "label": "Globulin", "unit": "g/dL", "min": 1.5, "max": 3.9 },
+    { "panel": "chem", "key": "amylase", "label": "Amylase", "unit": "µ/L", "max": 1800 },
+    { "panel": "chem", "key": "cholesterol", "label": "Total Cholesterol", "unit": "mg/dL", "min": 112, "max": 358 },
+    { "panel": "chem", "key": "triglyceride", "label": "Triglyceride", "unit": "mg/dL", "min": 21, "max": 87 }
+  ],
+  "labs": [
+    {
+      "date": "2026-05-30",
+      "panel": "cbc",
+      "values": {
+        "rbc": 6.9, "hgb": 16.1, "hct": 44.8, "mcv": 65, "mch": 23.4, "mchc": 36, "rdw": 15,
+        "wbc": 6680, "neu": 5878, "lym": 668, "mono": 134, "eosi": 0, "baso": 0,
+        "plt": 394, "mpv": 8.4, "plasmaProtein": 4.4
+      },
+      "note": "RBC: Polychromasia, Schistocyte · WBC: Hypersegmented neutrophil · Neu 88% Lym 10% Mono 2% Eos 0% · Blood parasite: Not Found"
+    },
+    {
+      "date": "2026-05-30",
+      "panel": "chem",
+      "values": {
+        "bun": 21.5, "creatinine": 1.24, "alt": 39, "alp": 47, "ast": 31,
+        "totalProtein": 4.4, "albumin": 1.9, "globulin": 2.5, "amylase": 1115,
+        "cholesterol": 152, "triglyceride": 55
+      },
+      "note": "รอผล GGT"
+    },
+    {
+      "date": "2026-05-02",
+      "panel": "cbc",
+      "values": {
+        "rbc": 7.1, "hgb": 16.2, "hct": 45.9, "mcv": 64.7, "mch": 22.9, "mchc": 35.4, "rdw": 15,
+        "wbc": 7190, "neu": 6183, "lym": 863, "mono": 144, "eosi": 0, "baso": 0,
+        "plt": 284, "mpv": 9.1, "plasmaProtein": 5
+      },
+      "note": "Platelet: Aggregation · WBC: Hypersegmented neutrophil · Neu 86% Lym 12% Mono 2% Eos 0% · Blood parasite: Not Found"
+    },
+    {
+      "date": "2026-05-02",
+      "panel": "chem",
+      "values": {
+        "bun": 19.4, "creatinine": 1.16, "alt": 42, "alp": 43, "ast": 44, "ggt": 3,
+        "totalProtein": 4.8, "albumin": 2.2, "globulin": 2.6, "amylase": 978,
+        "cholesterol": 177, "triglyceride": 47
+      }
+    },
+    {
+      "date": "2026-02-24",
+      "panel": "cbc",
+      "values": {
+        "rbc": 6.9, "hgb": 15.7, "hct": 43.7, "mcv": 63.4, "mch": 22.7, "mchc": 35.8, "rdw": 14.4,
+        "wbc": 5250, "neu": 4148, "lym": 840, "mono": 210, "eosi": 52, "baso": 0,
+        "plt": 254, "mpv": 10.9, "plasmaProtein": 6.6
+      },
+      "note": "WBC: Hypersegmented neutrophil · Neu 79% Lym 16% Mono 4% Eos 1% · Blood parasite: Not Found"
+    },
+    {
+      "date": "2026-02-24",
+      "panel": "chem",
+      "values": {
+        "bun": 23.3, "creatinine": 1.12, "alt": 30, "alp": 54, "ast": 20,
+        "totalProtein": 5.7, "albumin": 2.5, "globulin": 3.2, "amylase": 776,
+        "cholesterol": 246, "triglyceride": 50
+      }
+    }
+  ],
   "display": {
     "order": [
       "meds",
+      "labs",
       "watch",
       "tabs"
     ],
