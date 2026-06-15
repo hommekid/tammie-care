@@ -147,6 +147,15 @@
   .dtab { padding: 9px 20px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-dim); }
   .dtab.active { background: var(--gold); color: #0f1117; border-color: var(--gold); }
   .dtab-panel { display: none; } .dtab-panel.active { display: block; }
+  .nb-top { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .nb-cal { flex: 0 0 300px; max-width: 300px; }
+  .nb-detail { flex: 1; min-width: 200px; }
+  .nb-detail-empty { color: var(--text-muted); font-size: 13px; padding: 10px 0; }
+  .nb-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-bottom: 8px; }
+  .nb-detail-card .nb-detail-date { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); margin-bottom: 6px; }
+  .nb-detail-card p { color: var(--text-dim); line-height: 1.7; }
+  .nb-list { margin-top: 18px; }
+  .cal-cell.has-event { cursor: pointer; }
   .med-box { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow-x: auto; }
   .med-tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
   .med-tbl th, .med-tbl td { border-top: 1px solid var(--border); padding: 8px 12px; text-align: center; }
@@ -195,7 +204,8 @@ const DEFAULT_STATS = [
 const DEFAULT_TABS = [
   { source:'treatments', label:'การรักษา' },
   { source:'diarrhea', label:'ท้องเสีย' },
-  { source:'general', label:'อาการทั่วไป' }
+  { source:'general', label:'อาการทั่วไป' },
+  { source:'nosebleed', label:'เลือดกำเดา' }
 ];
 
 function calcAge(b) { const d=new Date(b),n=new Date(); let y=n.getFullYear()-d.getFullYear(); if(n.getMonth()<d.getMonth()||(n.getMonth()===d.getMonth()&&n.getDate()<d.getDate()))y--; return y; }
@@ -324,10 +334,10 @@ function render() {
 
   // กลุ่มแท็บใหญ่ (override ได้ผ่าน display.dashGroups)
   const dashGroups = disp.dashGroups || [
-    { id:'overview', label:'สรุป', keys:['stats','leuco','danger','watch'] },
+    { id:'overview', label:'สรุป', keys:['stats','leuco','danger','watch','tumor'] },
     { id:'meds', label:'💊 ยา', keys:['meds'] },
     { id:'labs', label:'ผลเลือด', keys:['labs'] },
-    { id:'track', label:'ติดตามอาการ', keys:['calendar','tumor','tabs'] },
+    { id:'track', label:'ติดตามอาการ', keys:['tabs'] },
   ];
   const buildGroup = keys => {
     const ks = order.filter(k => keys.includes(k) && !hidden.has(k) && blocks[k]);
@@ -363,9 +373,9 @@ function render() {
   if (show('stats') && hasStats) renderStats(v, statDefs);
   if (show('labs') && labConfig.length && labs.length) renderLabs(labPanels, labConfig, labs);
   if (show('tumor') && tumor.length) renderTumorChart(tumor);
-  if (show('calendar') && calEvents.length) renderCalendar(calEvents);
   if (show('tabs')) tabsDef.forEach(t => {
     if (t.source === 'treatments') renderTreatments('tab-treatments', t.items);
+    else if (t.source === 'nosebleed') renderNosebleedTab('tab-nosebleed', t.items);
     else renderSymptomTimeline('tab-' + t.source, t.items);
   });
   setupTabs();
@@ -526,7 +536,7 @@ function drawMonth() {
     const ev = evMap[d];
     if (ev) {
       const cls = ev.side==='left'?'ev-left':ev.side==='right'?'ev-right':(ev.side?'ev-unknown':'ev-any');
-      cells += `<div class="cal-cell has-event ${cls}">${d}<span class="tip">${fmtDate(ev.date)}: ${ev.detail||''}</span></div>`;
+      cells += `<div class="cal-cell has-event ${cls}" onclick="showNbDetail('${ev.date}')">${d}</div>`;
     } else cells += `<div class="cal-cell">${d}</div>`;
   }
   titleEl.textContent = `${TH_MONTHS[m-1]} ${y+543}`;
@@ -552,6 +562,42 @@ function renderSymptomTimeline(elId, items) {
   document.getElementById(elId).innerHTML = '<div class="timeline"><div class="tl-items">' + items.map(d =>
     `<div class="tl-item"><div class="doctor">${fmtDate(d.date)}</div><p>${d.detail}${photoLinks(d.photos)}</p></div>`
   ).join('') + '</div></div>';
+}
+
+function sideLabel(s) { return s==='left' ? 'รูจมูกซ้าย' : s==='right' ? 'รูจมูกขวา' : s ? 'ไม่ระบุ' : ''; }
+let nbEvents = [];
+function renderNosebleedTab(elId, events) {
+  nbEvents = events;
+  const hasSide = events.some(e => e.side);
+  const legend = hasSide
+    ? `<div class="legend"><span><i class="dot dot-left"></i> รูจมูกซ้าย</span><span><i class="dot dot-right"></i> รูจมูกขวา</span><span><i class="dot dot-unknown"></i> ไม่ระบุ</span></div>`
+    : `<div class="legend"><span><i class="dot dot-any"></i> วันที่มีอาการ</span></div>`;
+  const list = '<div class="timeline"><div class="tl-items">' + [...events].sort((a,b)=>b.date.localeCompare(a.date)).map(d =>
+    `<div class="tl-item"><div class="doctor">${fmtDate(d.date)}${d.side?' · '+sideLabel(d.side):''}</div><p>${d.detail||''}${photoLinks(d.photos)}</p></div>`
+  ).join('') + '</div></div>';
+  document.getElementById(elId).innerHTML = `
+    <div class="nb-top">
+      <div class="nb-cal">
+        ${legend}
+        <div class="cal-nav">
+          <button id="calPrev" title="เดือนก่อนหน้า">‹</button>
+          <div class="cal-title" id="calTitle"></div>
+          <button id="calNext" title="เดือนถัดไป">›</button>
+        </div>
+        <div id="calMonths"></div>
+      </div>
+      <div class="nb-detail" id="nbDetail"><div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูรายละเอียด</div></div>
+    </div>
+    <div class="nb-list">${list}</div>`;
+  renderCalendar(events);
+}
+function showNbDetail(date) {
+  const el = document.getElementById('nbDetail');
+  if (!el) return;
+  const evs = nbEvents.filter(e => e.date === date);
+  el.innerHTML = evs.map(e =>
+    `<div class="nb-detail-card"><div class="nb-detail-date">${fmtDate(e.date)}${e.side?' · '+sideLabel(e.side):''}</div><p>${e.detail||''}${photoLinks(e.photos)}</p></div>`
+  ).join('');
 }
 
 function openLightbox(src) {
