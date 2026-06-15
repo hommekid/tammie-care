@@ -14,9 +14,10 @@ pet.html          dashboard ต่อตัวผ่าน ?id=  (แท็บ�
 admin.html        หน้าแก้ข้อมูล: รหัสผ่าน + ฟอร์ม (พับได้) + commit ขึ้น GitHub ผ่าน Token
 site.webmanifest  ไอคอนแอปตอนเพิ่มลงโฮมสกรีน
 PROJECT_CONTEXT.md ไฟล์นี้
-data/pets.json    รายชื่อสัตว์ทั้งหมด
+data/pets.json    รายชื่อสัตว์ทั้งหมด (การ์ดหน้าแรก + ตัวเลือกใน admin ดึงจากไฟล์นี้)
 data/frappe.json  ข้อมูลเฟ่ทั้งหมด (1 ตัว = 1 ไฟล์)
-img/              header.jpg, frappe.jpg, favicon-32/180/192/512.png, รูปอาการ/ผลเลือดที่อัปผ่าน admin
+data/wafer.json   ข้อมูลเฟ่อ (เวเฟอร์) — โปรไฟล์/ยา/ผลเลือด/การรักษา/อาเจียน+ท้องเสีย
+img/              header.jpg, frappe.jpg, wafer.jpg, favicon-32/180/192/512.png, รูปอาการ/ผลเลือดที่อัปผ่าน admin
 ```
 
 ## โมเดลข้อมูล (data/<id>.json)
@@ -26,7 +27,7 @@ img/              header.jpg, frappe.jpg, favicon-32/180/192/512.png, รูป�
 - `labPanels`[] : นิยามหมวดผลเลือด {id, name} — ปัจจุบัน cbc, chem, cardiac, coag
 - `labConfig`[] : นิยามค่าผลเลือดต่อหมวด {panel, key, label, unit, min, max} (min/max = ช่วงปกติ เว้นได้)
 - `labs`[] : ผลตรวจแต่ละครั้ง {date, panel, values:{key:number}, note} (1 record = 1 ใบ/หมวด/วัน)
-- `symptoms`: `nosebleed`[] (date/side/detail), `diarrhea`[] (date/detail/photos[]), `general`[] (date/detail/photos[])
+- `symptoms`: `nosebleed`[] (date/side/detail), `diarrhea`[] (date/detail/photos[]), `general`[] (date/detail/photos[]), `vomiting`[] (date/detail/photos[] — อาเจียน, เฟ่อใช้) · เพิ่ม key อาการใหม่ได้ แล้วผูกเป็นแท็บผ่าน `display.tabs`
 - `treatments`[] : {date, entries:[{doctor, specialty, notes}]}
 - `dangerSigns`, `watchList`
 - `leucoPlus` : {alwaysBelow, withSymptomsBelow, wbcInThousands(=false ตอนนี้ WBC เก็บเป็นค่าดิบ), rules[]}
@@ -42,8 +43,9 @@ img/              header.jpg, frappe.jpg, favicon-32/180/192/512.png, รูป�
 - footer: Tammie Care · หน้าแรก · จัดการข้อมูล
 
 ## หน้า admin (admin.html)
-- GitHub Token + เลือกสัตว์เลี้ยง = โชว์ตลอด · section อื่นเป็น **ยืด-หุบ (default หุบ)**:
-  - เพิ่มบันทึก (แท็บ: เลือดกำเดา/ท้องเสีย/อาการทั่วไป/🧪 ผลเลือด/ค่าตรวจ/การรักษา) · ท้องเสีย+อาการทั่วไปแนบรูปได้
+- GitHub Token + เลือกสัตว์เลี้ยง = โชว์ตลอด · **ตัวเลือกสัตว์ดึงจาก pets.json อัตโนมัติ** (เพิ่มตัวใหม่ใน pets.json แล้วขึ้นเอง) · section อื่นเป็น **ยืด-หุบ (default หุบ)**:
+  - เพิ่มบันทึก (แท็บ: เลือดกำเดา/ท้องเสีย/🤢 อาเจียน/อาการทั่วไป/🧪 ผลเลือด/ค่าตรวจ/การรักษา) · ท้องเสีย+อาเจียน+อาการทั่วไปแนบรูปได้
+  - มี guard กันพังเมื่อสัตว์ตัวนั้นยังไม่มี structure (เช่น เฟ่อไม่มี vitals/nosebleed/liverTumor) — จะสร้างให้อัตโนมัติเมื่อบันทึก
   - ผลเลือด: เลือกหมวด→กรอกค่าตาม labConfig · เพิ่มหมวดใหม่ · เพิ่ม/ลบพารามิเตอร์ (key/ชื่อ/หน่วย/ช่วงปกติ)
   - ขนาดก้อนในตับ
   - 💊 ยาประจำ: เพิ่ม/แก้/ลบ ยา (ชื่อ/เช้า/เย็น/หมายเหตุ) — ทำงานแล้ว
@@ -69,10 +71,16 @@ img/              header.jpg, frappe.jpg, favicon-32/180/192/512.png, รูป�
 - Cardiac 1 (14 มิ.ย. Troponin 0.31 ผิดปกติ) · Coagulation 1 (20 ม.ค.)
 - ยาประจำ 19 รายการ
 
+## ข้อมูลเฟ่อ (wafer) ที่ใส่แล้ว
+- โปรไฟล์: Golden Retriever เกิด 6 ส.ค. 2015 · conditions: ก้อนตับ/ม้าม, Histiocytoma หน้าอก (ตัดแล้ว), สงสัยท่อน้ำเหลืองอักเสบ/โปรตีนต่ำ
+- ยาประจำ 5 รายการ · CBC 3 ครั้ง + เคมี 3 ครั้ง (24 ก.พ. / 2 พ.ค. / 30 พ.ค. 2026) — labConfig/labPanels ใช้ค่าอ้างอิง VetCal เหมือนเฟ่
+- การรักษา 4 รายการ · อาเจียน 6 · ท้องเสีย 6 · display.tabs = การรักษา/🤢 อาเจียน/ท้องเสีย (ไม่มีผลเลือดกำเดา/Leuco/ก้อนกราฟ)
+
 ## เรื่องที่ยังค้าง / อาจทำต่อ
 - ย้าย Cloudflare Pages + Private repo + ซ่อน Token ผ่าน serverless
-- เพิ่มสัตว์ตัวอื่น (Wafer, Waffle, แมว) + ยาของ เฟ่อ/เฟิล
+- เพิ่มสัตว์ตัวอื่น (Waffle/เฟิล, แมว) — เฟ่อ (Wafer) เพิ่มแล้ว
 - ช่วงค่าปกติผลเลือดดึงจากใบ lab — ควรให้สัตวแพทย์ยืนยัน
+- favicon บน Safari iOS ยังไม่ขึ้น (ใส่ `?v=2` cache-bust ไว้แล้ว ยังไม่จบ) — pending
 
 ## ข้อควรระวัง
 - repo เป็น Public → ห้ามฝัง Token/รหัสในโค้ด
