@@ -10,6 +10,17 @@
       "birthDate": "2013-04-11",
       "status": "watch",
       "statusNote": "เฝ้าระวังเลือดกำเดา + ก้อนในตับ"
+    },
+    {
+      "id": "wafer",
+      "name": "เวเฟอร์",
+      "nickname": "เฟ่อ",
+      "emoji": "🐶",
+      "photo": "img/wafer.jpg",
+      "breed": "Golden Retriever",
+      "birthDate": "2015-08-06",
+      "status": "watch",
+      "statusNote": "เฝ้าระวังก้อน + โปรตีนต่ำ"
     }
   ]
 }
