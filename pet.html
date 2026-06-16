@@ -272,6 +272,10 @@ function render() {
   const cbcWbc = labs.filter(r => r.panel==='cbc' && r.values && r.values.wbc != null).sort((a,b)=>b.date.localeCompare(a.date));
   const treatments = p.treatments || [];
   const appts = (p.appointments || []).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const apptSoon = (() => {
+    const t = new Date(); t.setHours(0,0,0,0);
+    return appts.some(a => { const d = new Date(a.date); d.setHours(0,0,0,0); const diff = Math.round((d-t)/86400000); return diff >= 0 && diff <= 7; });
+  })();
   const tabsDef = (disp.tabs || DEFAULT_TABS)
     .map(t => ({ ...t, items: t.source === 'treatments' ? treatments : ((p.symptoms && p.symptoms[t.source]) || []) }))
     .filter(t => t.items.length);
@@ -377,7 +381,7 @@ function render() {
     return out.join('\n        ');
   };
   const groups = dashGroups.map(g => ({ ...g, html: buildGroup(g.keys) })).filter(g => g.html.trim());
-  const dashBar = groups.length > 1 ? `<div class="dash-tabs">${groups.map((g,i)=>`<div class="dtab${i===0?' active':''}" data-dtab="${g.id}">${g.label}</div>`).join('')}</div>` : '';
+  const dashBar = groups.length > 1 ? `<div class="dash-tabs">${groups.map((g,i)=>`<div class="dtab${i===0?' active':''}" data-dtab="${g.id}">${g.label}${g.id==='appts'&&apptSoon?' 🔔':''}</div>`).join('')}</div>` : '';
   const dashPanels = groups.map((g,i)=>`<div class="dtab-panel${i===0?' active':''}" id="dpanel-${g.id}">${g.html}</div>`).join('');
 
   app.innerHTML = `
