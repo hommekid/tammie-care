@@ -173,6 +173,23 @@
   footer a { color: var(--gold); }
   .dtab-panel > div { margin-bottom: 22px; }
 
+  /* appointments */
+  .appt-list { display: flex; flex-direction: column; gap: 10px; }
+  .appt-card { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 10px; padding: 12px 16px; }
+  .appt-card.appt-soon { border-left-color: var(--gold); background: rgba(232,184,75,0.06); }
+  .appt-card.appt-today { border-left-color: var(--red); background: rgba(232,85,85,0.08); }
+  .appt-when { text-align: center; min-width: 52px; }
+  .appt-when .appt-date { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; color: var(--gold); white-space: nowrap; }
+  .appt-when .appt-dow { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .appt-body { flex: 1; min-width: 0; }
+  .appt-body .appt-doctor { font-weight: 600; font-size: 14px; }
+  .appt-body .appt-note { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+  .appt-badge { font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--text-dim); white-space: nowrap; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; }
+  .appt-card.appt-soon .appt-badge { color: var(--gold); border-color: var(--gold-dim); }
+  .appt-card.appt-today .appt-badge { color: var(--red); border-color: var(--red); }
+  details.appt-past-wrap { margin-top: 14px; }
+  details.appt-past-wrap > summary { cursor: pointer; font-size: 12px; color: var(--gold); font-family: 'IBM Plex Mono', monospace; user-select: none; margin-bottom: 10px; }
+  .appt-past { opacity: 0.5; }
 
   .loading-full { padding: 60px; text-align: center; color: var(--text-dim); }
 
@@ -198,6 +215,7 @@
 const params = new URLSearchParams(location.search);
 const petId = params.get('id') || 'frappe';
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const TH_DAYS = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
 
 // ค่า default — override ได้ต่อตัวผ่าน key `display` ใน data/<id>.json
 // display: { order:[...], hidden:[...], calendar:{source,title}, tabs:[{source,label}], stats:[{key,label,note,color,check}] }
@@ -253,6 +271,7 @@ function render() {
   const labPanels = p.labPanels || [];
   const cbcWbc = labs.filter(r => r.panel==='cbc' && r.values && r.values.wbc != null).sort((a,b)=>b.date.localeCompare(a.date));
   const treatments = p.treatments || [];
+  const appts = (p.appointments || []).slice().sort((a,b)=>a.date.localeCompare(b.date));
   const tabsDef = (disp.tabs || DEFAULT_TABS)
     .map(t => ({ ...t, items: t.source === 'treatments' ? treatments : ((p.symptoms && p.symptoms[t.source]) || []) }))
     .filter(t => t.items.length);
@@ -333,8 +352,10 @@ function render() {
           ${tabsDef.map((t,i)=>`<div class="tab-content${i===0?' active':''}" id="tab-${t.source}"></div>`).join('')}
         </div>` : '';
 
+  const apptsBlock = appts.length ? `<div id="apptsWrap"></div>` : '';
+
   // ---- ประกอบตาม display.order / display.hidden แล้วจัดลงแท็บใหญ่ ----
-  const blocks = { stats: statusBlock, leuco: leucoBlock, meds: medsBlock, labs: labsBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock };
+  const blocks = { stats: statusBlock, leuco: leucoBlock, meds: medsBlock, labs: labsBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock, appts: apptsBlock };
   const hidden = new Set(disp.hidden || []);
   const order = (disp.order || []).filter(k => k in blocks);
   Object.keys(blocks).forEach(k => { if (!order.includes(k)) order.push(k); });
@@ -345,6 +366,7 @@ function render() {
     { id:'meds', label:'💊 ยา', keys:['meds'] },
     { id:'labs', label:'ผลเลือด', keys:['labs'] },
     { id:'track', label:'ติดตามอาการ', keys:['tabs'] },
+    { id:'appts', label:'📅 นัดหมาย', keys:['appts'] },
   ];
   const buildGroup = keys => {
     const ks = order.filter(k => keys.includes(k) && !hidden.has(k) && blocks[k]);
@@ -385,6 +407,7 @@ function render() {
     else if (t.source === 'nosebleed') renderNosebleedTab('tab-nosebleed', t.items);
     else renderSymptomTimeline('tab-' + t.source, t.items);
   });
+  if (show('appts') && appts.length) renderAppts('apptsWrap', appts);
   setupTabs();
   setupDashTabs();
 }
@@ -576,6 +599,38 @@ function drawMonth() {
   gridEl.innerHTML = `<div class="cal-grid">${cells}</div>`;
   document.getElementById('calPrev').disabled = calIdx >= calMonths.length-1;
   document.getElementById('calNext').disabled = calIdx <= 0;
+}
+
+function renderAppts(elId, appts) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const items = appts.map(a => {
+    const d = new Date(a.date); d.setHours(0,0,0,0);
+    return { ...a, d, diff: Math.round((d - today) / 86400000) };
+  });
+  const upcoming = items.filter(x => x.diff >= 0).sort((a,b) => a.d - b.d);
+  const past = items.filter(x => x.diff < 0).sort((a,b) => b.d - a.d);
+  const dlabel = diff => diff === 0 ? 'วันนี้' : diff === 1 ? 'พรุ่งนี้' : `อีก ${diff} วัน`;
+  const card = x => {
+    const cls = x.diff === 0 ? 'appt-today' : (x.diff <= 7 ? 'appt-soon' : '');
+    const badge = x.diff < 0 ? `ผ่านมา ${-x.diff} วัน` : dlabel(x.diff);
+    return `<div class="appt-card ${cls}">
+      <div class="appt-when">
+        <div class="appt-date">${x.d.getDate()} ${TH_MONTHS[x.d.getMonth()]}</div>
+        <div class="appt-dow">${TH_DAYS[x.d.getDay()]}</div>
+      </div>
+      <div class="appt-body">
+        <div class="appt-doctor">${x.doctor || 'นัดหมาย'}</div>
+        ${x.note ? `<div class="appt-note">${x.note}</div>` : ''}
+      </div>
+      <div class="appt-badge">${badge}</div>
+    </div>`;
+  };
+  let html = '<div class="section-label">📅 ตารางนัดหมาย</div>';
+  html += upcoming.length
+    ? `<div class="appt-list">${upcoming.map(card).join('')}</div>`
+    : `<div class="nb-detail-empty">ไม่มีนัดที่จะถึง</div>`;
+  if (past.length) html += `<details class="appt-past-wrap"><summary>นัดที่ผ่านมา (${past.length})</summary><div class="appt-list appt-past">${past.map(card).join('')}</div></details>`;
+  document.getElementById(elId).innerHTML = html;
 }
 
 function renderTreatments(elId, treatments) {

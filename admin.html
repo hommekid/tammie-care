@@ -117,6 +117,7 @@
       <div class="tab" data-form="labs">🧪 ผลเลือด</div>
       <div class="tab" data-form="vitals">📊 ค่าตรวจล่าสุด</div>
       <div class="tab" data-form="treatment">🏥 การรักษา</div>
+      <div class="tab" data-form="appointment">📅 นัดหมาย</div>
     </div>
 
     <div class="card">
@@ -217,6 +218,13 @@
         <textarea id="tr-notes" placeholder="ผลการตรวจ / การรักษา"></textarea>
         <button class="btn" onclick="addEntry('treatment')">บันทึก + อัพขึ้น GitHub</button>
       </div>
+      <!-- Appointment -->
+      <div class="form-block" id="form-appointment">
+        <label>วันที่นัด</label><input type="date" id="ap-date">
+        <label>หมอ / การตรวจ</label><input type="text" id="ap-doctor" placeholder="เช่น อ.กอล์ฟ / Echo / ตรวจเลือด">
+        <label>หมายเหตุ</label><input type="text" id="ap-note" placeholder="เช่น เอาปัสสาวะไปด้วย (เว้นว่างได้)">
+        <button class="btn" onclick="addEntry('appointment')">บันทึกนัด + อัพขึ้น GitHub</button>
+      </div>
     </div></details>
 
     <details class="acc"><summary>ขนาดก้อนในตับ (ซาวด์)</summary>
@@ -252,6 +260,7 @@
         <option value="general">🩺 อาการทั่วไป</option>
         <option value="labs">🧪 ผลเลือด</option>
         <option value="treatment">🏥 การรักษา</option>
+        <option value="appointment">📅 นัดหมาย</option>
         <option value="liverTumor">🔬 ก้อนในตับ</option>
       </select>
       <label>รายการ</label>
@@ -717,6 +726,14 @@ async function addEntry(type) {
       rules: rules.length ? rules : (prev.rules || [])
     };
     msg = 'อัพเดทเกณฑ์ Leuco Plus';
+  } else if (type === 'appointment') {
+    const date=val('ap-date'), doctor=val('ap-doctor'), note=val('ap-note');
+    if(!date) return toast('กรอกวันที่นัด', false);
+    if (!currentData.appointments) currentData.appointments = [];
+    currentData.appointments.push({ date, doctor, note });
+    currentData.appointments.sort((a,b)=>a.date.localeCompare(b.date));
+    ['ap-doctor','ap-note'].forEach(id=>document.getElementById(id).value='');
+    msg = `เพิ่มนัดหมาย ${date}`;
   }
 
   await commit(msg);
@@ -785,6 +802,7 @@ function edArr(cat) {
   if (cat==='vomiting')  return (currentData.symptoms && currentData.symptoms.vomiting) || [];
   if (cat==='liverTumor') return (currentData.vitals && currentData.vitals.liverTumor) || [];
   if (cat==='labs') return currentData.labs || [];
+  if (cat==='appointment') return currentData.appointments || [];
   return [];
 }
 function edSnip(s, n=34) { s = s || ''; return s.length > n ? s.slice(0,n)+'…' : s; }
@@ -808,6 +826,8 @@ async function edLoadList() {
   } else if (cat==='labs') {
     const pn = id => ((currentData.labPanels||[]).find(p=>p.id===id)||{}).name || id || '';
     edArr(cat).forEach((e,i) => opts.push({ v:i, t:`${e.date} · ${pn(e.panel)} · ${edSnip(Object.entries(e.values||{}).map(([k,val])=>k+':'+val).join(' '),24)}` }));
+  } else if (cat==='appointment') {
+    edArr(cat).forEach((e,i) => opts.push({ v:i, t:`${e.date} · ${edSnip((e.doctor||'นัดหมาย')+(e.note?' — '+e.note:''))}` }));
   } else {
     edArr(cat).forEach((e,i) => opts.push({ v:i, t:`${e.date} · ${edSnip(e.detail)}` }));
   }
@@ -854,6 +874,11 @@ function edSelect() {
       const val2 = e.values && e.values[c.key]!=null ? e.values[c.key] : '';
       html += `<label>${c.label}${c.unit?` (${c.unit})`:''}</label><input type="number" step="any" id="e-lab-${c.key}" value="${val2}">`;
     });
+  } else if (cat==='appointment') {
+    const e = edArr(cat)[+v];
+    html = `<label>วันที่นัด</label><input type="date" id="e-date" value="${e.date||''}">
+    <label>หมอ / การตรวจ</label><input type="text" id="e-doctor" value="${edEsc(e.doctor)}">
+    <label>หมายเหตุ</label><input type="text" id="e-note" value="${edEsc(e.note)}">`;
   }
   html += `<button class="btn" onclick="edSave()">บันทึกการแก้ไข + อัพขึ้น GitHub</button>
   <button class="btn btn-ghost" style="color:var(--red);border-color:var(--red)" onclick="edDelete()">ลบรายการนี้</button>`;
@@ -890,6 +915,9 @@ async function edSave() {
         if (el) { const x = el.value.trim(); if (x==='') delete e.values[c.key]; else e.values[c.key] = +x; }
       });
       edArr(cat).sort((a,b)=>b.date.localeCompare(a.date));
+    } else if (cat==='appointment') {
+      const e = edArr(cat)[+v]; e.date=date; e.doctor=val('e-doctor'); e.note=val('e-note');
+      edArr(cat).sort((a,b)=>a.date.localeCompare(b.date));
     } else if (cat==='treatment') {
       const [gi,ei] = v.split('.').map(Number);
       const g = currentData.treatments[gi]; const e = g.entries[ei];
