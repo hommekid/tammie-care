@@ -146,6 +146,10 @@
   .tab { padding: 7px 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; cursor: pointer; color: var(--text-dim); }
   .tab.active { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-dim); }
   .tab-content { display: none; } .tab-content.active { display: block; }
+  .track-top { margin-bottom: 16px; }
+  .track-top .tab { padding: 9px 22px; font-size: 14px; font-weight: 500; }
+  .track-sub { margin-bottom: 14px; }
+  .l1-content { display: none; } .l1-content.active { display: block; }
 
   .dash-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
   .dtab { padding: 9px 20px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-dim); }
@@ -350,10 +354,26 @@ function render() {
             <div class="tumor-box"><canvas id="tumorChart"></canvas></div>
           </div>` : '';
 
+  // ติดตามอาการ → 2 เมนูหลัก: การรักษา / อาการประจำวัน (อาการอื่นๆ ทั้งหมดอยู่ในอาการประจำวัน)
+  const txTabs = tabsDef.filter(t => t.source === 'treatments');
+  const dailyTabs = tabsDef.filter(t => t.source !== 'treatments');
+  const l1btns = [];
+  const l1panels = [];
+  if (txTabs.length) {
+    l1btns.push(`<div class="tab active" data-l1="treatments">การรักษา</div>`);
+    l1panels.push(`<div class="l1-content active" id="l1-treatments"><div class="tab-content active" id="tab-treatments"></div></div>`);
+  }
+  if (dailyTabs.length) {
+    const dailyFirst = !txTabs.length;
+    l1btns.push(`<div class="tab${dailyFirst?' active':''}" data-l1="daily">อาการประจำวัน</div>`);
+    const subBtns = dailyTabs.map((t,i)=>`<div class="tab${i===0?' active':''}" data-tab="${t.source}">${t.label}</div>`).join('');
+    const subContents = dailyTabs.map((t,i)=>`<div class="tab-content${i===0?' active':''}" id="tab-${t.source}"></div>`).join('');
+    l1panels.push(`<div class="l1-content${dailyFirst?' active':''}" id="l1-daily"><div class="tabs track-sub">${subBtns}</div>${subContents}</div>`);
+  }
   const tabsBlock = tabsDef.length ? `
         <div>
-          <div class="tabs">${tabsDef.map((t,i)=>`<div class="tab${i===0?' active':''}" data-tab="${t.source}">${t.label}</div>`).join('')}</div>
-          ${tabsDef.map((t,i)=>`<div class="tab-content${i===0?' active':''}" id="tab-${t.source}"></div>`).join('')}
+          <div class="tabs track-top">${l1btns.join('')}</div>
+          ${l1panels.join('')}
         </div>` : '';
 
   const apptsBlock = appts.length ? `<div id="apptsWrap"></div>` : '';
@@ -705,9 +725,17 @@ function closeLightbox() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
 function setupTabs() {
-  document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
-    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+  // เมนูหลัก: การรักษา / อาการประจำวัน
+  document.querySelectorAll('.track-top .tab').forEach(t => t.onclick = () => {
+    document.querySelectorAll('.track-top .tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.l1-content').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('l1-'+t.dataset.l1).classList.add('active');
+  });
+  // แท็บย่อยใน "อาการประจำวัน"
+  document.querySelectorAll('.track-sub .tab').forEach(t => t.onclick = () => {
+    document.querySelectorAll('.track-sub .tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('#l1-daily .tab-content').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     document.getElementById('tab-'+t.dataset.tab).classList.add('active');
   });
