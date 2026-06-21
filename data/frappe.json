@@ -485,6 +485,54 @@
   ],
   "labs": [
     {
+      "date": "2026-06-20",
+      "panel": "cbc",
+      "values": {
+        "rbc": 4.3,
+        "hgb": 9.9,
+        "hct": 28.6,
+        "mcv": 66.4,
+        "mch": 23,
+        "mchc": 34.6,
+        "rdw": 15.9,
+        "wbc": 3310,
+        "neu": 2516,
+        "lym": 695,
+        "mono": 99,
+        "eosi": 0,
+        "baso": 0,
+        "plt": 210,
+        "mpv": 10.4,
+        "plasmaProtein": 6
+      },
+      "note": "RBC: Hypochromasia+1 · WBC: Hypersegmented neutrophil+1 · Neu 76% Lym 21% Mono 3% Eos 0% · Blood parasite: Not Found"
+    },
+    {
+      "date": "2026-06-20",
+      "panel": "chem",
+      "values": {
+        "bun": 20.2,
+        "creatinine": 0.66,
+        "alt": 73,
+        "alp": 450,
+        "ast": 42,
+        "totalProtein": 5.2,
+        "albumin": 2.4,
+        "globulin": 2.8,
+        "amylase": 995,
+        "cholesterol": 197,
+        "triglyceride": 128
+      }
+    },
+    {
+      "date": "2026-06-20",
+      "panel": "cardiac",
+      "values": {
+        "troponinI": 0.07
+      },
+      "note": "Vcheck Canine Troponin I = 0.07 ng/mL · Interpretation: Normal (<0.1 ปกติ, 0.1–0.2 gray zone, >0.2 ผิดปกติ)"
+    },
+    {
       "date": "2026-06-14",
       "panel": "chem",
       "values": {

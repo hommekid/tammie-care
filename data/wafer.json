@@ -431,6 +431,25 @@
   ],
   "labs": [
     {
+      "date": "2026-06-20",
+      "panel": "cbc",
+      "values": {
+        "rbc": 6.97, "hgb": 16.5, "hct": 46.2, "mcv": 66.2, "mch": 23.7, "mchc": 35.8, "rdw": 15.1,
+        "wbc": 5410, "neu": 4923, "lym": 487, "mono": 0, "eosi": 0, "baso": 0,
+        "plt": 277, "mpv": 8.9, "plasmaProtein": 4.6
+      },
+      "note": "WBC: Hypersegmented neutrophil · Neu 91% Lym 9% Mono 0% Eos 0% · Blood parasite: Not Found"
+    },
+    {
+      "date": "2026-06-20",
+      "panel": "chem",
+      "values": {
+        "bun": 18.5, "creatinine": 1.07, "alt": 37, "alp": 47, "ast": 22,
+        "totalProtein": 4.5, "albumin": 2, "globulin": 2.5, "amylase": 1162,
+        "cholesterol": 159, "triglyceride": 51
+      }
+    },
+    {
       "date": "2026-05-30",
       "panel": "cbc",
       "values": {
