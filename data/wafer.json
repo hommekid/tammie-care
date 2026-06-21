@@ -58,6 +58,16 @@
   ],
   "treatments": [
     {
+      "date": "2026-06-20",
+      "entries": [
+        {
+          "doctor": "อ.นิช",
+          "specialty": "ทางเดินอาหาร",
+          "notes": "โปรตีนไม่ขึ้น อาทิตย์หน้าให้ไปเจาะเลือดตอน 9 โมง แล้วกิน Flax seed oil รอชม.ครึ่งแล้วไปซาวด์ จากนั้นทำ bile acid test เอา flax seed กับ recovery ไปด้วย"
+        }
+      ]
+    },
+    {
       "date": "2026-05-30",
       "entries": [
         {
