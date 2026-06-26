@@ -7,26 +7,31 @@
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="img/favicon-180.png?v=2">
 <link rel="manifest" href="site.webmanifest">
-<meta name="theme-color" content="#0f1117">
+<meta name="theme-color" content="#fdf4eb">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Mali:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
   :root {
-    --bg:#0f1117; --surface:#181c27; --surface2:#1e2334; --border:#2a3050;
-    --gold:#e8b84b; --gold-dim:#9b7a2a; --red:#e85555; --green:#4ec994;
-    --blue:#5b9cf6; --sky:#8fbdf0; --sky-dim:#3a5680; --pink:#f0a6cd; --pink-dim:#6b3a55;
-    --text:#e8eaf0; --text-dim:#8892a4; --text-muted:#4a5568;
+    /* พาสเทลสว่าง ตาม banner: ครีม + ฟ้าเดนิม + ทอง */
+    --bg:#fdf4eb; --surface:#ffffff; --surface2:#fbf4ec; --border:#efe0cd;
+    --gold:#d99e3e; --gold-dim:#e3c485; --red:#d96a6a; --green:#5fa57f;
+    --blue:#4a6fa5; --sky:#5b86bf; --sky-dim:#6f97cf; --pink:#e69bbf; --pink-dim:#dd92bb;
+    --text:#4a4035; --text-dim:#8c7f6f; --text-muted:#b6a795;
     --cute:'Mali','Sarabun',cursive;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   body {
     font-family:'Sarabun',sans-serif;
     background-color:var(--bg);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%238fbdf0' fill-opacity='0.04'%3E%3Cellipse cx='70' cy='86' rx='18' ry='14'/%3E%3Cellipse cx='44' cy='62' rx='8' ry='10'/%3E%3Cellipse cx='60' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='80' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='96' cy='62' rx='8' ry='10'/%3E%3C/g%3E%3C/svg%3E");
+    background-image:
+      radial-gradient(circle at 12% 6%, rgba(169,196,232,0.16), transparent 36%),
+      radial-gradient(circle at 88% 96%, rgba(230,155,191,0.10), transparent 40%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%23c79a55' fill-opacity='0.06'%3E%3Cellipse cx='70' cy='86' rx='18' ry='14'/%3E%3Cellipse cx='44' cy='62' rx='8' ry='10'/%3E%3Cellipse cx='60' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='80' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='96' cy='62' rx='8' ry='10'/%3E%3C/g%3E%3C/svg%3E");
+    background-attachment:fixed;
     color:var(--text); font-size:15px; line-height:1.6;
   }
   a { color:var(--sky); text-decoration:none; }
 
-  header { border-bottom:1px solid var(--border); padding:16px 28px; display:flex; align-items:center; gap:14px; background:linear-gradient(180deg,var(--surface2),var(--surface)); box-shadow:0 2px 14px rgba(0,0,0,0.25); }
+  header { border-bottom:1px solid var(--border); padding:16px 28px; display:flex; align-items:center; gap:14px; background:linear-gradient(180deg,#ffffff,var(--surface2)); box-shadow:0 2px 14px rgba(160,140,110,0.16); }
   header h1 { font-size:20px; font-weight:700; font-family:var(--cute); }
   .back { font-size:22px; color:var(--sky); }
 
