@@ -662,12 +662,12 @@ function renderAppts(elId, appts) {
 }
 
 let txEvents = [], txCalMonths = [], txCalIdx = 0;
+function txListItem(t) {
+  return `<div class="tl-acc"><div class="tl-acc-head" onclick="this.parentElement.classList.toggle('open')">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div></div>`;
+}
 function renderTreatments(elId, treatments) {
   txEvents = treatments;
   const legend = `<div class="legend"><span><i class="dot dot-tx"></i> วันที่มีการรักษา</span></div>`;
-  const list = [...treatments].sort((a,b)=>b.date.localeCompare(a.date)).map(t =>
-    `<div class="tl-acc"><div class="tl-acc-head" onclick="this.parentElement.classList.toggle('open')">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div></div>`
-  ).join('');
   document.getElementById(elId).innerHTML = `
     <div class="nb-top">
       <div class="nb-cal">
@@ -681,7 +681,7 @@ function renderTreatments(elId, treatments) {
       </div>
       <div class="nb-detail" id="txDetail"><div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูรายละเอียดการรักษา</div></div>
     </div>
-    <div class="nb-list">${list}</div>`;
+    <div class="nb-list" id="txList"></div>`;
   renderTxCalendar(treatments);
 }
 function renderTxCalendar(events) {
@@ -711,6 +711,8 @@ function drawTxMonth() {
   }
   titleEl.textContent = `${TH_MONTHS[m-1]} ${y+543}`;
   gridEl.innerHTML = `<div class="cal-grid">${cells}</div>`;
+  const listEl = document.getElementById('txList');
+  if (listEl) listEl.innerHTML = [...evs].sort((a,b)=>b.date.localeCompare(a.date)).map(txListItem).join('');
   document.getElementById('txCalPrev').disabled = txCalIdx >= txCalMonths.length-1;
   document.getElementById('txCalNext').disabled = txCalIdx <= 0;
 }
@@ -729,14 +731,14 @@ function symColor(src) { return SYM_COLORS[src] || '#e8b84b'; }
 function hexA(hex, a) { const n = parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
 function dailySide(d) { return (d._src==='nosebleed' && d.side) ? ' · '+sideLabel(d.side) : ''; }
 let dailyEvents = [], dyCalMonths = [], dyCalIdx = 0;
+function dailyListItem(d) {
+  const c = symColor(d._src);
+  return `<div class="tl-item" style="border-left:3px solid ${c}"><div class="doctor">${fmtDate(d.date)} · <span style="color:${c}">${d._label}</span>${dailySide(d)}</div><p>${d.detail||''}${photoLinks(d.photos)}</p></div>`;
+}
 function renderDailyCalendar(elId, sources) {
   dailyEvents = [];
   sources.forEach(s => (s.items||[]).forEach(it => dailyEvents.push({ ...it, _src:s.source, _label:s.label })));
   const legend = `<div class="legend">${sources.map(s=>`<span><i class="dot" style="background:${symColor(s.source)}"></i> ${s.label}</span>`).join('')}</div>`;
-  const list = '<div class="timeline"><div class="tl-items">' + [...dailyEvents].sort((a,b)=>b.date.localeCompare(a.date)).map(d => {
-    const c = symColor(d._src);
-    return `<div class="tl-item" style="border-left:3px solid ${c}"><div class="doctor">${fmtDate(d.date)} · <span style="color:${c}">${d._label}</span>${dailySide(d)}</div><p>${d.detail||''}${photoLinks(d.photos)}</p></div>`;
-  }).join('') + '</div></div>';
   document.getElementById(elId).innerHTML = `
     <div class="nb-top">
       <div class="nb-cal">
@@ -750,7 +752,7 @@ function renderDailyCalendar(elId, sources) {
       </div>
       <div class="nb-detail" id="dyDetail"><div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูอาการของวันนั้น</div></div>
     </div>
-    <div class="nb-list">${list}</div>`;
+    <div class="nb-list" id="dyList"></div>`;
   renderDailyCal();
 }
 function renderDailyCal() {
@@ -783,6 +785,8 @@ function drawDailyMonth() {
   }
   titleEl.textContent = `${TH_MONTHS[m-1]} ${y+543}`;
   gridEl.innerHTML = `<div class="cal-grid">${cells}</div>`;
+  const listEl = document.getElementById('dyList');
+  if (listEl) listEl.innerHTML = '<div class="timeline"><div class="tl-items">' + [...evs].sort((a,b)=>b.date.localeCompare(a.date)).map(dailyListItem).join('') + '</div></div>';
   document.getElementById('dyCalPrev').disabled = dyCalIdx >= dyCalMonths.length-1;
   document.getElementById('dyCalNext').disabled = dyCalIdx <= 0;
 }
