@@ -162,7 +162,7 @@
   .dtab-panel { display: none; } .dtab-panel.active { display: block; }
   .nb-top { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
   .nb-cal { flex: 0 0 300px; max-width: 300px; }
-  .nb-detail { flex: 1; min-width: 200px; }
+  .nb-detail { flex: 1; min-width: 200px; align-self: flex-start; border: 1.5px solid var(--gold-dim); border-radius: 10px; padding: 12px 14px; background: var(--surface); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
   .nb-detail-empty { color: var(--text-muted); font-size: 13px; padding: 10px 0; }
   .nb-detail-card { background: var(--surface2); border: 1px solid var(--border); border-left: 4px solid var(--gold); border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-bottom: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
   .nb-detail-card.nb-left { border-left-color: var(--blue); background: var(--blue-dim); }
@@ -170,6 +170,7 @@
   .nb-detail-card.nb-unknown { border-left-color: var(--text-muted); }
   .nb-detail-card.tx-detail { background: rgba(232,184,75,0.12); border-color: rgba(232,184,75,0.35); border-left-color: var(--gold); }
   .nb-detail-card.tx-detail .tl-item { background: rgba(15,17,23,0.45); border-color: rgba(232,184,75,0.22); }
+  .nb-detail-card:last-child { margin-bottom: 0; }
   .nb-detail-card .nb-detail-date { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); font-weight: 600; margin-bottom: 6px; }
   .nb-detail-card p { color: var(--text); line-height: 1.7; }
   .nb-list { margin-top: 18px; }
@@ -716,9 +717,12 @@ function drawTxMonth() {
   document.getElementById('txCalPrev').disabled = txCalIdx >= txCalMonths.length-1;
   document.getElementById('txCalNext').disabled = txCalIdx <= 0;
 }
+let txSelDate = null;
 function showTxDetail(date) {
   const el = document.getElementById('txDetail');
   if (!el) return;
+  if (txSelDate === date) { txSelDate = null; el.innerHTML = '<div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูรายละเอียดการรักษา</div>'; return; }
+  txSelDate = date;
   const recs = txEvents.filter(t => t.date === date);
   el.innerHTML = recs.map(t =>
     `<div class="nb-detail-card tx-detail"><div class="nb-detail-date">📅 ${fmtDate(t.date)}</div>${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div>`
@@ -790,9 +794,12 @@ function drawDailyMonth() {
   document.getElementById('dyCalPrev').disabled = dyCalIdx >= dyCalMonths.length-1;
   document.getElementById('dyCalNext').disabled = dyCalIdx <= 0;
 }
+let dySelDate = null;
 function showDailyDetail(date) {
   const el = document.getElementById('dyDetail');
   if (!el) return;
+  if (dySelDate === date) { dySelDate = null; el.innerHTML = '<div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูอาการของวันนั้น</div>'; return; }
+  dySelDate = date;
   const evs = dailyEvents.filter(e => e.date === date).sort((a,b)=>a._label.localeCompare(b._label));
   el.innerHTML = evs.map(d => {
     const c = symColor(d._src);
