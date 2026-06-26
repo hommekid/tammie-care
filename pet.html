@@ -9,38 +9,47 @@
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#0f1117">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Mali:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
   :root {
     --bg: #0f1117; --surface: #181c27; --surface2: #1e2334;
     --border: #2a3050; --gold: #e8b84b; --gold-dim: #9b7a2a;
     --red: #e85555; --red-dim: #5c2020; --green: #4ec994; --green-dim: #1a4535;
     --blue: #5b9cf6; --blue-dim: #1a2d5c;
+    --sky: #8fbdf0; --sky-dim: #3a5680; --pink: #f0a6cd; --pink-dim: #6b3a55;
     --text: #e8eaf0; --text-dim: #8892a4; --text-muted: #4a5568;
+    --cute: 'Mali', 'Sarabun', cursive;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
-  a { color: var(--gold); text-decoration: none; }
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%238fbdf0' fill-opacity='0.04'%3E%3Cellipse cx='70' cy='86' rx='18' ry='14'/%3E%3Cellipse cx='44' cy='62' rx='8' ry='10'/%3E%3Cellipse cx='60' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='80' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='96' cy='62' rx='8' ry='10'/%3E%3C/g%3E%3C/svg%3E");
+    color: var(--text); font-size: 15px; line-height: 1.6;
+  }
+  a { color: var(--sky); text-decoration: none; }
 
   header {
     border-bottom: 1px solid var(--border); padding: 16px 28px;
-    display: flex; align-items: center; gap: 14px; background: var(--surface);
+    display: flex; align-items: center; gap: 14px;
+    background: linear-gradient(180deg, var(--surface2), var(--surface));
     position: sticky; top: 0; z-index: 10;
+    box-shadow: 0 2px 14px rgba(0,0,0,0.25);
   }
-  .back { font-size: 20px; color: var(--text-dim); }
+  .back { font-size: 22px; color: var(--sky); }
   .paw { font-size: 26px; }
-  .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); flex-shrink: 0; }
-  header h1 { font-size: 20px; font-weight: 700; }
+  .avatar { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 3px solid transparent; background-image: linear-gradient(135deg, var(--sky), var(--pink)); background-origin: border-box; background-clip: border-box; flex-shrink: 0; }
+  header h1 { font-size: 22px; font-weight: 700; font-family: var(--cute); }
   header .sub { font-size: 12px; color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; }
   .age-badge {
-    margin-left: auto; background: var(--gold-dim); color: var(--gold);
-    font-size: 12px; font-family: 'IBM Plex Mono', monospace;
-    padding: 4px 12px; border-radius: 20px; font-weight: 500;
+    margin-left: auto; background: linear-gradient(135deg, var(--sky-dim), var(--pink-dim)); color: #fff;
+    font-size: 12px; font-family: var(--cute); font-weight: 600;
+    padding: 5px 14px; border-radius: 20px;
   }
 
   .main { display: grid; grid-template-columns: 1fr; min-height: calc(100vh - 65px); }
   .left { border-right: 1px solid var(--border); overflow-y: auto; padding: 24px 28px; display: flex; flex-direction: column; gap: 24px; }
 
-  .section-label { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
+  .section-label { font-size: 15px; font-family: var(--cute); font-weight: 600; color: var(--sky); letter-spacing: 0.2px; margin-bottom: 12px; }
 
   .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
@@ -147,18 +156,20 @@
   .tl-acc-body { display: none; padding: 0 14px 12px; }
   .tl-acc.open .tl-acc-body { display: block; }
 
-  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-  .tab { padding: 7px 16px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; cursor: pointer; color: var(--text-dim); }
-  .tab.active { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-dim); }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab { padding: 7px 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; font-family: var(--cute); cursor: pointer; color: var(--text-dim); transition: all 0.15s; }
+  .tab:hover { border-color: var(--sky-dim); color: var(--text); }
+  .tab.active { background: var(--sky-dim); color: #fff; border-color: var(--sky); }
   .tab-content { display: none; } .tab-content.active { display: block; }
   .track-top { margin-bottom: 16px; }
-  .track-top .tab { padding: 9px 22px; font-size: 14px; font-weight: 500; }
+  .track-top .tab { padding: 9px 22px; font-size: 14.5px; font-weight: 600; }
   .track-sub { margin-bottom: 14px; }
   .l1-content { display: none; } .l1-content.active { display: block; }
 
   .dash-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
-  .dtab { padding: 9px 20px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-dim); }
-  .dtab.active { background: var(--gold); color: #0f1117; border-color: var(--gold); }
+  .dtab { padding: 9px 20px; border-radius: 22px; background: var(--surface); border: 1px solid var(--border); font-size: 14px; font-weight: 600; font-family: var(--cute); cursor: pointer; color: var(--text-dim); transition: all 0.15s; }
+  .dtab:hover { border-color: var(--sky-dim); color: var(--text); transform: translateY(-1px); }
+  .dtab.active { background: linear-gradient(135deg, var(--sky), var(--pink)); color: #1a1320; border-color: transparent; box-shadow: 0 4px 14px rgba(143,189,240,0.3); }
   .dtab-panel { display: none; } .dtab-panel.active { display: block; }
   .nb-top { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
   .nb-cal { flex: 0 0 300px; max-width: 300px; }

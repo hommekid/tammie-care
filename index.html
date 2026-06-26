@@ -9,53 +9,58 @@
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#0f1117">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Mali:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
   :root {
     --bg: #0f1117; --surface: #181c27; --surface2: #1e2334;
     --border: #2a3050; --gold: #e8b84b; --gold-dim: #9b7a2a;
     --red: #e85555; --green: #4ec994; --blue: #5b9cf6;
+    --sky: #8fbdf0; --sky-dim: #3a5680; --pink: #f0a6cd; --pink-dim: #6b3a55;
     --text: #e8eaf0; --text-dim: #8892a4; --text-muted: #4a5568;
+    --cute: 'Mali', 'Sarabun', cursive;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Sarabun', sans-serif; background: var(--bg);
+    font-family: 'Sarabun', sans-serif;
+    background-color: var(--bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%238fbdf0' fill-opacity='0.04'%3E%3Cellipse cx='70' cy='86' rx='18' ry='14'/%3E%3Cellipse cx='44' cy='62' rx='8' ry='10'/%3E%3Cellipse cx='60' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='80' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='96' cy='62' rx='8' ry='10'/%3E%3C/g%3E%3C/svg%3E");
     color: var(--text); min-height: 100vh; font-size: 15px;
   }
   header {
     text-align: center;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 18px;
+    padding: 20px 16px 4px;
   }
-  .hero-wrap { max-width: 1000px; margin: 0 auto; line-height: 0; }
+  .hero-wrap { max-width: 1000px; margin: 0 auto; line-height: 0; border-radius: 22px; overflow: hidden; box-shadow: 0 10px 36px rgba(143,189,240,0.16), 0 2px 10px rgba(0,0,0,0.4); border: 1px solid var(--border); }
   .hero-wrap .hero { display: block; width: 100%; height: auto; }
   header .sub { font-size: 14px; color: var(--text-dim); margin-top: 14px; }
   header .logo { font-size: 40px; margin: 36px 0 8px; }
   header h1 {
-    font-size: 28px; font-weight: 700; letter-spacing: 1px;
-    font-family: 'IBM Plex Mono', monospace;
+    font-size: 30px; font-weight: 700; letter-spacing: 1px;
+    font-family: var(--cute); color: var(--sky);
   }
-  .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 28px 24px; }
   .section-label {
-    font-size: 11px; font-family: 'IBM Plex Mono', monospace;
-    color: var(--text-muted); letter-spacing: 1.5px;
-    text-transform: uppercase; margin-bottom: 16px;
+    font-size: 16px; font-family: var(--cute); font-weight: 600;
+    color: var(--sky); letter-spacing: 0.3px;
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
   }
+  .section-label::before { content: '🐾'; font-size: 16px; }
   .pet-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 16px;
   }
   .pet-card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 22px; cursor: pointer;
-    text-decoration: none; color: inherit; display: block;
-    transition: transform 0.15s, border-color 0.15s;
+    border-radius: 20px; padding: 24px 22px; cursor: pointer;
+    text-decoration: none; color: inherit; display: block; text-align: center;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
     position: relative; overflow: hidden;
   }
-  .pet-card:hover { transform: translateY(-3px); border-color: var(--gold); }
-  .pet-card .emoji { font-size: 44px; margin-bottom: 12px; display: block; }
-  .pet-card .photo { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; display: block; border: 2px solid var(--gold); }
-  .pet-card .name { font-size: 20px; font-weight: 700; }
-  .pet-card .nick { font-size: 13px; color: var(--gold); font-family: 'IBM Plex Mono', monospace; }
+  .pet-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--sky), var(--pink), var(--gold)); opacity: 0.85; }
+  .pet-card:hover { transform: translateY(-4px); border-color: var(--sky); box-shadow: 0 12px 30px rgba(143,189,240,0.22); }
+  .pet-card .emoji { font-size: 48px; margin-bottom: 12px; display: block; }
+  .pet-card .photo { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; margin: 4px auto 12px; display: block; border: 3px solid transparent; background-image: linear-gradient(135deg, var(--sky), var(--pink)); background-origin: border-box; background-clip: border-box; }
+  .pet-card .name { font-size: 21px; font-weight: 700; font-family: var(--cute); }
+  .pet-card .nick { font-size: 14px; color: var(--sky); font-family: var(--cute); font-weight: 500; }
   .pet-card .breed { font-size: 13px; color: var(--text-dim); margin-top: 8px; }
   .pet-card .age { font-size: 13px; color: var(--text-dim); }
   .status-badge {
@@ -79,14 +84,18 @@
   }
   @keyframes bell-wiggle { 0%,92%,100%{transform:rotate(0)} 94%{transform:rotate(12deg)} 96%{transform:rotate(-12deg)} 98%{transform:rotate(8deg)} }
   .add-card {
-    border: 1px dashed var(--border); background: transparent;
+    border: 2px dashed var(--sky-dim); background: transparent;
     display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 8px; color: var(--text-muted);
-    min-height: 180px; border-radius: 14px; font-size: 14px;
+    flex-direction: column; gap: 8px; color: var(--text-dim);
+    min-height: 180px; border-radius: 20px; font-size: 14px; font-family: var(--cute);
+    transition: border-color 0.18s, color 0.18s, transform 0.18s;
   }
-  .add-card .plus { font-size: 32px; }
-  footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
-  footer a { color: var(--text-dim); }
+  .add-card::before { display: none; }
+  .add-card:hover { border-color: var(--sky); color: var(--sky); transform: translateY(-4px); box-shadow: none; }
+  .add-card .plus { font-size: 34px; }
+  footer { text-align: center; padding: 28px; color: var(--text-muted); font-size: 13px; font-family: var(--cute); }
+  footer a { color: var(--sky); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
   .loading { text-align: center; padding: 60px; color: var(--text-dim); }
 </style>
 </head>
@@ -109,7 +118,7 @@
 </div>
 
 <footer>
-  Tammie Care · <a href="admin.html">จัดการข้อมูล</a>
+  🐾 Tammie Care · ไม่ได้แค่เลี้ยง แต่เราแคร์ 💙 · <a href="admin.html">จัดการข้อมูล</a>
 </footer>
 
 <script>
