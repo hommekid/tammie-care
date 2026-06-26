@@ -75,6 +75,7 @@
   .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
   .dot-left { background: var(--blue); } .dot-right { background: var(--gold); } .dot-unknown { background: var(--text-muted); }
   .dot-any { background: var(--red); }
+  .dot-tx { background: var(--gold); }
   .cal-row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
   .chart-col { flex: 0 0 300px; max-width: 300px; }
   .tumor-box { width: 300px; height: 250px; }
@@ -114,6 +115,7 @@
   .cal-cell.ev-right { background: rgba(232,184,75,0.2); border-color: var(--gold-dim); }
   .cal-cell.ev-unknown { background: var(--surface); border-color: var(--text-muted); }
   .cal-cell.ev-any { background: rgba(232,85,85,0.18); border-color: var(--red); }
+  .cal-cell.ev-tx { background: rgba(232,184,75,0.18); border-color: var(--gold); }
   .cal-cell .tip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #000; border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 12px; color: var(--text); white-space: normal; width: 180px; z-index: 20; font-weight: 400; line-height: 1.4; }
   .cal-cell:hover .tip { display: block; }
 
@@ -657,9 +659,65 @@ function renderAppts(elId, appts) {
   document.getElementById(elId).innerHTML = html;
 }
 
+let txEvents = [], txCalMonths = [], txCalIdx = 0;
 function renderTreatments(elId, treatments) {
-  document.getElementById(elId).innerHTML = treatments.map(t =>
+  txEvents = treatments;
+  const legend = `<div class="legend"><span><i class="dot dot-tx"></i> วันที่มีการรักษา</span></div>`;
+  const list = [...treatments].sort((a,b)=>b.date.localeCompare(a.date)).map(t =>
     `<div class="tl-acc"><div class="tl-acc-head" onclick="this.parentElement.classList.toggle('open')">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div></div>`
+  ).join('');
+  document.getElementById(elId).innerHTML = `
+    <div class="nb-top">
+      <div class="nb-cal">
+        ${legend}
+        <div class="cal-nav">
+          <button id="txCalPrev" title="เดือนก่อนหน้า">‹</button>
+          <div class="cal-title" id="txCalTitle"></div>
+          <button id="txCalNext" title="เดือนถัดไป">›</button>
+        </div>
+        <div id="txCalMonths"></div>
+      </div>
+      <div class="nb-detail" id="txDetail"><div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูรายละเอียดการรักษา</div></div>
+    </div>
+    <div class="nb-list">${list}</div>`;
+  renderTxCalendar(treatments);
+}
+function renderTxCalendar(events) {
+  const byMonth = {};
+  events.forEach(e => { const k = e.date.slice(0,7); (byMonth[k]=byMonth[k]||[]).push(e); });
+  txCalMonths = Object.keys(byMonth).sort().reverse().map(mk => ({ mk, evs: byMonth[mk] }));
+  txCalIdx = 0;
+  document.getElementById('txCalPrev').onclick = () => { if (txCalIdx < txCalMonths.length-1) { txCalIdx++; drawTxMonth(); } };
+  document.getElementById('txCalNext').onclick = () => { if (txCalIdx > 0) { txCalIdx--; drawTxMonth(); } };
+  drawTxMonth();
+}
+function drawTxMonth() {
+  const titleEl = document.getElementById('txCalTitle');
+  const gridEl = document.getElementById('txCalMonths');
+  if (!txCalMonths.length) { titleEl.textContent = '—'; gridEl.innerHTML = '<div class="cal-empty">ไม่มีข้อมูล</div>'; document.getElementById('txCalPrev').disabled = document.getElementById('txCalNext').disabled = true; return; }
+  const { mk, evs } = txCalMonths[txCalIdx];
+  const [y,m] = mk.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const firstDay = new Date(y, m-1, 1).getDay();
+  const evMap = {}; evs.forEach(e => { evMap[new Date(e.date).getDate()] = e; });
+  let cells = '';
+  for (let i=0;i<firstDay;i++) cells += '<div></div>';
+  for (let d=1; d<=daysInMonth; d++) {
+    const ev = evMap[d];
+    if (ev) cells += `<div class="cal-cell has-event ev-tx" onclick="showTxDetail('${ev.date}')">${d}</div>`;
+    else cells += `<div class="cal-cell">${d}</div>`;
+  }
+  titleEl.textContent = `${TH_MONTHS[m-1]} ${y+543}`;
+  gridEl.innerHTML = `<div class="cal-grid">${cells}</div>`;
+  document.getElementById('txCalPrev').disabled = txCalIdx >= txCalMonths.length-1;
+  document.getElementById('txCalNext').disabled = txCalIdx <= 0;
+}
+function showTxDetail(date) {
+  const el = document.getElementById('txDetail');
+  if (!el) return;
+  const recs = txEvents.filter(t => t.date === date);
+  el.innerHTML = recs.map(t =>
+    `<div class="nb-detail-card"><div class="nb-detail-date">📅 ${fmtDate(t.date)}</div>${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div>`
   ).join('');
 }
 
