@@ -263,6 +263,22 @@
       <button class="btn" id="md-btn" onclick="addMed()">เพิ่มยา + อัพขึ้น GitHub</button>
     </div></details>
 
+    <details class="acc"><summary>📋 สิ่งที่ต้องติดตาม</summary>
+    <div class="card">
+      <div id="watch-list"></div>
+      <label>หัวข้อใหม่</label>
+      <textarea id="wl-text" placeholder="เช่น ก้อนในตับ — ซาวด์ทุก 1-2 เดือน"></textarea>
+      <button class="btn" id="wl-btn" onclick="addWatch()">เพิ่มหัวข้อ + อัพขึ้น GitHub</button>
+    </div></details>
+
+    <details class="acc"><summary>🚨 สัญญาณต้องไปหาหมอทันที</summary>
+    <div class="card">
+      <div id="danger-list"></div>
+      <label>สัญญาณใหม่</label>
+      <textarea id="dg-text" placeholder="เช่น ตัวเหลือง / ชัก สั่น หัวเอียง"></textarea>
+      <button class="btn" id="dg-btn" onclick="addDanger()">เพิ่มสัญญาณ + อัพขึ้น GitHub</button>
+    </div></details>
+
     <details class="acc"><summary>แก้ไข / ลบ รายการเดิม</summary>
     <div class="card">
       <label>หมวด</label>
@@ -379,6 +395,8 @@ async function loadPet() {
   fillDisplay();
   fillLabForm();
   fillMedList();
+  fillWatchList();
+  fillDangerList();
 }
 
 // ===== ยาประจำ (meds) =====
@@ -429,6 +447,112 @@ async function medDel(i) {
     currentData.meds.splice(i,1);
     await commit(`ลบยา ${m.name}`);
     fillMedList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+
+// ===== สิ่งที่ต้องติดตาม (watchList) =====
+let wlEditIdx = null;
+function fillWatchList() {
+  const list = document.getElementById('watch-list');
+  if (!list) return;
+  const w = (currentData && currentData.watchList) || [];
+  list.innerHTML = w.length ? w.map((t,i) =>
+    `<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
+       <span>${t}</span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="watchEdit(${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="watchDel(${i})">ลบ</span></span>
+     </div>`).join('') : '<div class="hint">ยังไม่มีหัวข้อ</div>';
+}
+function watchEdit(i) {
+  const t = (currentData.watchList||[])[i]; if (t == null) return;
+  document.getElementById('wl-text').value = t;
+  wlEditIdx = i;
+  document.getElementById('wl-btn').textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+}
+async function addWatch() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  try {
+    const t = val('wl-text');
+    if (!t) throw new Error('กรอกข้อความ');
+    if (!currentData.watchList) currentData.watchList = [];
+    if (wlEditIdx != null && currentData.watchList[wlEditIdx] != null) currentData.watchList[wlEditIdx] = t;
+    else currentData.watchList.push(t);
+    await commit(wlEditIdx != null ? 'แก้ไขสิ่งที่ต้องติดตาม' : 'เพิ่มสิ่งที่ต้องติดตาม');
+    wlEditIdx = null;
+    document.getElementById('wl-text').value = '';
+    document.getElementById('wl-btn').textContent = 'เพิ่มหัวข้อ + อัพขึ้น GitHub';
+    fillWatchList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+async function watchDel(i) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const t = (currentData.watchList||[])[i]; if (t == null) return;
+  if (!confirm('ลบหัวข้อนี้?\n\n'+t)) return;
+  try {
+    currentData.watchList.splice(i,1);
+    await commit('ลบสิ่งที่ต้องติดตาม');
+    fillWatchList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+
+// ===== สัญญาณต้องไปหาหมอทันที (dangerSigns: liverFailure + wbc) =====
+let dgEditRef = null;
+function dgItems() {
+  const ds = (currentData && currentData.dangerSigns) || {};
+  const out = [];
+  (ds.liverFailure||[]).forEach((t,i) => out.push({ key:'liverFailure', idx:i, text:t }));
+  (ds.wbc||[]).forEach((t,i) => out.push({ key:'wbc', idx:i, text:t }));
+  return out;
+}
+function fillDangerList() {
+  const list = document.getElementById('danger-list');
+  if (!list) return;
+  const items = dgItems();
+  list.innerHTML = items.length ? items.map(it =>
+    `<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
+       <span>${it.text}</span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="dangerEdit('${it.key}',${it.idx})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="dangerDel('${it.key}',${it.idx})">ลบ</span></span>
+     </div>`).join('') : '<div class="hint">ยังไม่มีสัญญาณ</div>';
+}
+function dangerEdit(key, idx) {
+  const t = ((currentData.dangerSigns||{})[key]||[])[idx]; if (t == null) return;
+  document.getElementById('dg-text').value = t;
+  dgEditRef = { key, idx };
+  document.getElementById('dg-btn').textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+}
+async function addDanger() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  try {
+    const t = val('dg-text');
+    if (!t) throw new Error('กรอกข้อความ');
+    if (!currentData.dangerSigns) currentData.dangerSigns = {};
+    if (dgEditRef) {
+      if (!currentData.dangerSigns[dgEditRef.key]) currentData.dangerSigns[dgEditRef.key] = [];
+      currentData.dangerSigns[dgEditRef.key][dgEditRef.idx] = t;
+    } else {
+      if (!Array.isArray(currentData.dangerSigns.liverFailure)) currentData.dangerSigns.liverFailure = [];
+      currentData.dangerSigns.liverFailure.push(t);
+    }
+    await commit(dgEditRef ? 'แก้ไขสัญญาณอันตราย' : 'เพิ่มสัญญาณอันตราย');
+    dgEditRef = null;
+    document.getElementById('dg-text').value = '';
+    document.getElementById('dg-btn').textContent = 'เพิ่มสัญญาณ + อัพขึ้น GitHub';
+    fillDangerList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+async function dangerDel(key, idx) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const arr = (currentData.dangerSigns||{})[key] || []; const t = arr[idx]; if (t == null) return;
+  if (!confirm('ลบสัญญาณนี้?\n\n'+t)) return;
+  try {
+    arr.splice(idx,1);
+    await commit('ลบสัญญาณอันตราย');
+    fillDangerList();
   } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
 }
 
