@@ -498,7 +498,7 @@ function renderTumorChart(data) {
   tumorChartRef = new Chart(ctx, {
     type: 'line',
     data: { labels: data.map(x=>fmtDate(x.date)), datasets: [{ data: data.map(x=>x.size), borderColor:'#e8b84b', backgroundColor:'rgba(232,184,75,0.08)', pointBackgroundColor:'#e8b84b', pointRadius:5, tension:0.3, fill:true }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.parsed.y} cm`}}}, scales:{ x:{ticks:{color:'#8c7f6f',font:{size:10}},grid:{color:'#ece0cd'}}, y:{ticks:{color:'#8c7f6f',font:{size:11}},grid:{color:'#ece0cd'}} } }
+    options: { responsive:true, maintainAspectRatio:false, layout:{padding:{right:20,left:2,bottom:2}}, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.parsed.y} cm`}}}, scales:{ x:{ticks:{color:'#8c7f6f',font:{size:10},maxRotation:45,minRotation:45,autoSkip:false},grid:{color:'#ece0cd'}}, y:{ticks:{color:'#8c7f6f',font:{size:11}},grid:{color:'#ece0cd'}} } }
   });
 }
 
@@ -609,7 +609,7 @@ function drawLabChart(pid, cfg, recs, key) {
   labCharts[pid] = new Chart(document.getElementById('labChart-'+pid), {
     type: 'line',
     data: { labels: asc.map(r=>fmtDate(r.date)), datasets: [{ data: asc.map(r=>r.values[key]), borderColor:'#5b9cf6', backgroundColor:'rgba(91,156,246,0.08)', pointBackgroundColor:'#5b9cf6', pointRadius:5, tension:0.3, fill:true }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:cx=>`${cx.parsed.y} ${c.unit||''}`}}}, scales:{ x:{ticks:{color:'#8c7f6f',font:{size:10}},grid:{color:'#ece0cd'}}, y:{ticks:{color:'#8c7f6f',font:{size:11}},grid:{color:'#ece0cd'}} } }
+    options: { responsive:true, maintainAspectRatio:false, layout:{padding:{right:20,left:2,bottom:2}}, plugins:{legend:{display:false}, tooltip:{callbacks:{label:cx=>`${cx.parsed.y} ${c.unit||''}`}}}, scales:{ x:{ticks:{color:'#8c7f6f',font:{size:10},maxRotation:45,minRotation:45,autoSkip:false},grid:{color:'#ece0cd'}}, y:{ticks:{color:'#8c7f6f',font:{size:11}},grid:{color:'#ece0cd'}} } }
   });
 }
 
