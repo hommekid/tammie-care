@@ -156,6 +156,10 @@
   .lightbox img { max-width: 92vw; max-height: 88vh; width: auto; height: auto; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
   .lightbox .lb-close { position: fixed; top: 16px; right: 20px; font-size: 26px; color: #fff; cursor: pointer; line-height: 1; opacity: 0.8; }
   .lightbox .lb-close:hover { opacity: 1; }
+  .tx-flow { margin-top: 10px; background: #fff; border: 1px solid var(--gold-dim); border-radius: 8px; padding: 12px; overflow-x: auto; }
+  .tx-flow .flow-label { font-size: 11px; font-family: 'IBM Plex Mono', monospace; color: var(--gold); letter-spacing: 0.5px; margin-bottom: 6px; }
+  .tx-flow .mermaid { font-family: 'Sarabun', sans-serif; text-align: center; }
+  .tx-flow .mermaid svg { max-width: 100%; height: auto; }
 
   .tl-acc { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: var(--surface); }
   .tl-acc-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); user-select: none; }
@@ -243,6 +247,25 @@
 <footer>Tammie Care · <a href="index.html">หน้าแรก</a> · <a href="admin.html">จัดการข้อมูล</a></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<script>
+  if (window.mermaid) mermaid.initialize({
+    startOnLoad: false,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#fbf4ec', primaryBorderColor: '#d99e3e', primaryTextColor: '#4a4035',
+      lineColor: '#8c7f6f', secondaryColor: '#e6eef9', tertiaryColor: '#f8e0e0',
+      fontFamily: 'Sarabun, sans-serif', fontSize: '14px'
+    }
+  });
+  // เรนเดอร์ flowchart Mermaid ที่ยังไม่ถูกประมวลผลภายใน root (ปลอดภัยถ้าไดอะแกรมผิด)
+  function renderMermaid(root) {
+    if (!window.mermaid || !root) return;
+    const nodes = root.querySelectorAll('.mermaid:not([data-processed])');
+    if (!nodes.length) return;
+    try { const r = mermaid.run({ nodes }); if (r && r.catch) r.catch(()=>{}); } catch (e) {}
+  }
+</script>
 <script>
 const params = new URLSearchParams(location.search);
 const petId = params.get('id') || 'frappe';
@@ -683,8 +706,19 @@ function renderAppts(elId, appts) {
 }
 
 let txEvents = [], txCalMonths = [], txCalIdx = 0;
+function txFlow(e) {
+  return e.flow ? `<div class="tx-flow"><div class="flow-label">🗺 ขั้นตอน/แผนการรักษา</div><div class="mermaid">${e.flow}</div></div>` : '';
+}
+function txEntryHTML(e) {
+  return `<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes||''}${photoLinks(e.photos)}</p>${txFlow(e)}</div>`;
+}
+function txToggleAcc(head) {
+  const acc = head.parentElement;
+  acc.classList.toggle('open');
+  if (acc.classList.contains('open')) renderMermaid(acc);
+}
 function txListItem(t) {
-  return `<div class="tl-acc"><div class="tl-acc-head" onclick="this.parentElement.classList.toggle('open')">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div></div></div>`;
+  return `<div class="tl-acc"><div class="tl-acc-head" onclick="txToggleAcc(this)">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(txEntryHTML).join('')}</div></div></div>`;
 }
 function renderTreatments(elId, treatments) {
   txEvents = treatments;
@@ -745,8 +779,9 @@ function showTxDetail(date) {
   txSelDate = date;
   const recs = txEvents.filter(t => t.date === date);
   el.innerHTML = recs.map(t =>
-    `<div class="nb-detail-card tx-detail"><div class="nb-detail-date">📅 ${fmtDate(t.date)}</div>${t.entries.map(e=>`<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes}</p></div>`).join('')}</div>`
+    `<div class="nb-detail-card tx-detail"><div class="nb-detail-date">📅 ${fmtDate(t.date)}</div>${t.entries.map(txEntryHTML).join('')}</div>`
   ).join('');
+  renderMermaid(el);
 }
 
 // ===== ปฏิทินอาการประจำวัน (รวมทุกอาการในปฏิทินเดียว จิ้มวันที่เห็นทุกอาการของวันนั้น) =====

@@ -230,6 +230,11 @@
         </div>
         <label>บันทึก</label>
         <textarea id="tr-notes" placeholder="ผลการตรวจ / การรักษา"></textarea>
+        <label>แนบรูป (เช่น flowchart ที่หมอวาด / ภาพถ่าย)</label>
+        <input type="file" id="tr-photos" accept="image/*" multiple>
+        <label>Flowchart (Mermaid) <span class="hint" style="display:inline">— เว้นว่างได้</span></label>
+        <textarea id="tr-flow" placeholder="เช่น&#10;graph TD&#10;A[เจาะเลือด] --> B{โปรตีนขึ้น?}&#10;B -->|ขึ้น| C[ลดยา]&#10;B -->|ไม่ขึ้น| D[ส่งต่อเฉพาะทาง]" style="font-family:'IBM Plex Mono',monospace;font-size:13px;min-height:90px"></textarea>
+        <div class="hint">รูปแบบ Mermaid: บรรทัดแรก <b>graph TD</b> (บนลงล่าง) หรือ <b>graph LR</b> (ซ้ายไปขวา) · ลูกศร <b>--&gt;</b> · กล่อง <b>A[ข้อความ]</b> · เงื่อนไข <b>B{คำถาม}</b></div>
         <button class="btn" onclick="addEntry('treatment')">บันทึก + อัพขึ้น GitHub</button>
       </div>
       <!-- Appointment -->
@@ -836,14 +841,32 @@ async function addEntry(type) {
     currentData.vitals.latest = { ...currentData.vitals.latest, ...v };
     msg = `อัพเดทค่าตรวจ ${date}`;
   } else if (type === 'treatment') {
-    const date=val('tr-date'), doctor=val('tr-doctor'), specialty=val('tr-spec'), notes=val('tr-notes');
+    const date=val('tr-date'), doctor=val('tr-doctor'), specialty=val('tr-spec'), notes=val('tr-notes'), flow=val('tr-flow');
     if(!date||!notes) return toast('กรอกวันที่และบันทึก', false);
+    const photos = [];
+    const files = document.getElementById('tr-photos').files;
+    if (files.length) {
+      toast(`กำลังอัพรูป ${files.length} รูป...`);
+      try {
+        for (let i=0; i<files.length; i++) {
+          const b64 = await resizeImage(files[i]);
+          const path = `img/treatment-${date}-${Date.now()}-${i}.jpg`;
+          await uploadImage(token, path, b64);
+          photos.push(path);
+        }
+      } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
+      document.getElementById('tr-photos').value = '';
+    }
+    const entry = { doctor, specialty, notes };
+    if (photos.length) entry.photos = photos;
+    if (flow) entry.flow = flow;
     if (!currentData.treatments) currentData.treatments = [];
     let grp = currentData.treatments.find(t=>t.date===date);
-    if(grp) grp.entries.push({doctor,specialty,notes});
-    else currentData.treatments.unshift({date,entries:[{doctor,specialty,notes}]});
+    if(grp) grp.entries.push(entry);
+    else currentData.treatments.unshift({date,entries:[entry]});
     currentData.treatments.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `เพิ่มบันทึกการรักษา ${date}`;
+    document.getElementById('tr-flow').value = '';
+    msg = `เพิ่มบันทึกการรักษา ${date}${photos.length?` (+${photos.length} รูป)`:''}${flow?' +flowchart':''}`;
   } else if (type === 'liverTumor') {
     const date=val('lt-date'), size=val('lt-size'), note=val('lt-note');
     if(!date) return toast('กรอกวันที่', false);
@@ -1003,7 +1026,8 @@ function edSelect() {
     html = `<label>วันที่</label><input type="date" id="e-date" value="${currentData.treatments[gi].date||''}">
     <label>หมอ</label><input type="text" id="e-doctor" value="${edEsc(e.doctor)}">
     <label>แผนก</label><input type="text" id="e-spec" value="${edEsc(e.specialty)}">
-    <label>บันทึก</label><textarea id="e-notes">${e.notes||''}</textarea>`;
+    <label>บันทึก</label><textarea id="e-notes">${e.notes||''}</textarea>
+    <label>Flowchart (Mermaid) — เว้นว่าง = ไม่มี</label><textarea id="e-flow" style="font-family:'IBM Plex Mono',monospace;font-size:13px;min-height:80px">${e.flow||''}</textarea>`;
   } else if (cat==='labs') {
     const e = edArr(cat)[+v];
     const pname = ((currentData.labPanels||[]).find(p=>p.id===e.panel)||{}).name || e.panel || '';
@@ -1060,6 +1084,7 @@ async function edSave() {
       const [gi,ei] = v.split('.').map(Number);
       const g = currentData.treatments[gi]; const e = g.entries[ei];
       e.doctor=val('e-doctor'); e.specialty=val('e-spec'); e.notes=val('e-notes');
+      const efl = val('e-flow'); if (efl) e.flow = efl; else delete e.flow;
       if (date !== g.date) {
         g.entries.splice(ei,1);
         if (!g.entries.length) currentData.treatments.splice(gi,1);
