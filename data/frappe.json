@@ -799,6 +799,16 @@
   ],
   "treatments": [
     {
+      "date": "2026-06-27",
+      "entries": [
+        {
+          "doctor": "อ.นิช",
+          "specialty": "ทางเดินอาหาร",
+          "notes": "กิน Smecta 3 เวลา (ตอนท้องว่าง)\nกิน Ulcefate 1g เช้า/เย็น แทน Onsia\nกิน ABO Metronidazole 1 week\nหยุด frotiflora"
+        }
+      ]
+    },
+    {
       "date": "2026-06-20",
       "entries": [
         {
