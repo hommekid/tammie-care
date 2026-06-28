@@ -329,9 +329,16 @@
       </div>
     </div>
 
-    <!-- ===== จัดการ ===== -->
+    <!-- ===== ตั้งค่า ===== -->
     <div class="atab-panel" id="apanel-tools">
-      <details class="acc" open><summary>⚙️ ตั้งค่าหน้า Dashboard</summary>
+      <details class="acc" open><summary>🗂 อาการประจำวันที่มีในโปรไฟล์นี้</summary>
+    <div class="card">
+      <div class="hint" style="margin-top:0">ติ๊กเลือกว่าโปรไฟล์นี้มีอาการประจำวันหมวดไหนบ้าง · มีผลทั้งหน้า dashboard และแท็บกรอกใน admin</div>
+      <div id="symTabsConfig"></div>
+      <button class="btn" onclick="saveSymTabs()">บันทึก + อัพขึ้น GitHub</button>
+    </div></details>
+
+      <details class="acc"><summary>⚙️ ตั้งค่าหน้า Dashboard</summary>
     <div class="card">
       <div class="hint" style="margin-top:0">เลือกว่าหน้าของตัวนี้จะแสดง section ไหนบ้าง · ติ๊กออก = ซ่อน · ปุ่ม ↑↓ จัดลำดับ · section ที่ไม่มีข้อมูลจะถูกซ่อนอัตโนมัติอยู่แล้ว</div>
       <div id="dispList"></div>
@@ -436,6 +443,8 @@ async function loadPet() {
   fillTreatList();
   fillLabList();
   fillLiverList();
+  applyDailyTabs();
+  fillSymTabsConfig();
 }
 
 // ===== ยาประจำ (meds) =====
@@ -822,6 +831,63 @@ async function liverDel(i) {
     if (ltEdit === i) resetLiverForm();
     fillLiverList();
   } catch(err) { toast('ผิดพลาด: '+err.message, false); alert('เกิดข้อผิดพลาด:\n\n'+err.message); }
+}
+
+// ===== ตั้งค่าอาการประจำวันต่อโปรไฟล์ (display.tabs) =====
+const DAILY_SYM = [
+  { source:'nosebleed', label:'เลือดกำเดา' },
+  { source:'diarrhea',  label:'ท้องเสีย' },
+  { source:'vomiting',  label:'🤢 อาเจียน' },
+  { source:'general',   label:'อาการทั่วไป' },
+];
+// แหล่งอาการที่โปรไฟล์นี้เปิดอยู่ (จาก display.tabs ที่ source≠treatments) · ไม่มี = ค่า default
+function dailySymSources() {
+  const tabs = currentData && currentData.display && currentData.display.tabs;
+  if (tabs && tabs.length) return tabs.filter(t=>t.source!=='treatments').map(t=>t.source);
+  return ['diarrhea','general','nosebleed'];  // default (เหมือน DEFAULT_TABS ใน pet.html ที่ไม่ใช่ treatments)
+}
+// โชว์/ซ่อนปุ่มแท็บย่อยอาการใน admin ตามที่โปรไฟล์เปิด
+function applyDailyTabs() {
+  const enabled = new Set(dailySymSources());
+  let firstVisible = null;
+  DAILY_SYM.forEach(d => {
+    const btn = document.querySelector(`.tab[data-form="${d.source}"]`);
+    const on = enabled.has(d.source);
+    if (btn) btn.style.display = on ? '' : 'none';
+    if (on && !firstVisible) firstVisible = d.source;
+  });
+  const activeBtn = document.querySelector('.tab[data-form].active');
+  if (!activeBtn || activeBtn.style.display === 'none') {
+    document.querySelectorAll('.tab[data-form]').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('#apanel-daily .form-block').forEach(x=>x.classList.remove('active'));
+    if (firstVisible) {
+      document.querySelector(`.tab[data-form="${firstVisible}"]`).classList.add('active');
+      document.getElementById('form-'+firstVisible).classList.add('active');
+    }
+  }
+}
+function fillSymTabsConfig() {
+  const box = document.getElementById('symTabsConfig'); if (!box) return;
+  const enabled = new Set(dailySymSources());
+  box.innerHTML = DAILY_SYM.map(d =>
+    `<div class="disp-row"><input type="checkbox" id="symtab-${d.source}" ${enabled.has(d.source)?'checked':''}><label for="symtab-${d.source}">${d.label}</label></div>`
+  ).join('');
+}
+async function saveSymTabs() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  try {
+    const chosen = DAILY_SYM.filter(d => document.getElementById('symtab-'+d.source).checked);
+    if (!currentData.display) currentData.display = {};
+    const oldTabs = currentData.display.tabs || [];
+    const tx = oldTabs.find(t=>t.source==='treatments') || { source:'treatments', label:'การรักษา' };
+    currentData.display.tabs = [tx, ...chosen.map(d=>({ source:d.source, label:d.label }))];
+    await commit('ตั้งค่าอาการประจำวันที่แสดง');
+    applyDailyTabs();
+    ['nosebleed','diarrhea','vomiting','general'].forEach(fillSymList);
+    fillSymTabsConfig();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
 }
 
 function fillLeuco() {

@@ -55,18 +55,19 @@ img/              header.jpg, frappe.jpg, wafer.jpg, favicon-32/180/192/512.png,
 
 ## หน้า admin (admin.html)
 - GitHub Token + เลือกสัตว์เลี้ยง = โชว์ตลอด · **ตัวเลือกสัตว์ดึงจาก pets.json อัตโนมัติ**
-- **จัดเป็นแท็บหลักแบบเดียวกับ dashboard** (`.dtab` / `#adminTabs` / `.atab-panel`): **สรุป / อาการประจำวัน / 🏥 การรักษา / 🧪 ผลเลือด / 💊 ยา / 📅 นัดหมาย / ⚙️ จัดการ** (เดิมเป็น accordion เรียงยาว):
-  - **สรุป**: ค่าตรวจล่าสุด (vitals), ขนาดก้อนในตับ, 📋 สิ่งที่ต้องติดตาม (watchList — เพิ่ม/แก้/ลบ), 🚨 สัญญาณต้องไปหาหมอทันที (dangerSigns liverFailure+wbc — เพิ่ม/แก้/ลบ), เกณฑ์ฉีด Leuco Plus
-  - **อาการประจำวัน**: แท็บย่อย เลือดกำเดา/ท้องเสีย/อาเจียน/อาการทั่วไป (ยังใช้ `.tab[data-form]`+`.form-block`) · ท้องเสีย+อาเจียน+อาการทั่วไปแนบรูปได้
-  - **การรักษา**: วันที่+หมอ+แผนก+บันทึก · **แนบรูป (tr-photos) + Flowchart Mermaid (tr-flow)**
-  - **ผลเลือด**: เลือกหมวด→กรอกค่าตาม labConfig · เพิ่มหมวดใหม่ · เพิ่ม/ลบพารามิเตอร์
-  - **ยา**: 💊 ยาประจำ เพิ่ม/แก้/ลบ
-  - **นัดหมาย**: วันที่+หมอ/การตรวจ+หมายเหตุ
-  - **จัดการ**: แก้ไข/ลบ รายการเดิม (เลือกหมวด→วันที่→แก้/ลบ มียืนยัน · ฟอร์มแก้การรักษามีช่อง flow ด้วย) + ตั้งค่าหน้า Dashboard (ซ่อน/จัดลำดับ section · DISP_SECTIONS แยก daily/treat)
+- **จัดเป็นแท็บหลักแบบเดียวกับ dashboard** (`.dtab` / `#adminTabs` / `.atab-panel`): **สรุป / อาการประจำวัน / 🏥 การรักษา / 🧪 ผลเลือด / 💊 ยา / 📅 นัดหมาย / ⚙️ ตั้งค่า**
+- **ทุกหมวดมี list + เพิ่ม/แก้/ลบ inline ในแท็บตัวเอง** (ไม่มีเมนู "แก้ไข/ลบ รายการเดิม" รวมแล้ว) · กดแก้ = ดึงขึ้นฟอร์ม ปุ่มเปลี่ยนเป็น "บันทึกการแก้ไข", กดลบ = ยืนยันก่อน
+  - **สรุป**: ค่าตรวจล่าสุด (vitals), 📈 ขนาดก้อนในตับ (list+แก้/ลบ), 📋 สิ่งที่ต้องติดตาม (watchList), 🚨 สัญญาณต้องไปหาหมอทันที (dangerSigns liverFailure+wbc), เกณฑ์ฉีด Leuco Plus
+  - **อาการประจำวัน**: แท็บย่อย เลือดกำเดา/ท้องเสีย/อาเจียน/อาการทั่วไป (`.tab[data-form]`+`.form-block`) · แต่ละหมวดมี list+แก้/ลบ · ท้องเสีย+อาเจียน+อาการทั่วไปแนบรูปได้ (แก้แล้วเลือกรูปใหม่ = เพิ่มต่อจากเดิม)
+  - **การรักษา**: list+แก้/ลบ · วันที่+หมอ+แผนก+บันทึก · แนบรูป (tr-photos) + Flowchart Mermaid (tr-flow)
+  - **ผลเลือด**: list+แก้/ลบ · เลือกหมวด→กรอกค่าตาม labConfig · เพิ่มหมวดใหม่ · เพิ่ม/ลบพารามิเตอร์
+  - **ยา**: 💊 ยาประจำ list+แก้/ลบ
+  - **นัดหมาย**: list+แก้/ลบ
+  - **⚙️ ตั้งค่า**: (1) **🗂 อาการประจำวันที่มีในโปรไฟล์นี้** — ติ๊กเลือกหมวด (เลือดกำเดา/ท้องเสีย/อาเจียน/อาการทั่วไป) ต่อ profile → เขียน `display.tabs` (คง treatments ไว้เสมอ) · มีผลทั้ง dashboard และแท็บกรอกใน admin (ปุ่มแท็บย่อยโชว์ตามที่เปิด ผ่าน `applyDailyTabs`) · ฟังก์ชัน `dailySymSources/fillSymTabsConfig/saveSymTabs` (2) **ตั้งค่าหน้า Dashboard** (ซ่อน/จัดลำดับ section · DISP_SECTIONS แยก daily/treat)
   - มี guard กันพังเมื่อสัตว์ตัวนั้นยังไม่มี structure — สร้างให้อัตโนมัติเมื่อบันทึก
 - footer: Tammie Care · หน้าแรก
 - ทุกการบันทึก commit ขึ้น GitHub ผ่าน Token → Pages rebuild ~1 นาที · error เด้ง popup ชัดเจน
-- JS หลัก: `addEntry(type)` (ทุกฟอร์มบันทึก) · `addMed/medEdit/medDel` · `addWatch/watchEdit/watchDel` · `addDanger/dangerEdit/dangerDel` · ลิสต์เนอร์แท็บหลัก `#adminTabs .dtab` แยกจาก `.tab[data-form]`
+- JS หลัก: `addEntry(type)` (ฟอร์มบันทึก รองรับโหมดแก้ผ่าน state `symEdit/trEdit/labEdit/ltEdit`) · inline list/แก้/ลบ ต่อหมวด: `fillSymList/symEditStart/symDel` · `fillTreatList/treatEditStart/treatDel` · `fillLabList/labEditStart/labDel` · `fillLiverList/liverEditStart/liverDel` · `fillApptList/apptEdit/apptDel` · `fillMedList/medEdit/medDel` · `addWatch/watchEdit/watchDel` · `addDanger/dangerEdit/dangerDel` · ลิสต์เนอร์แท็บหลัก `#adminTabs .dtab` แยกจาก `.tab[data-form]` · ฟังก์ชัน ed* (แก้/ลบ รายการเดิมแบบเก่า) เป็น dead code แล้ว
 
 ## ค่าตั้งสำคัญ (admin.html CONFIG)
 - password: `richie2407`  (รหัสเข้า admin — แก้ที่ CONFIG)
