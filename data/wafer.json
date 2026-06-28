@@ -450,6 +450,15 @@
   ],
   "labs": [
     {
+      "date": "2026-06-27",
+      "panel": "chem",
+      "values": {
+        "cholesterol": 178,
+        "triglyceride": 52
+      },
+      "note": "Plasma protein 5.0 mg/dL (วัดเฉพาะ Cholesterol/Triglyceride)"
+    },
+    {
       "date": "2026-06-20",
       "panel": "cbc",
       "values": {

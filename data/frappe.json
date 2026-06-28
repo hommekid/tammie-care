@@ -500,6 +500,29 @@
   ],
   "labs": [
     {
+      "date": "2026-06-27",
+      "panel": "cbc",
+      "values": {
+        "rbc": 5.56,
+        "hgb": 12.2,
+        "hct": 37.1,
+        "mcv": 66.7,
+        "mch": 21.9,
+        "mchc": 32.9,
+        "rdw": 16.4,
+        "wbc": 4030,
+        "neu": 2982,
+        "lym": 967,
+        "mono": 81,
+        "eosi": 0,
+        "baso": 0,
+        "plt": 430,
+        "mpv": 12.1,
+        "plasmaProtein": 6.4
+      },
+      "note": "RBC: Codocyte, Polychromasia, Teardrop · WBC: Hypersegmented neutrophil · Platelet: Normal · Neu 74% Lym 24% Mono 2% Eos 0% · Blood parasite: Not Found"
+    },
+    {
       "date": "2026-06-20",
       "panel": "cbc",
       "values": {
