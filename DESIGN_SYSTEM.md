@@ -130,6 +130,7 @@ line-height เนื้อหา 1.6–1.8
 - แถบแท็บมีเส้นใต้ `1px solid var(--border)` คั่นจากเนื้อหา
 - ลำดับแท็บ dashboard: **สรุป / อาการประจำวัน / การรักษา / ผลเลือด / 💊 ยา / 📅 นัดหมาย** · admin ลำดับเดียวกัน + ปิดท้ายด้วย **⚙️ ตั้งค่า** (ตั้งค่าหน้า Dashboard)
 - **inline list pattern** (admin): ทุกหมวดมีลิสต์รายการเดิมด้านบนฟอร์ม ใช้ `.token-box` แต่ละแถวมีลิงก์ **แก้** (สีทอง `--gold`) · **ลบ** (สีแดง `--red`) — กดแก้ดึงขึ้นฟอร์ม ปุ่มหลักเปลี่ยน label เป็น "บันทึกการแก้ไข"
+- **ปฏิทินแก้ไข (admin)** `.mcal`: หัวเดือน `.mcal-title` (Mali, `--blue`) + ปุ่ม ‹ › · กริด 7 คอลัมน์ `.mcal-grid` · วันมีบันทึก `.mcal-cell.has` (จุดทอง `::after`) · วันที่เลือก `.mcal-cell.sel` (ขอบ `--sky` พื้น `--blue-dim`) · กล่องรายการวันที่เลือก `.day-box` (พื้นขาว ขอบ `--gold-dim` เงานุ่ม + หัว `.day-head` mono สีทอง)
 - **config rows** (admin ตั้งค่า): ใช้ `.disp-row` (แถวขอบมน พื้น `--surface2`) — ตั้งค่าหน้า Dashboard ใช้ `input[type=checkbox]` (accent `--gold`) · ตัวจัดการหมวดอาการประจำวันใช้ `input[type=text]` (แก้ชื่อ) + source key (mono, `--text-muted`) + ลิงก์ ลบ (`--red`), เพิ่มหมวดด้วยปุ่ม `.btn-ghost`
 
 ---

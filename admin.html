@@ -79,6 +79,21 @@
   .dtab:hover { border-color:var(--sky-dim); color:var(--text); transform:translateY(-1px); }
   .dtab.active { background:linear-gradient(135deg,var(--sky),var(--pink)); color:#1a1320; border-color:transparent; box-shadow:0 4px 14px rgba(143,189,240,0.3); }
   .atab-panel { display:none; } .atab-panel.active { display:block; }
+  /* ปฏิทินแก้ไขใน admin */
+  .mcal { margin:4px 0 12px; }
+  .mcal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .mcal-nav button { background:var(--surface2); border:1px solid var(--border); color:var(--text); width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:16px; line-height:1; }
+  .mcal-title { font-weight:600; font-size:14px; font-family:var(--cute); color:var(--blue); }
+  .mcal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .mcal-dow { text-align:center; font-size:11px; color:var(--text-muted); padding:2px 0; }
+  .mcal-cell { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:12.5px; border-radius:8px; border:1px solid transparent; position:relative; color:var(--text-dim); cursor:pointer; }
+  .mcal-cell.empty { cursor:default; }
+  .mcal-cell:not(.empty):hover { background:var(--surface2); }
+  .mcal-cell.has { color:var(--text); font-weight:700; }
+  .mcal-cell.has::after { content:''; position:absolute; bottom:5px; left:50%; transform:translateX(-50%); width:5px; height:5px; border-radius:50%; background:var(--gold); }
+  .mcal-cell.sel { border-color:var(--sky); background:var(--blue-dim); color:var(--blue); font-weight:700; }
+  .day-box { border:1px solid var(--gold-dim); border-radius:10px; padding:12px 14px; margin-bottom:12px; background:#fff; box-shadow:0 4px 14px rgba(160,140,110,0.14); }
+  .day-box .day-head { font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--gold); font-weight:600; margin-bottom:8px; }
 
   .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); padding:12px 24px; border-radius:8px; font-size:14px; z-index:100; opacity:0; transition:opacity 0.3s; }
   .toast.show { opacity:1; }
@@ -205,7 +220,9 @@
     <!-- ===== การรักษา ===== -->
     <div class="atab-panel" id="apanel-treat">
       <div class="card">
-        <div id="list-treatment"></div>
+        <div class="hint" style="margin-top:0">จิ้มวันในปฏิทินเพื่อดู/เพิ่ม/แก้รายการของวันนั้น (จุดทอง = มีบันทึก)</div>
+        <div id="cal-treatment"></div>
+        <div id="day-treatment"></div>
         <label>วันที่</label><input type="date" id="tr-date">
         <div class="row">
           <div><label>หมอ</label><input type="text" id="tr-doctor" placeholder="เช่น อ.กอล์ฟ"></div>
@@ -392,6 +409,7 @@ async function loadPet() {
   fillWatchList();
   fillDangerList();
   fillApptList();
+  Object.keys(calState).forEach(k=>delete calState[k]);  // ล้างสถานะปฏิทินตอนสลับสัตว์
   renderDailyAdmin();
   fillSymCats();
   fillTreatList();
@@ -617,6 +635,51 @@ function dailyCats() {
   return [{source:'diarrhea',label:'ท้องเสีย'},{source:'general',label:'อาการทั่วไป'},{source:'nosebleed',label:'เลือดกำเดา'}];
 }
 function symArr(src) { return (currentData && currentData.symptoms && currentData.symptoms[src]) || []; }
+
+// ===== ปฏิทินกลางสำหรับ admin (จิ้มวันเพื่อจัดการรายการของวันนั้น) =====
+const calState = {};
+const CAL_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const CAL_DOW = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+function calRender(id, dateList, onPick) {
+  const wrap = document.getElementById(id); if (!wrap) return;
+  let st = calState[id];
+  if (!st) {
+    const latest = dateList.slice().sort().pop();
+    const base = latest ? new Date(latest+'T00:00:00') : new Date();
+    st = calState[id] = { year: base.getFullYear(), month: base.getMonth(), sel: null };
+  }
+  st._dates = dateList; st._onPick = onPick;
+  const has = new Set(dateList);
+  const y = st.year, m = st.month;
+  const startDow = new Date(y, m, 1).getDay();
+  const days = new Date(y, m+1, 0).getDate();
+  let cells = CAL_DOW.map(d=>`<div class="mcal-dow">${d}</div>`).join('');
+  for (let i=0;i<startDow;i++) cells += `<div class="mcal-cell empty"></div>`;
+  for (let d=1; d<=days; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cls = ['mcal-cell']; if (has.has(ds)) cls.push('has'); if (st.sel===ds) cls.push('sel');
+    cells += `<div class="${cls.join(' ')}" onclick="calPick('${id}','${ds}')">${d}</div>`;
+  }
+  wrap.innerHTML = `<div class="mcal">
+    <div class="mcal-nav"><button type="button" onclick="calNav('${id}',-1)">‹</button><span class="mcal-title">${CAL_TH[m]} ${y+543}</span><button type="button" onclick="calNav('${id}',1)">›</button></div>
+    <div class="mcal-grid">${cells}</div>
+  </div>`;
+}
+function calNav(id, delta) {
+  const st = calState[id]; if (!st) return;
+  let m = st.month + delta, y = st.year;
+  if (m<0){m=11;y--;} if (m>11){m=0;y++;}
+  st.month=m; st.year=y;
+  calRender(id, st._dates, st._onPick);
+}
+function calPick(id, ds) {
+  const st = calState[id]; if (!st) return;
+  st.sel = (st.sel===ds ? null : ds);
+  calRender(id, st._dates, st._onPick);
+  if (st._onPick) st._onPick(st.sel);
+}
+function calSel(id) { return (calState[id]||{}).sel || null; }
+
 // สร้างแท็บย่อย + ฟอร์ม ตามหมวด
 function renderDailyAdmin() {
   const bar = document.getElementById('dailyTabBar');
@@ -630,7 +693,9 @@ function renderDailyAdmin() {
       ? `<div class="row"><div><label>วันที่</label><input type="date" id="sym-${c.source}-date"></div><div><label>รูจมูก</label><select id="sym-${c.source}-side"><option value="left">ซ้าย</option><option value="right">ขวา</option><option value="unknown">ไม่ระบุ</option></select></div></div>`
       : `<label>วันที่</label><input type="date" id="sym-${c.source}-date">`;
     return `<div class="form-block${i===0?' active':''}" id="symform-${c.source}">
-      <div id="sym-${c.source}-list"></div>
+      <div class="hint" style="margin-top:0">จิ้มวันในปฏิทินเพื่อดู/เพิ่ม/แก้รายการของวันนั้น (จุดทอง = มีบันทึก)</div>
+      <div id="sym-${c.source}-cal"></div>
+      <div id="sym-${c.source}-day"></div>
       ${sideField}
       <label>รายละเอียด</label>
       <textarea id="sym-${c.source}-detail" placeholder="รายละเอียดอาการ"></textarea>
@@ -649,15 +714,25 @@ function renderDailyAdmin() {
   cats.forEach(c => symList(c.source));
 }
 function symList(src) {
-  const list = document.getElementById('sym-'+src+'-list'); if (!list) return;
-  const arr = symArr(src);
-  list.innerHTML = arr.length ? arr.map((e,i) => {
+  const calId = 'sym-'+src+'-cal';
+  if (!document.getElementById(calId)) return;
+  calRender(calId, symArr(src).map(e=>e.date), ds => { resetSymForm(src); symDaySelect(src, ds); });
+  symDaySelect(src, calSel(calId));
+}
+function symDaySelect(src, ds) {
+  const box = document.getElementById('sym-'+src+'-day'); if (!box) return;
+  const dEl = document.getElementById('sym-'+src+'-date');
+  if (!ds) { box.innerHTML = ''; return; }
+  if (dEl && symEdit[src] == null) dEl.value = ds;
+  const rows = symArr(src).map((e,i)=>({e,i})).filter(x=>x.e.date===ds);
+  const items = rows.length ? rows.map(({e,i}) => {
     const ph = e.photos&&e.photos.length ? ` 📷${e.photos.length}` : '';
     const side = (src==='nosebleed'&&e.side) ? ' · '+({left:'ซ้าย',right:'ขวา',unknown:'ไม่ระบุ'}[e.side]||'') : '';
     return `<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
-       <span><b>${e.date}</b>${side} <span style="color:var(--text-muted)">${edSnip(e.detail||'',38)}${ph}</span></span>
+       <span>${side?`<b>${side.replace(' · ','')}</b> `:''}<span style="color:var(--text)">${edSnip(e.detail||'',60)}${ph}</span></span>
        <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="symEditStart('${src}',${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="symDel('${src}',${i})">ลบ</span></span>
-     </div>`; }).join('') : '<div class="hint">ยังไม่มีรายการ</div>';
+     </div>`; }).join('') : '<div class="hint">วันนี้ยังไม่มีรายการ — กรอกด้านล่างเพื่อเพิ่ม</div>';
+  box.innerHTML = `<div class="day-box"><div class="day-head">📅 ${ds}</div>${items}</div>`;
 }
 function symEditStart(src, i) {
   const e = symArr(src)[i]; if (!e) return;
@@ -729,18 +804,26 @@ async function symDel(src, i) {
 
 // ===== การรักษา — list + แก้/ลบ inline =====
 function fillTreatList() {
-  const list = document.getElementById('list-treatment'); if (!list) return;
+  const calId = 'cal-treatment'; if (!document.getElementById(calId)) return;
+  const groups = (currentData && currentData.treatments) || [];
+  calRender(calId, groups.map(g=>g.date), ds => { resetTreatForm(); treatDaySelect(ds); });
+  treatDaySelect(calSel(calId));
+}
+function treatDaySelect(ds) {
+  const box = document.getElementById('day-treatment'); if (!box) return;
+  const dEl = document.getElementById('tr-date');
+  if (!ds) { box.innerHTML = ''; return; }
+  if (dEl && !trEdit) dEl.value = ds;
   const groups = (currentData && currentData.treatments) || [];
   const rows = [];
-  groups.forEach((g,gi) => (g.entries||[]).forEach((e,ei) => {
+  groups.forEach((g,gi) => { if (g.date !== ds) return; (g.entries||[]).forEach((e,ei) => {
     const ph = e.photos&&e.photos.length ? ` 📷${e.photos.length}` : '';
     const fl = e.flow ? ' 🗺' : '';
     rows.push(`<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
-       <span><b>${g.date}</b> <span style="color:var(--text-muted)">${edSnip((e.doctor||'')+(e.specialty?' — '+e.specialty:'')+' '+(e.notes||''),44)}${ph}${fl}</span></span>
+       <span><b>${e.doctor||''}</b>${e.specialty?' — '+e.specialty:''} <span style="color:var(--text-muted)">${edSnip(e.notes||'',46)}${ph}${fl}</span></span>
        <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="treatEditStart(${gi},${ei})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="treatDel(${gi},${ei})">ลบ</span></span>
-     </div>`);
-  }));
-  list.innerHTML = rows.length ? rows.join('') : '<div class="hint">ยังไม่มีรายการ</div>';
+     </div>`); }); });
+  box.innerHTML = `<div class="day-box"><div class="day-head">📅 ${ds}</div>${rows.length ? rows.join('') : '<div class="hint">วันนี้ยังไม่มีรายการ — กรอกด้านล่างเพื่อเพิ่ม</div>'}</div>`;
 }
 function treatEditStart(gi, ei) {
   const g = (currentData.treatments||[])[gi]; const e = g && g.entries[ei]; if (!e) return;

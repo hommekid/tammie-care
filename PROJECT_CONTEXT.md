@@ -40,7 +40,7 @@ img/              header.jpg, frappe.jpg, wafer.jpg, favicon-32/180/192/512.png,
 - `display` (optional ต่อตัว): `hidden`[] (section ที่ซ่อน — เฟ่ซ่อน "stats"), `order`[], `dashGroups`[], `calendar`{source,title}, `tabs`[], `stats`[]
 
 ## หน้า dashboard (pet.html)
-- จัดเป็น **แท็บใหญ่** (display.dashGroups default): **สรุป** / **อาการประจำวัน** / **การรักษา** / **ผลเลือด** / **💊 ยา** / **📅 นัดหมาย** · (เดิมมีแท็บ "ติดตามอาการ" ครอบ — เอาออกแล้ว แยกการรักษา/อาการประจำวันเป็นแท็บหลัก)
+- จัดเป็น **แท็บใหญ่** (display.dashGroups default): **📋 สรุป** / **🌡️ อาการประจำวัน** / **🏥 การรักษา** / **🧪 ผลเลือด** / **💊 ยา** / **📅 นัดหมาย** · (เดิมมีแท็บ "ติดตามอาการ" ครอบ — เอาออกแล้ว แยกการรักษา/อาการประจำวันเป็นแท็บหลัก)
 - section keys: stats, leuco, meds, labs, danger, watch, calendar, tumor, **daily, treat**, appts (ซ่อน section ที่ไม่มีข้อมูลอัตโนมัติ) · (เดิม key `tabs` ถูกแยกเป็น `daily`+`treat`)
 - **สรุป**: leuco (ไฟเตือน Leuco Plus เทียบ WBC ดิบ 🔴<4000/🟡4000-4499/🟢≥4500), สัญญาณอันตราย, สิ่งที่ต้องติดตาม, **กราฟก้อนในตับ (ล่างสุด)** · (stats ถูกซ่อน)
 - **อาการประจำวัน** (key `daily`) = ปฏิทินเดียวรวมทุกอาการ · แต่ละวันมีจุดสีเล็กๆ ตามชนิด (ท้องเสีย=ส้ม #d98a3d / อาการทั่วไป=น้ำเงิน #5b8def / เลือดกำเดา=แดง #e85555 / อาเจียน=ม่วง #b06be8 · กำหนดใน `SYM_COLORS`) วันมีหลายอาการ=หลายจุด + legend · จิ้มวัน → กล่องรายละเอียดโชว์**ทุกอาการของวันนั้น** แยกการ์ดตามชนิด (เลือดกำเดาบอกรูจมูกซ้าย/ขวา) · ท้องเสีย/อาการทั่วไป/อาเจียน มีรูปกดดู lightbox
@@ -58,8 +58,9 @@ img/              header.jpg, frappe.jpg, wafer.jpg, favicon-32/180/192/512.png,
 - **จัดเป็นแท็บหลักแบบเดียวกับ dashboard** (`.dtab` / `#adminTabs` / `.atab-panel`): **สรุป / อาการประจำวัน / 🏥 การรักษา / 🧪 ผลเลือด / 💊 ยา / 📅 นัดหมาย / ⚙️ ตั้งค่า**
 - **ทุกหมวดมี list + เพิ่ม/แก้/ลบ inline ในแท็บตัวเอง** (ไม่มีเมนู "แก้ไข/ลบ รายการเดิม" รวมแล้ว) · กดแก้ = ดึงขึ้นฟอร์ม ปุ่มเปลี่ยนเป็น "บันทึกการแก้ไข", กดลบ = ยืนยันก่อน
   - **สรุป**: ค่าตรวจล่าสุด (vitals), 📈 ขนาดก้อนในตับ (list+แก้/ลบ), 📋 สิ่งที่ต้องติดตาม (watchList), 🚨 สัญญาณต้องไปหาหมอทันที (dangerSigns liverFailure+wbc), เกณฑ์ฉีด Leuco Plus
-  - **อาการประจำวัน**: แท็บย่อย+ฟอร์ม **generate แบบ dynamic ตามหมวดของโปรไฟล์** (`dailyCats()` อ่านจาก `display.tabs` source≠treatments) · id ฟอร์มแบบ `sym-<source>-date/detail/side/photos/list/btn` · แต่ละหมวดมี list+แก้/ลบ + แนบรูป (แก้แล้วเลือกรูปใหม่ = เพิ่มต่อจากเดิม) · nosebleed มีช่อง "รูจมูก" พิเศษ · ฟังก์ชัน `renderDailyAdmin/symList/symEditStart/symSave/symDel` (อาการไม่ผ่าน `addEntry` แล้ว)
-  - **การรักษา**: list+แก้/ลบ · วันที่+หมอ+แผนก+บันทึก · แนบรูป (tr-photos) + Flowchart Mermaid (tr-flow)
+  - **อาการประจำวัน**: แท็บย่อย+ฟอร์ม **generate แบบ dynamic ตามหมวดของโปรไฟล์** (`dailyCats()` อ่านจาก `display.tabs` source≠treatments) · id ฟอร์มแบบ `sym-<source>-date/detail/side/photos/cal/day/btn` · **มีปฏิทินกลาง (`calRender`) จิ้มวัน → กล่องรายการของวันนั้น (`symDaySelect`) เพิ่ม/แก้/ลบได้** (จุดทอง = วันมีบันทึก) · แนบรูป (แก้แล้วเลือกรูปใหม่ = เพิ่มต่อจากเดิม) · nosebleed มีช่อง "รูจมูก" พิเศษ · ฟังก์ชัน `renderDailyAdmin/symList(=ปฏิทิน)/symDaySelect/symEditStart/symSave/symDel` (อาการไม่ผ่าน `addEntry`)
+  - **การรักษา**: **ปฏิทิน (`calRender` + `treatDaySelect`) จิ้มวัน → จัดการรายการของวันนั้น** เพิ่ม/แก้/ลบ · วันที่+หมอ+แผนก+บันทึก · แนบรูป (tr-photos) + Flowchart Mermaid (tr-flow)
+  - ปฏิทิน admin ใช้ helper กลาง `calRender/calNav/calPick/calSel` + `calState` (ล้างตอนสลับสัตว์) · กันไม่ให้ refresh ทับช่องวันที่ตอนกำลังแก้ (เช็ก `symEdit[src]`/`trEdit`)
   - **ผลเลือด**: list+แก้/ลบ · เลือกหมวด→กรอกค่าตาม labConfig · เพิ่มหมวดใหม่ · เพิ่ม/ลบพารามิเตอร์
   - **ยา**: 💊 ยาประจำ list+แก้/ลบ
   - **นัดหมาย**: list+แก้/ลบ
