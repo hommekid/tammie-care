@@ -135,7 +135,7 @@
       <div class="dtab" data-atab="labs">🧪 ผลเลือด</div>
       <div class="dtab" data-atab="meds">💊 ยา</div>
       <div class="dtab" data-atab="appts">📅 นัดหมาย</div>
-      <div class="dtab" data-atab="tools">⚙️ จัดการ</div>
+      <div class="dtab" data-atab="tools">⚙️ ตั้งค่า</div>
     </div>
 
     <!-- ===== สรุป ===== -->
@@ -158,12 +158,13 @@
 
       <details class="acc"><summary>ขนาดก้อนในตับ (ซาวด์)</summary>
     <div class="card">
+      <div id="list-liverTumor"></div>
       <div class="row">
         <div><label>วันที่</label><input type="date" id="lt-date"></div>
         <div><label>ขนาด cm (เว้นว่างได้)</label><input type="number" step="0.1" id="lt-size"></div>
       </div>
       <label>หมายเหตุ</label><input type="text" id="lt-note" placeholder="เช่น ใหญ่ขึ้นนิดนึง">
-      <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
+      <button class="btn" id="btn-liverTumor" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
     </div></details>
 
       <details class="acc"><summary>📋 สิ่งที่ต้องติดตาม</summary>
@@ -205,40 +206,44 @@
       </div>
       <div class="card">
         <div class="form-block active" id="form-nosebleed">
+        <div id="list-nosebleed"></div>
         <div class="row">
           <div><label>วันที่</label><input type="date" id="nb-date"></div>
           <div><label>รูจมูก</label><select id="nb-side"><option value="left">ซ้าย</option><option value="right">ขวา</option><option value="unknown">ไม่ระบุ</option></select></div>
         </div>
         <label>รายละเอียด</label>
         <textarea id="nb-detail" placeholder="เช่น เลือดออกรูจมูกขวา ตอนตื่นนอน"></textarea>
-        <button class="btn" onclick="addEntry('nosebleed')">บันทึก + อัพขึ้น GitHub</button>
+        <button class="btn" id="btn-nosebleed" onclick="addEntry('nosebleed')">บันทึก + อัพขึ้น GitHub</button>
       </div>
       <div class="form-block" id="form-diarrhea">
+        <div id="list-diarrhea"></div>
         <label>วันที่</label><input type="date" id="dr-date">
         <label>รายละเอียด</label>
         <textarea id="dr-detail" placeholder="เช่น อึเป็นก้อนมีเลือดสดนิดนึง"></textarea>
         <label>รูปภาพ (เลือกได้หลายรูป)</label>
         <input type="file" id="dr-photos" accept="image/*" multiple>
-        <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
-        <button class="btn" onclick="addEntry('diarrhea')">บันทึก + อัพขึ้น GitHub</button>
+        <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · ตอนแก้ไข ถ้าเลือกรูปใหม่จะเพิ่มต่อจากรูปเดิม · จิ้มดูในหน้า dashboard ได้เลย</div>
+        <button class="btn" id="btn-diarrhea" onclick="addEntry('diarrhea')">บันทึก + อัพขึ้น GitHub</button>
       </div>
       <div class="form-block" id="form-vomiting">
+        <div id="list-vomiting"></div>
         <label>วันที่</label><input type="date" id="vo-date">
         <label>รายละเอียด</label>
         <textarea id="vo-detail" placeholder="เช่น อาเจียนน้ำย่อยก่อนอาหารเช้า"></textarea>
         <label>รูปภาพ (เลือกได้หลายรูป)</label>
         <input type="file" id="vo-photos" accept="image/*" multiple>
-        <div class="hint">เว้นว่างได้ถ้าไม่มีรูป · ระบบย่อขนาดรูปแล้วอัพขึ้น GitHub ให้</div>
-        <button class="btn" onclick="addEntry('vomiting')">บันทึก + อัพขึ้น GitHub</button>
+        <div class="hint">เว้นว่างได้ถ้าไม่มีรูป · ตอนแก้ไข ถ้าเลือกรูปใหม่จะเพิ่มต่อจากรูปเดิม · ระบบย่อขนาดรูปแล้วอัพขึ้น GitHub ให้</div>
+        <button class="btn" id="btn-vomiting" onclick="addEntry('vomiting')">บันทึก + อัพขึ้น GitHub</button>
       </div>
       <div class="form-block" id="form-general">
+        <div id="list-general"></div>
         <label>วันที่</label><input type="date" id="gn-date">
         <label>รายละเอียด</label>
         <textarea id="gn-detail" placeholder="เช่น ซึม ไม่ค่อยกินอาหาร / เดินขาเป๋"></textarea>
         <label>รูปภาพ (เลือกได้หลายรูป)</label>
         <input type="file" id="gn-photos" accept="image/*" multiple>
-        <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
-        <button class="btn" onclick="addEntry('general')">บันทึก + อัพขึ้น GitHub</button>
+        <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · ตอนแก้ไข ถ้าเลือกรูปใหม่จะเพิ่มต่อจากรูปเดิม · จิ้มดูในหน้า dashboard ได้เลย</div>
+        <button class="btn" id="btn-general" onclick="addEntry('general')">บันทึก + อัพขึ้น GitHub</button>
       </div>
       </div>
     </div>
@@ -246,6 +251,7 @@
     <!-- ===== การรักษา ===== -->
     <div class="atab-panel" id="apanel-treat">
       <div class="card">
+        <div id="list-treatment"></div>
         <label>วันที่</label><input type="date" id="tr-date">
         <div class="row">
           <div><label>หมอ</label><input type="text" id="tr-doctor" placeholder="เช่น อ.กอล์ฟ"></div>
@@ -258,18 +264,19 @@
         <label>Flowchart (Mermaid) <span class="hint" style="display:inline">— เว้นว่างได้</span></label>
         <textarea id="tr-flow" placeholder="เช่น&#10;graph TD&#10;A[เจาะเลือด] --> B{โปรตีนขึ้น?}&#10;B -->|ขึ้น| C[ลดยา]&#10;B -->|ไม่ขึ้น| D[ส่งต่อเฉพาะทาง]" style="font-family:'IBM Plex Mono',monospace;font-size:13px;min-height:90px"></textarea>
         <div class="hint">รูปแบบ Mermaid: บรรทัดแรก <b>graph TD</b> (บนลงล่าง) หรือ <b>graph LR</b> (ซ้ายไปขวา) · ลูกศร <b>--&gt;</b> · กล่อง <b>A[ข้อความ]</b> · เงื่อนไข <b>B{คำถาม}</b></div>
-        <button class="btn" onclick="addEntry('treatment')">บันทึก + อัพขึ้น GitHub</button>
+        <button class="btn" id="btn-treatment" onclick="addEntry('treatment')">บันทึก + อัพขึ้น GitHub</button>
       </div>
     </div>
 
     <!-- ===== ผลเลือด ===== -->
     <div class="atab-panel" id="apanel-labs">
       <div class="card">
+        <div id="list-labs"></div>
         <label>หมวด</label>
         <select id="lb-panel" onchange="fillLabForm()"></select>
         <label>วันที่ตรวจ</label><input type="date" id="lb-date">
         <div id="lab-fields"><div class="hint">เลือกหมวดก่อน</div></div>
-        <button class="btn" onclick="addEntry('labs')">บันทึกผลเลือด + อัพขึ้น GitHub</button>
+        <button class="btn" id="btn-labs" onclick="addEntry('labs')">บันทึกผลเลือด + อัพขึ้น GitHub</button>
 
         <div class="section-label" style="margin:24px 0 4px">เพิ่มหมวดใหม่</div>
         <div class="row">
@@ -314,35 +321,17 @@
     <!-- ===== นัดหมาย ===== -->
     <div class="atab-panel" id="apanel-appts">
       <div class="card">
+        <div id="appt-list"></div>
         <label>วันที่นัด</label><input type="date" id="ap-date">
         <label>หมอ / การตรวจ</label><input type="text" id="ap-doctor" placeholder="เช่น อ.กอล์ฟ / Echo / ตรวจเลือด">
         <label>หมายเหตุ</label><input type="text" id="ap-note" placeholder="เช่น เอาปัสสาวะไปด้วย (เว้นว่างได้)">
-        <button class="btn" onclick="addEntry('appointment')">บันทึกนัด + อัพขึ้น GitHub</button>
+        <button class="btn" id="ap-btn" onclick="addAppt()">บันทึกนัด + อัพขึ้น GitHub</button>
       </div>
     </div>
 
     <!-- ===== จัดการ ===== -->
     <div class="atab-panel" id="apanel-tools">
-      <details class="acc"><summary>แก้ไข / ลบ รายการเดิม</summary>
-    <div class="card">
-      <label>หมวด</label>
-      <select id="ed-cat" onchange="edLoadList()">
-        <option value="">— เลือกหมวด —</option>
-        <option value="nosebleed">🩸 เลือดกำเดา</option>
-        <option value="diarrhea">💊 ท้องเสีย</option>
-        <option value="vomiting">🤢 อาเจียน</option>
-        <option value="general">🩺 อาการทั่วไป</option>
-        <option value="labs">🧪 ผลเลือด</option>
-        <option value="treatment">🏥 การรักษา</option>
-        <option value="appointment">📅 นัดหมาย</option>
-        <option value="liverTumor">🔬 ก้อนในตับ</option>
-      </select>
-      <label>รายการ</label>
-      <select id="ed-item" onchange="edSelect()"><option value="">— เลือกรายการ —</option></select>
-      <div id="ed-form" style="display:none"></div>
-    </div></details>
-
-      <details class="acc"><summary>ตั้งค่าหน้า Dashboard</summary>
+      <details class="acc" open><summary>⚙️ ตั้งค่าหน้า Dashboard</summary>
     <div class="card">
       <div class="hint" style="margin-top:0">เลือกว่าหน้าของตัวนี้จะแสดง section ไหนบ้าง · ติ๊กออก = ซ่อน · ปุ่ม ↑↓ จัดลำดับ · section ที่ไม่มีข้อมูลจะถูกซ่อนอัตโนมัติอยู่แล้ว</div>
       <div id="dispList"></div>
@@ -372,6 +361,10 @@ const CONFIG = {
 };
 
 let currentData = null, currentSha = null, currentPetId = 'frappe';
+let symEdit = { nosebleed:null, diarrhea:null, vomiting:null, general:null };  // index ที่กำลังแก้ในแต่ละหมวดอาการ (null = เพิ่มใหม่)
+let trEdit = null;  // {gi, ei} ของการรักษาที่กำลังแก้
+let labEdit = null; // index ของผลเลือดที่กำลังแก้
+let ltEdit = null;  // index ของก้อนในตับที่กำลังแก้
 
 async function checkPw() {
   if (document.getElementById('pwInput').value === CONFIG.password) {
@@ -438,6 +431,11 @@ async function loadPet() {
   fillMedList();
   fillWatchList();
   fillDangerList();
+  fillApptList();
+  ['nosebleed','diarrhea','vomiting','general'].forEach(fillSymList);
+  fillTreatList();
+  fillLabList();
+  fillLiverList();
 }
 
 // ===== ยาประจำ (meds) =====
@@ -595,6 +593,235 @@ async function dangerDel(key, idx) {
     await commit('ลบสัญญาณอันตราย');
     fillDangerList();
   } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+
+// ===== นัดหมาย (appointments) — list + เพิ่ม/แก้/ลบ inline =====
+let apEditIdx = null;
+function fillApptList() {
+  const list = document.getElementById('appt-list');
+  if (!list) return;
+  const ap = (currentData && currentData.appointments) || [];
+  list.innerHTML = ap.length ? ap.map((a,i) =>
+    `<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
+       <span><b>${a.date}</b> <span style="color:var(--text-muted)">${a.doctor||'นัดหมาย'}${a.note?' · '+a.note:''}</span></span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="apptEdit(${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="apptDel(${i})">ลบ</span></span>
+     </div>`).join('') : '<div class="hint">ยังไม่มีนัดหมาย</div>';
+}
+function apptEdit(i) {
+  const a = (currentData.appointments||[])[i]; if (!a) return;
+  document.getElementById('ap-date').value = a.date||'';
+  document.getElementById('ap-doctor').value = a.doctor||'';
+  document.getElementById('ap-note').value = a.note||'';
+  apEditIdx = i;
+  document.getElementById('ap-btn').textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+}
+async function addAppt() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  try {
+    const date=val('ap-date'), doctor=val('ap-doctor'), note=val('ap-note');
+    if (!date) throw new Error('กรอกวันที่นัด');
+    if (!currentData.appointments) currentData.appointments = [];
+    const ap = { date, doctor, note };
+    if (apEditIdx != null && currentData.appointments[apEditIdx]) currentData.appointments[apEditIdx] = ap;
+    else currentData.appointments.push(ap);
+    currentData.appointments.sort((a,b)=>a.date.localeCompare(b.date));
+    await commit(apEditIdx != null ? `แก้ไขนัดหมาย ${date}` : `เพิ่มนัดหมาย ${date}`);
+    apEditIdx = null;
+    ['ap-date','ap-doctor','ap-note'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('ap-btn').textContent = 'บันทึกนัด + อัพขึ้น GitHub';
+    fillApptList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+async function apptDel(i) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const a = (currentData.appointments||[])[i]; if (!a) return;
+  if (!confirm(`ลบนัด "${a.date} ${a.doctor||''}"?`)) return;
+  try {
+    currentData.appointments.splice(i,1);
+    await commit(`ลบนัดหมาย ${a.date}`);
+    fillApptList();
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+
+// ===== อาการประจำวัน (nosebleed/diarrhea/vomiting/general) — list + แก้/ลบ inline =====
+const SYM_META = {
+  nosebleed: { label:'เลือดกำเดา', dateId:'nb-date', detailId:'nb-detail', sideId:'nb-side', btn:'btn-nosebleed' },
+  diarrhea:  { label:'ท้องเสีย',   dateId:'dr-date', detailId:'dr-detail', photoId:'dr-photos', btn:'btn-diarrhea' },
+  vomiting:  { label:'อาเจียน',    dateId:'vo-date', detailId:'vo-detail', photoId:'vo-photos', btn:'btn-vomiting' },
+  general:   { label:'อาการทั่วไป', dateId:'gn-date', detailId:'gn-detail', photoId:'gn-photos', btn:'btn-general' },
+};
+function symArr(type) { return (currentData && currentData.symptoms && currentData.symptoms[type]) || []; }
+function fillSymList(type) {
+  const list = document.getElementById('list-'+type); if (!list) return;
+  const arr = symArr(type);
+  list.innerHTML = arr.length ? arr.map((e,i) => {
+    const ph = e.photos&&e.photos.length ? ` 📷${e.photos.length}` : '';
+    const side = (type==='nosebleed'&&e.side) ? ' · '+({left:'ซ้าย',right:'ขวา',unknown:'ไม่ระบุ'}[e.side]||'') : '';
+    return `<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
+       <span><b>${e.date}</b>${side} <span style="color:var(--text-muted)">${edSnip(e.detail||'',40)}${ph}</span></span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="symEditStart('${type}',${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="symDel('${type}',${i})">ลบ</span></span>
+     </div>`; }).join('') : '<div class="hint">ยังไม่มีรายการ</div>';
+}
+function symEditStart(type, i) {
+  const m = SYM_META[type]; const e = symArr(type)[i]; if (!e) return;
+  document.getElementById(m.dateId).value = e.date||'';
+  document.getElementById(m.detailId).value = e.detail||'';
+  if (m.sideId) document.getElementById(m.sideId).value = e.side||'left';
+  symEdit[type] = i;
+  document.getElementById(m.btn).textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+  document.getElementById(m.dateId).scrollIntoView({behavior:'smooth',block:'center'});
+}
+function resetSymForm(type) {
+  const m = SYM_META[type];
+  document.getElementById(m.dateId).value = '';
+  document.getElementById(m.detailId).value = '';
+  if (m.sideId) document.getElementById(m.sideId).value = 'left';
+  if (m.photoId) { const f=document.getElementById(m.photoId); if (f) f.value=''; }
+  symEdit[type] = null;
+  document.getElementById(m.btn).textContent = 'บันทึก + อัพขึ้น GitHub';
+}
+async function symDel(type, i) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const m = SYM_META[type]; const arr = symArr(type); const e = arr[i]; if (!e) return;
+  if (!confirm(`ลบบันทึก${m.label} "${e.date}"?`)) return;
+  try {
+    arr.splice(i,1);
+    await commit(`ลบบันทึก${m.label} ${e.date}`);
+    if (symEdit[type] === i) resetSymForm(type);
+    fillSymList(type);
+  } catch(err) { toast('ผิดพลาด: '+err.message, false); alert('เกิดข้อผิดพลาด:\n\n'+err.message); }
+}
+
+// ===== การรักษา — list + แก้/ลบ inline =====
+function fillTreatList() {
+  const list = document.getElementById('list-treatment'); if (!list) return;
+  const groups = (currentData && currentData.treatments) || [];
+  const rows = [];
+  groups.forEach((g,gi) => (g.entries||[]).forEach((e,ei) => {
+    const ph = e.photos&&e.photos.length ? ` 📷${e.photos.length}` : '';
+    const fl = e.flow ? ' 🗺' : '';
+    rows.push(`<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
+       <span><b>${g.date}</b> <span style="color:var(--text-muted)">${edSnip((e.doctor||'')+(e.specialty?' — '+e.specialty:'')+' '+(e.notes||''),44)}${ph}${fl}</span></span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="treatEditStart(${gi},${ei})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="treatDel(${gi},${ei})">ลบ</span></span>
+     </div>`);
+  }));
+  list.innerHTML = rows.length ? rows.join('') : '<div class="hint">ยังไม่มีรายการ</div>';
+}
+function treatEditStart(gi, ei) {
+  const g = (currentData.treatments||[])[gi]; const e = g && g.entries[ei]; if (!e) return;
+  document.getElementById('tr-date').value = g.date||'';
+  document.getElementById('tr-doctor').value = e.doctor||'';
+  document.getElementById('tr-spec').value = e.specialty||'';
+  document.getElementById('tr-notes').value = e.notes||'';
+  document.getElementById('tr-flow').value = e.flow||'';
+  trEdit = { gi, ei };
+  document.getElementById('btn-treatment').textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+  document.getElementById('tr-date').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function resetTreatForm() {
+  ['tr-date','tr-doctor','tr-spec','tr-notes','tr-flow'].forEach(id=>{ const el=document.getElementById(id); if (el) el.value=''; });
+  const f=document.getElementById('tr-photos'); if (f) f.value='';
+  trEdit = null;
+  document.getElementById('btn-treatment').textContent = 'บันทึก + อัพขึ้น GitHub';
+}
+async function treatDel(gi, ei) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const g = (currentData.treatments||[])[gi]; const e = g && g.entries[ei]; if (!e) return;
+  if (!confirm(`ลบบันทึกการรักษา "${g.date} ${e.doctor||''}"?`)) return;
+  try {
+    g.entries.splice(ei,1);
+    if (!g.entries.length) currentData.treatments.splice(gi,1);
+    await commit(`ลบบันทึกการรักษา ${g.date}`);
+    resetTreatForm();
+    fillTreatList();
+  } catch(err) { toast('ผิดพลาด: '+err.message, false); alert('เกิดข้อผิดพลาด:\n\n'+err.message); }
+}
+
+// ===== ผลเลือด (labs) — list + แก้/ลบ inline =====
+function labPanelName(pid) { return ((currentData&&currentData.labPanels||[]).find(p=>p.id===pid)||{}).name || pid || '(ไม่ระบุหมวด)'; }
+function fillLabList() {
+  const list = document.getElementById('list-labs'); if (!list) return;
+  const arr = (currentData && currentData.labs) || [];
+  list.innerHTML = arr.length ? arr.map((e,i) => {
+    const vals = edSnip(Object.entries(e.values||{}).map(([k,v])=>k+':'+v).join(' '), 30);
+    return `<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
+       <span><b>${e.date}</b> <span style="color:var(--text-muted)">${labPanelName(e.panel)} · ${vals}</span></span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="labEditStart(${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="labDel(${i})">ลบ</span></span>
+     </div>`; }).join('') : '<div class="hint">ยังไม่มีผลเลือด</div>';
+}
+function labEditStart(i) {
+  const e = (currentData.labs||[])[i]; if (!e) return;
+  document.getElementById('lb-panel').value = e.panel || '';
+  fillLabForm();
+  document.getElementById('lb-date').value = e.date || '';
+  (currentData.labConfig||[]).filter(c=>(c.panel||'')===(e.panel||'')).forEach(c => {
+    const el = document.getElementById('lf-'+c.key);
+    if (el && e.values && e.values[c.key]!=null) el.value = e.values[c.key];
+  });
+  labEdit = i;
+  document.getElementById('btn-labs').textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+  document.getElementById('lb-panel').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function resetLabForm() {
+  document.getElementById('lb-date').value = '';
+  fillLabForm();
+  labEdit = null;
+  document.getElementById('btn-labs').textContent = 'บันทึกผลเลือด + อัพขึ้น GitHub';
+}
+async function labDel(i) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const e = (currentData.labs||[])[i]; if (!e) return;
+  if (!confirm(`ลบผลเลือด "${e.date} · ${labPanelName(e.panel)}"?`)) return;
+  try {
+    currentData.labs.splice(i,1);
+    await commit(`ลบผลเลือด ${e.date}`);
+    if (labEdit === i) resetLabForm();
+    fillLabList();
+  } catch(err) { toast('ผิดพลาด: '+err.message, false); alert('เกิดข้อผิดพลาด:\n\n'+err.message); }
+}
+
+// ===== ก้อนในตับ (liverTumor) — list + แก้/ลบ inline =====
+function liverArr() { return (currentData && currentData.vitals && currentData.vitals.liverTumor) || []; }
+function fillLiverList() {
+  const list = document.getElementById('list-liverTumor'); if (!list) return;
+  const arr = liverArr();
+  list.innerHTML = arr.length ? arr.map((e,i) =>
+    `<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
+       <span><b>${e.date}</b> <span style="color:var(--text-muted)">${e.size!=null?e.size+' cm':'-'}${e.note?' · '+edSnip(e.note,24):''}</span></span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="liverEditStart(${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="liverDel(${i})">ลบ</span></span>
+     </div>`).join('') : '<div class="hint">ยังไม่มีรายการ</div>';
+}
+function liverEditStart(i) {
+  const e = liverArr()[i]; if (!e) return;
+  document.getElementById('lt-date').value = e.date || '';
+  document.getElementById('lt-size').value = e.size!=null ? e.size : '';
+  document.getElementById('lt-note').value = e.note || '';
+  ltEdit = i;
+  document.getElementById('btn-liverTumor').textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+  document.getElementById('lt-date').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function resetLiverForm() {
+  ['lt-date','lt-size','lt-note'].forEach(id=>{ const el=document.getElementById(id); if (el) el.value=''; });
+  ltEdit = null;
+  document.getElementById('btn-liverTumor').textContent = 'บันทึก + อัพขึ้น GitHub';
+}
+async function liverDel(i) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const arr = liverArr(); const e = arr[i]; if (!e) return;
+  if (!confirm(`ลบขนาดก้อนในตับ "${e.date}"?`)) return;
+  try {
+    arr.splice(i,1);
+    await commit(`ลบขนาดก้อนในตับ ${e.date}`);
+    if (ltEdit === i) resetLiverForm();
+    fillLiverList();
+  } catch(err) { toast('ผิดพลาด: '+err.message, false); alert('เกิดข้อผิดพลาด:\n\n'+err.message); }
 }
 
 function fillLeuco() {
@@ -774,9 +1001,11 @@ async function addEntry(type) {
     if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
     if (!currentData.symptoms) currentData.symptoms = {};
     if (!currentData.symptoms.nosebleed) currentData.symptoms.nosebleed = [];
-    currentData.symptoms.nosebleed.unshift({ date, side, detail });
-    currentData.symptoms.nosebleed.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `เพิ่มบันทึกเลือดกำเดา ${date}`;
+    const arr = currentData.symptoms.nosebleed;
+    if (symEdit.nosebleed != null && arr[symEdit.nosebleed]) arr[symEdit.nosebleed] = { ...arr[symEdit.nosebleed], date, side, detail };
+    else arr.unshift({ date, side, detail });
+    arr.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `${symEdit.nosebleed!=null?'แก้ไข':'เพิ่ม'}บันทึกเลือดกำเดา ${date}`;
   } else if (type === 'diarrhea') {
     const date=val('dr-date'), detail=val('dr-detail');
     if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
@@ -794,13 +1023,16 @@ async function addEntry(type) {
       } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
       document.getElementById('dr-photos').value = '';
     }
-    const entry = { date, detail };
-    if (photos.length) entry.photos = photos;
     if (!currentData.symptoms) currentData.symptoms = {};
     if (!currentData.symptoms.diarrhea) currentData.symptoms.diarrhea = [];
-    currentData.symptoms.diarrhea.unshift(entry);
-    currentData.symptoms.diarrhea.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `เพิ่มบันทึกท้องเสีย ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
+    const arr = currentData.symptoms.diarrhea;
+    if (symEdit.diarrhea != null && arr[symEdit.diarrhea]) {
+      const old = arr[symEdit.diarrhea]; const merged = { ...old, date, detail };
+      const all = (old.photos||[]).concat(photos); if (all.length) merged.photos = all; else delete merged.photos;
+      arr[symEdit.diarrhea] = merged;
+    } else { const entry = { date, detail }; if (photos.length) entry.photos = photos; arr.unshift(entry); }
+    arr.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `${symEdit.diarrhea!=null?'แก้ไข':'เพิ่ม'}บันทึกท้องเสีย ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
   } else if (type === 'vomiting') {
     const date=val('vo-date'), detail=val('vo-detail');
     if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
@@ -820,11 +1052,14 @@ async function addEntry(type) {
     }
     if (!currentData.symptoms) currentData.symptoms = {};
     if (!currentData.symptoms.vomiting) currentData.symptoms.vomiting = [];
-    const entry = { date, detail };
-    if (photos.length) entry.photos = photos;
-    currentData.symptoms.vomiting.unshift(entry);
-    currentData.symptoms.vomiting.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `เพิ่มบันทึกอาเจียน ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
+    const arr = currentData.symptoms.vomiting;
+    if (symEdit.vomiting != null && arr[symEdit.vomiting]) {
+      const old = arr[symEdit.vomiting]; const merged = { ...old, date, detail };
+      const all = (old.photos||[]).concat(photos); if (all.length) merged.photos = all; else delete merged.photos;
+      arr[symEdit.vomiting] = merged;
+    } else { const entry = { date, detail }; if (photos.length) entry.photos = photos; arr.unshift(entry); }
+    arr.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `${symEdit.vomiting!=null?'แก้ไข':'เพิ่ม'}บันทึกอาเจียน ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
   } else if (type === 'general') {
     const date=val('gn-date'), detail=val('gn-detail');
     if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
@@ -844,11 +1079,14 @@ async function addEntry(type) {
     }
     if (!currentData.symptoms) currentData.symptoms = {};
     if (!currentData.symptoms.general) currentData.symptoms.general = [];
-    const entry = { date, detail };
-    if (photos.length) entry.photos = photos;
-    currentData.symptoms.general.unshift(entry);
-    currentData.symptoms.general.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `เพิ่มบันทึกอาการทั่วไป ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
+    const arr = currentData.symptoms.general;
+    if (symEdit.general != null && arr[symEdit.general]) {
+      const old = arr[symEdit.general]; const merged = { ...old, date, detail };
+      const all = (old.photos||[]).concat(photos); if (all.length) merged.photos = all; else delete merged.photos;
+      arr[symEdit.general] = merged;
+    } else { const entry = { date, detail }; if (photos.length) entry.photos = photos; arr.unshift(entry); }
+    arr.sort((a,b)=>b.date.localeCompare(a.date));
+    msg = `${symEdit.general!=null?'แก้ไข':'เพิ่ม'}บันทึกอาการทั่วไป ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
   } else if (type === 'labs') {
     const panel = document.getElementById('lb-panel').value;
     const date = val('lb-date');
@@ -861,9 +1099,10 @@ async function addEntry(type) {
     });
     if (!Object.keys(values).length) return toast('กรอกค่าผลเลือดอย่างน้อย 1 ค่า', false);
     if (!currentData.labs) currentData.labs = [];
-    currentData.labs.unshift({ date, panel, values });
+    if (labEdit != null && currentData.labs[labEdit]) currentData.labs[labEdit] = { ...currentData.labs[labEdit], date, panel, values };
+    else currentData.labs.unshift({ date, panel, values });
     currentData.labs.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `เพิ่มผลเลือด ${panel} ${date}`;
+    msg = `${labEdit!=null?'แก้ไข':'เพิ่ม'}ผลเลือด ${panel} ${date}`;
   } else if (type === 'vitals') {
     const date=val('vt-date'); if(!date) return toast('กรอกวันที่', false);
     if (!currentData.vitals) currentData.vitals = { latest:{}, heartSize:[], liverTumor:[] };
@@ -894,24 +1133,42 @@ async function addEntry(type) {
       } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
       document.getElementById('tr-photos').value = '';
     }
-    const entry = { doctor, specialty, notes };
-    if (photos.length) entry.photos = photos;
-    if (flow) entry.flow = flow;
     if (!currentData.treatments) currentData.treatments = [];
-    let grp = currentData.treatments.find(t=>t.date===date);
-    if(grp) grp.entries.push(entry);
-    else currentData.treatments.unshift({date,entries:[entry]});
+    if (trEdit) {
+      const g = currentData.treatments[trEdit.gi]; const e = g && g.entries[trEdit.ei];
+      if (e) {
+        e.doctor = doctor; e.specialty = specialty; e.notes = notes;
+        if (flow) e.flow = flow; else delete e.flow;
+        if (photos.length) e.photos = (e.photos||[]).concat(photos);
+        if (date !== g.date) {
+          g.entries.splice(trEdit.ei,1);
+          if (!g.entries.length) currentData.treatments.splice(trEdit.gi,1);
+          const ng = currentData.treatments.find(t=>t.date===date);
+          if (ng) ng.entries.push(e); else currentData.treatments.unshift({date,entries:[e]});
+        }
+      }
+    } else {
+      const entry = { doctor, specialty, notes };
+      if (photos.length) entry.photos = photos;
+      if (flow) entry.flow = flow;
+      let grp = currentData.treatments.find(t=>t.date===date);
+      if(grp) grp.entries.push(entry);
+      else currentData.treatments.unshift({date,entries:[entry]});
+    }
     currentData.treatments.sort((a,b)=>b.date.localeCompare(a.date));
     document.getElementById('tr-flow').value = '';
-    msg = `เพิ่มบันทึกการรักษา ${date}${photos.length?` (+${photos.length} รูป)`:''}${flow?' +flowchart':''}`;
+    msg = `${trEdit?'แก้ไข':'เพิ่ม'}บันทึกการรักษา ${date}${photos.length?` (+${photos.length} รูป)`:''}${flow?' +flowchart':''}`;
   } else if (type === 'liverTumor') {
     const date=val('lt-date'), size=val('lt-size'), note=val('lt-note');
     if(!date) return toast('กรอกวันที่', false);
     if (!currentData.vitals) currentData.vitals = { latest:{}, heartSize:[], liverTumor:[] };
     if (!currentData.vitals.liverTumor) currentData.vitals.liverTumor = [];
-    currentData.vitals.liverTumor.push({ date, size: size?+size:null, note });
-    currentData.vitals.liverTumor.sort((a,b)=>a.date.localeCompare(b.date));
-    msg = `เพิ่มขนาดก้อนในตับ ${date}`;
+    const arr = currentData.vitals.liverTumor;
+    const rec = { date, size: size?+size:null, note };
+    if (ltEdit != null && arr[ltEdit]) arr[ltEdit] = rec;
+    else arr.push(rec);
+    arr.sort((a,b)=>a.date.localeCompare(b.date));
+    msg = `${ltEdit!=null?'แก้ไข':'เพิ่ม'}ขนาดก้อนในตับ ${date}`;
   } else if (type === 'leucoPlus') {
     const ab=val('lp-always'), wb=val('lp-withsym');
     const rules = document.getElementById('lp-rules').value.split('\n').map(s=>s.trim()).filter(Boolean);
@@ -935,6 +1192,11 @@ async function addEntry(type) {
   }
 
   await commit(msg);
+  // รีเฟรชลิสต์ inline + รีเซ็ตโหมดแก้ไข
+  if (symEdit.hasOwnProperty(type)) { symEdit[type] = null; resetSymForm(type); fillSymList(type); }
+  if (type === 'treatment') { trEdit = null; resetTreatForm(); fillTreatList(); }
+  if (type === 'labs') { labEdit = null; resetLabForm(); fillLabList(); }
+  if (type === 'liverTumor') { ltEdit = null; resetLiverForm(); fillLiverList(); }
  } catch(e) {
    toast('ผิดพลาด: ' + e.message, false);
    alert('เกิดข้อผิดพลาด:\n\n' + e.message);
