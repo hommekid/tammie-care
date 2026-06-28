@@ -405,30 +405,16 @@ function render() {
             <div class="tumor-box"><canvas id="tumorChart"></canvas></div>
           </div>` : '';
 
-  // ติดตามอาการ → 2 เมนูหลัก: การรักษา / อาการประจำวัน (อาการอื่นๆ ทั้งหมดอยู่ในอาการประจำวัน)
+  // แยกเป็น 2 เมนูหลัก: อาการประจำวัน / การรักษา (ไม่มีแท็บ "ติดตามอาการ" ครอบแล้ว)
   const txTabs = tabsDef.filter(t => t.source === 'treatments');
   const dailyTabs = tabsDef.filter(t => t.source !== 'treatments');
-  const l1btns = [];
-  const l1panels = [];
-  if (txTabs.length) {
-    l1btns.push(`<div class="tab active" data-l1="treatments">การรักษา</div>`);
-    l1panels.push(`<div class="l1-content active" id="l1-treatments"><div class="tab-content active" id="tab-treatments"></div></div>`);
-  }
-  if (dailyTabs.length) {
-    const dailyFirst = !txTabs.length;
-    l1btns.push(`<div class="tab${dailyFirst?' active':''}" data-l1="daily">อาการประจำวัน</div>`);
-    l1panels.push(`<div class="l1-content${dailyFirst?' active':''}" id="l1-daily"><div id="dailyWrap"></div></div>`);
-  }
-  const tabsBlock = tabsDef.length ? `
-        <div>
-          <div class="tabs track-top">${l1btns.join('')}</div>
-          ${l1panels.join('')}
-        </div>` : '';
+  const treatBlock = txTabs.length ? `<div class="tab-content active" id="tab-treatments"></div>` : '';
+  const dailyBlock = dailyTabs.length ? `<div id="dailyWrap"></div>` : '';
 
   const apptsBlock = appts.length ? `<div id="apptsWrap"></div>` : '';
 
   // ---- ประกอบตาม display.order / display.hidden แล้วจัดลงแท็บใหญ่ ----
-  const blocks = { stats: statusBlock, leuco: leucoBlock, meds: medsBlock, labs: labsBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, tabs: tabsBlock, appts: apptsBlock };
+  const blocks = { stats: statusBlock, leuco: leucoBlock, meds: medsBlock, labs: labsBlock, danger: dangerBlock, watch: watchBlock, calendar: calCol, tumor: tumorCol, daily: dailyBlock, treat: treatBlock, appts: apptsBlock };
   const hidden = new Set(disp.hidden || []);
   const order = (disp.order || []).filter(k => k in blocks);
   Object.keys(blocks).forEach(k => { if (!order.includes(k)) order.push(k); });
@@ -436,9 +422,10 @@ function render() {
   // กลุ่มแท็บใหญ่ (override ได้ผ่าน display.dashGroups)
   const dashGroups = disp.dashGroups || [
     { id:'overview', label:'สรุป', keys:['stats','leuco','danger','watch','tumor'] },
-    { id:'meds', label:'💊 ยา', keys:['meds'] },
+    { id:'daily', label:'อาการประจำวัน', keys:['daily'] },
+    { id:'treat', label:'การรักษา', keys:['treat'] },
     { id:'labs', label:'ผลเลือด', keys:['labs'] },
-    { id:'track', label:'ติดตามอาการ', keys:['tabs'] },
+    { id:'meds', label:'💊 ยา', keys:['meds'] },
     { id:'appts', label:'📅 นัดหมาย', keys:['appts'] },
   ];
   const buildGroup = keys => {
@@ -475,10 +462,8 @@ function render() {
   if (show('stats') && hasStats) renderStats(v, statDefs);
   if (show('labs') && labConfig.length && labs.length) renderLabs(labPanels, labConfig, labs);
   if (show('tumor') && tumor.length) renderTumorChart(tumor);
-  if (show('tabs')) {
-    if (txTabs.length) renderTreatments('tab-treatments', txTabs[0].items);
-    if (dailyTabs.length) renderDailyCalendar('dailyWrap', dailyTabs);
-  }
+  if (txTabs.length && show('treat')) renderTreatments('tab-treatments', txTabs[0].items);
+  if (dailyTabs.length && show('daily')) renderDailyCalendar('dailyWrap', dailyTabs);
   if (show('appts') && appts.length) renderAppts('apptsWrap', appts);
   setupTabs();
   setupDashTabs();
