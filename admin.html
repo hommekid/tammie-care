@@ -196,56 +196,10 @@
     </div></details>
     </div>
 
-    <!-- ===== อาการประจำวัน ===== -->
+    <!-- ===== อาการประจำวัน (generate ตามหมวดของโปรไฟล์) ===== -->
     <div class="atab-panel" id="apanel-daily">
-      <div class="tabs">
-        <div class="tab active" data-form="nosebleed">🩸 เลือดกำเดา</div>
-        <div class="tab" data-form="diarrhea">💧 ท้องเสีย</div>
-        <div class="tab" data-form="vomiting">🤢 อาเจียน</div>
-        <div class="tab" data-form="general">🩺 อาการทั่วไป</div>
-      </div>
-      <div class="card">
-        <div class="form-block active" id="form-nosebleed">
-        <div id="list-nosebleed"></div>
-        <div class="row">
-          <div><label>วันที่</label><input type="date" id="nb-date"></div>
-          <div><label>รูจมูก</label><select id="nb-side"><option value="left">ซ้าย</option><option value="right">ขวา</option><option value="unknown">ไม่ระบุ</option></select></div>
-        </div>
-        <label>รายละเอียด</label>
-        <textarea id="nb-detail" placeholder="เช่น เลือดออกรูจมูกขวา ตอนตื่นนอน"></textarea>
-        <button class="btn" id="btn-nosebleed" onclick="addEntry('nosebleed')">บันทึก + อัพขึ้น GitHub</button>
-      </div>
-      <div class="form-block" id="form-diarrhea">
-        <div id="list-diarrhea"></div>
-        <label>วันที่</label><input type="date" id="dr-date">
-        <label>รายละเอียด</label>
-        <textarea id="dr-detail" placeholder="เช่น อึเป็นก้อนมีเลือดสดนิดนึง"></textarea>
-        <label>รูปภาพ (เลือกได้หลายรูป)</label>
-        <input type="file" id="dr-photos" accept="image/*" multiple>
-        <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · ตอนแก้ไข ถ้าเลือกรูปใหม่จะเพิ่มต่อจากรูปเดิม · จิ้มดูในหน้า dashboard ได้เลย</div>
-        <button class="btn" id="btn-diarrhea" onclick="addEntry('diarrhea')">บันทึก + อัพขึ้น GitHub</button>
-      </div>
-      <div class="form-block" id="form-vomiting">
-        <div id="list-vomiting"></div>
-        <label>วันที่</label><input type="date" id="vo-date">
-        <label>รายละเอียด</label>
-        <textarea id="vo-detail" placeholder="เช่น อาเจียนน้ำย่อยก่อนอาหารเช้า"></textarea>
-        <label>รูปภาพ (เลือกได้หลายรูป)</label>
-        <input type="file" id="vo-photos" accept="image/*" multiple>
-        <div class="hint">เว้นว่างได้ถ้าไม่มีรูป · ตอนแก้ไข ถ้าเลือกรูปใหม่จะเพิ่มต่อจากรูปเดิม · ระบบย่อขนาดรูปแล้วอัพขึ้น GitHub ให้</div>
-        <button class="btn" id="btn-vomiting" onclick="addEntry('vomiting')">บันทึก + อัพขึ้น GitHub</button>
-      </div>
-      <div class="form-block" id="form-general">
-        <div id="list-general"></div>
-        <label>วันที่</label><input type="date" id="gn-date">
-        <label>รายละเอียด</label>
-        <textarea id="gn-detail" placeholder="เช่น ซึม ไม่ค่อยกินอาหาร / เดินขาเป๋"></textarea>
-        <label>รูปภาพ (เลือกได้หลายรูป)</label>
-        <input type="file" id="gn-photos" accept="image/*" multiple>
-        <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · ตอนแก้ไข ถ้าเลือกรูปใหม่จะเพิ่มต่อจากรูปเดิม · จิ้มดูในหน้า dashboard ได้เลย</div>
-        <button class="btn" id="btn-general" onclick="addEntry('general')">บันทึก + อัพขึ้น GitHub</button>
-      </div>
-      </div>
+      <div class="tabs" id="dailyTabBar"></div>
+      <div class="card" id="dailyForms"><div class="hint">เลือกสัตว์เลี้ยงก่อน</div></div>
     </div>
 
     <!-- ===== การรักษา ===== -->
@@ -333,9 +287,8 @@
     <div class="atab-panel" id="apanel-tools">
       <details class="acc" open><summary>🗂 อาการประจำวันที่มีในโปรไฟล์นี้</summary>
     <div class="card">
-      <div class="hint" style="margin-top:0">ติ๊กเลือกว่าโปรไฟล์นี้มีอาการประจำวันหมวดไหนบ้าง · มีผลทั้งหน้า dashboard และแท็บกรอกใน admin</div>
+      <div class="hint" style="margin-top:0">จัดการหมวดอาการประจำวันของโปรไฟล์นี้ — แก้ชื่อ / ลบ / เพิ่มหมวด (สำเร็จรูปหรือกำหนดเอง) · มีผลทั้งหน้า dashboard และแท็บกรอกใน admin · ลบหมวดไม่ลบข้อมูลที่บันทึกไว้</div>
       <div id="symTabsConfig"></div>
-      <button class="btn" onclick="saveSymTabs()">บันทึก + อัพขึ้น GitHub</button>
     </div></details>
 
       <details class="acc"><summary>⚙️ ตั้งค่าหน้า Dashboard</summary>
@@ -368,7 +321,7 @@ const CONFIG = {
 };
 
 let currentData = null, currentSha = null, currentPetId = 'frappe';
-let symEdit = { nosebleed:null, diarrhea:null, vomiting:null, general:null };  // index ที่กำลังแก้ในแต่ละหมวดอาการ (null = เพิ่มใหม่)
+let symEdit = {};  // source → index ที่กำลังแก้ในแต่ละหมวดอาการ (null/undefined = เพิ่มใหม่)
 let trEdit = null;  // {gi, ei} ของการรักษาที่กำลังแก้
 let labEdit = null; // index ของผลเลือดที่กำลังแก้
 let ltEdit = null;  // index ของก้อนในตับที่กำลังแก้
@@ -439,12 +392,11 @@ async function loadPet() {
   fillWatchList();
   fillDangerList();
   fillApptList();
-  ['nosebleed','diarrhea','vomiting','general'].forEach(fillSymList);
+  renderDailyAdmin();
+  fillSymCats();
   fillTreatList();
   fillLabList();
   fillLiverList();
-  applyDailyTabs();
-  fillSymTabsConfig();
 }
 
 // ===== ยาประจำ (meds) =====
@@ -655,53 +607,123 @@ async function apptDel(i) {
   } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
 }
 
-// ===== อาการประจำวัน (nosebleed/diarrhea/vomiting/general) — list + แก้/ลบ inline =====
-const SYM_META = {
-  nosebleed: { label:'เลือดกำเดา', dateId:'nb-date', detailId:'nb-detail', sideId:'nb-side', btn:'btn-nosebleed' },
-  diarrhea:  { label:'ท้องเสีย',   dateId:'dr-date', detailId:'dr-detail', photoId:'dr-photos', btn:'btn-diarrhea' },
-  vomiting:  { label:'อาเจียน',    dateId:'vo-date', detailId:'vo-detail', photoId:'vo-photos', btn:'btn-vomiting' },
-  general:   { label:'อาการทั่วไป', dateId:'gn-date', detailId:'gn-detail', photoId:'gn-photos', btn:'btn-general' },
-};
-function symArr(type) { return (currentData && currentData.symptoms && currentData.symptoms[type]) || []; }
-function fillSymList(type) {
-  const list = document.getElementById('list-'+type); if (!list) return;
-  const arr = symArr(type);
+// ===== อาการประจำวัน (หมวด dynamic ตาม display.tabs) =====
+const SYM_KNOWN = { nosebleed:'เลือดกำเดา', diarrhea:'ท้องเสีย', vomiting:'🤢 อาเจียน', general:'อาการทั่วไป' };
+function symDefaultLabel(src) { return SYM_KNOWN[src] || src; }
+// หมวดอาการของโปรไฟล์นี้ (จาก display.tabs ที่ source≠treatments) · ไม่มี = ค่า default
+function dailyCats() {
+  const tabs = currentData && currentData.display && currentData.display.tabs;
+  if (tabs && tabs.length) return tabs.filter(t=>t.source!=='treatments').map(t=>({ source:t.source, label:t.label||symDefaultLabel(t.source) }));
+  return [{source:'diarrhea',label:'ท้องเสีย'},{source:'general',label:'อาการทั่วไป'},{source:'nosebleed',label:'เลือดกำเดา'}];
+}
+function symArr(src) { return (currentData && currentData.symptoms && currentData.symptoms[src]) || []; }
+// สร้างแท็บย่อย + ฟอร์ม ตามหมวด
+function renderDailyAdmin() {
+  const bar = document.getElementById('dailyTabBar');
+  const forms = document.getElementById('dailyForms');
+  if (!bar || !forms) return;
+  const cats = dailyCats();
+  if (!cats.length) { bar.innerHTML=''; forms.innerHTML='<div class="hint">โปรไฟล์นี้ยังไม่มีหมวดอาการประจำวัน — เพิ่มได้ที่แท็บ ⚙️ ตั้งค่า</div>'; return; }
+  bar.innerHTML = cats.map((c,i)=>`<div class="tab${i===0?' active':''}" data-symtab="${c.source}">${c.label}</div>`).join('');
+  forms.innerHTML = cats.map((c,i)=>{
+    const sideField = c.source==='nosebleed'
+      ? `<div class="row"><div><label>วันที่</label><input type="date" id="sym-${c.source}-date"></div><div><label>รูจมูก</label><select id="sym-${c.source}-side"><option value="left">ซ้าย</option><option value="right">ขวา</option><option value="unknown">ไม่ระบุ</option></select></div></div>`
+      : `<label>วันที่</label><input type="date" id="sym-${c.source}-date">`;
+    return `<div class="form-block${i===0?' active':''}" id="symform-${c.source}">
+      <div id="sym-${c.source}-list"></div>
+      ${sideField}
+      <label>รายละเอียด</label>
+      <textarea id="sym-${c.source}-detail" placeholder="รายละเอียดอาการ"></textarea>
+      <label>รูปภาพ (เลือกได้หลายรูป · เว้นว่างได้)</label>
+      <input type="file" id="sym-${c.source}-photos" accept="image/*" multiple>
+      <div class="hint">ตอนแก้ไข ถ้าเลือกรูปใหม่จะเพิ่มต่อจากรูปเดิม</div>
+      <button class="btn" id="sym-${c.source}-btn" onclick="symSave('${c.source}')">บันทึก + อัพขึ้น GitHub</button>
+    </div>`;
+  }).join('');
+  bar.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+    bar.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    forms.querySelectorAll('.form-block').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const f = document.getElementById('symform-'+t.dataset.symtab); if (f) f.classList.add('active');
+  });
+  cats.forEach(c => symList(c.source));
+}
+function symList(src) {
+  const list = document.getElementById('sym-'+src+'-list'); if (!list) return;
+  const arr = symArr(src);
   list.innerHTML = arr.length ? arr.map((e,i) => {
     const ph = e.photos&&e.photos.length ? ` 📷${e.photos.length}` : '';
-    const side = (type==='nosebleed'&&e.side) ? ' · '+({left:'ซ้าย',right:'ขวา',unknown:'ไม่ระบุ'}[e.side]||'') : '';
+    const side = (src==='nosebleed'&&e.side) ? ' · '+({left:'ซ้าย',right:'ขวา',unknown:'ไม่ระบุ'}[e.side]||'') : '';
     return `<div class="token-box" style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:6px;gap:8px">
-       <span><b>${e.date}</b>${side} <span style="color:var(--text-muted)">${edSnip(e.detail||'',40)}${ph}</span></span>
-       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="symEditStart('${type}',${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="symDel('${type}',${i})">ลบ</span></span>
+       <span><b>${e.date}</b>${side} <span style="color:var(--text-muted)">${edSnip(e.detail||'',38)}${ph}</span></span>
+       <span style="white-space:nowrap"><span style="color:var(--gold);cursor:pointer" onclick="symEditStart('${src}',${i})">แก้</span> · <span style="color:var(--red);cursor:pointer" onclick="symDel('${src}',${i})">ลบ</span></span>
      </div>`; }).join('') : '<div class="hint">ยังไม่มีรายการ</div>';
 }
-function symEditStart(type, i) {
-  const m = SYM_META[type]; const e = symArr(type)[i]; if (!e) return;
-  document.getElementById(m.dateId).value = e.date||'';
-  document.getElementById(m.detailId).value = e.detail||'';
-  if (m.sideId) document.getElementById(m.sideId).value = e.side||'left';
-  symEdit[type] = i;
-  document.getElementById(m.btn).textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
-  document.getElementById(m.dateId).scrollIntoView({behavior:'smooth',block:'center'});
+function symEditStart(src, i) {
+  const e = symArr(src)[i]; if (!e) return;
+  const d=document.getElementById('sym-'+src+'-date'); if(d) d.value = e.date||'';
+  const dt=document.getElementById('sym-'+src+'-detail'); if(dt) dt.value = e.detail||'';
+  const s=document.getElementById('sym-'+src+'-side'); if(s) s.value = e.side||'left';
+  symEdit[src] = i;
+  const b=document.getElementById('sym-'+src+'-btn'); if(b) b.textContent = 'บันทึกการแก้ไข + อัพขึ้น GitHub';
+  if(d) d.scrollIntoView({behavior:'smooth',block:'center'});
 }
-function resetSymForm(type) {
-  const m = SYM_META[type];
-  document.getElementById(m.dateId).value = '';
-  document.getElementById(m.detailId).value = '';
-  if (m.sideId) document.getElementById(m.sideId).value = 'left';
-  if (m.photoId) { const f=document.getElementById(m.photoId); if (f) f.value=''; }
-  symEdit[type] = null;
-  document.getElementById(m.btn).textContent = 'บันทึก + อัพขึ้น GitHub';
+function resetSymForm(src) {
+  const d=document.getElementById('sym-'+src+'-date'); if(d) d.value='';
+  const dt=document.getElementById('sym-'+src+'-detail'); if(dt) dt.value='';
+  const s=document.getElementById('sym-'+src+'-side'); if(s) s.value='left';
+  const p=document.getElementById('sym-'+src+'-photos'); if(p) p.value='';
+  symEdit[src] = null;
+  const b=document.getElementById('sym-'+src+'-btn'); if(b) b.textContent='บันทึก + อัพขึ้น GitHub';
 }
-async function symDel(type, i) {
+async function symSave(src) {
   const token = document.getElementById('ghToken').value.trim();
   if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
-  const m = SYM_META[type]; const arr = symArr(type); const e = arr[i]; if (!e) return;
-  if (!confirm(`ลบบันทึก${m.label} "${e.date}"?`)) return;
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  try {
+    const date = (document.getElementById('sym-'+src+'-date').value||'').trim();
+    const detail = (document.getElementById('sym-'+src+'-detail').value||'').trim();
+    if (!date || !detail) return toast('กรอกวันที่และรายละเอียด', false);
+    const sideEl = document.getElementById('sym-'+src+'-side');
+    const side = sideEl ? sideEl.value : undefined;
+    const photos = [];
+    const fEl = document.getElementById('sym-'+src+'-photos');
+    const files = fEl ? fEl.files : null;
+    if (files && files.length) {
+      toast(`กำลังอัพรูป ${files.length} รูป...`);
+      for (let i=0;i<files.length;i++){ const b64=await resizeImage(files[i]); const path=`img/${src}-${date}-${Date.now()}-${i}.jpg`; await uploadImage(token,path,b64); photos.push(path); }
+    }
+    if (!currentData.symptoms) currentData.symptoms = {};
+    if (!currentData.symptoms[src]) currentData.symptoms[src] = [];
+    const arr = currentData.symptoms[src];
+    const idx = symEdit[src];
+    if (idx != null && arr[idx]) {
+      const old = arr[idx]; const merged = { ...old, date, detail };
+      if (side !== undefined) merged.side = side;
+      const all = (old.photos||[]).concat(photos); if (all.length) merged.photos = all; else delete merged.photos;
+      arr[idx] = merged;
+    } else {
+      const entry = { date, detail };
+      if (side !== undefined) entry.side = side;
+      if (photos.length) entry.photos = photos;
+      arr.unshift(entry);
+    }
+    arr.sort((a,b)=>b.date.localeCompare(a.date));
+    await commit(`${idx!=null?'แก้ไข':'เพิ่ม'}บันทึก${symDefaultLabel(src)} ${date}${photos.length?` (+${photos.length} รูป)`:''}`);
+    resetSymForm(src);
+    symList(src);
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+async function symDel(src, i) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  const arr = symArr(src); const e = arr[i]; if (!e) return;
+  if (!confirm(`ลบบันทึก${symDefaultLabel(src)} "${e.date}"?`)) return;
   try {
     arr.splice(i,1);
-    await commit(`ลบบันทึก${m.label} ${e.date}`);
-    if (symEdit[type] === i) resetSymForm(type);
-    fillSymList(type);
+    await commit(`ลบบันทึก${symDefaultLabel(src)} ${e.date}`);
+    if (symEdit[src] === i) resetSymForm(src);
+    symList(src);
   } catch(err) { toast('ผิดพลาด: '+err.message, false); alert('เกิดข้อผิดพลาด:\n\n'+err.message); }
 }
 
@@ -833,60 +855,80 @@ async function liverDel(i) {
   } catch(err) { toast('ผิดพลาด: '+err.message, false); alert('เกิดข้อผิดพลาด:\n\n'+err.message); }
 }
 
-// ===== ตั้งค่าอาการประจำวันต่อโปรไฟล์ (display.tabs) =====
-const DAILY_SYM = [
-  { source:'nosebleed', label:'เลือดกำเดา' },
-  { source:'diarrhea',  label:'ท้องเสีย' },
-  { source:'vomiting',  label:'🤢 อาเจียน' },
-  { source:'general',   label:'อาการทั่วไป' },
-];
-// แหล่งอาการที่โปรไฟล์นี้เปิดอยู่ (จาก display.tabs ที่ source≠treatments) · ไม่มี = ค่า default
-function dailySymSources() {
-  const tabs = currentData && currentData.display && currentData.display.tabs;
-  if (tabs && tabs.length) return tabs.filter(t=>t.source!=='treatments').map(t=>t.source);
-  return ['diarrhea','general','nosebleed'];  // default (เหมือน DEFAULT_TABS ใน pet.html ที่ไม่ใช่ treatments)
+// ===== ตั้งค่าหมวดอาการประจำวันต่อโปรไฟล์ (จัดการ display.tabs) =====
+// เขียน display.tabs ใหม่จาก array หมวด (คง treatments ไว้เสมอ) แล้ว commit
+async function writeDailyCats(cats, msg) {
+  if (!currentData.display) currentData.display = {};
+  const oldTabs = currentData.display.tabs || [];
+  const tx = oldTabs.find(t=>t.source==='treatments') || { source:'treatments', label:'การรักษา' };
+  currentData.display.tabs = [tx, ...cats.map(c=>({ source:c.source, label:c.label }))];
+  await commit(msg);
+  renderDailyAdmin();
+  fillSymCats();
 }
-// โชว์/ซ่อนปุ่มแท็บย่อยอาการใน admin ตามที่โปรไฟล์เปิด
-function applyDailyTabs() {
-  const enabled = new Set(dailySymSources());
-  let firstVisible = null;
-  DAILY_SYM.forEach(d => {
-    const btn = document.querySelector(`.tab[data-form="${d.source}"]`);
-    const on = enabled.has(d.source);
-    if (btn) btn.style.display = on ? '' : 'none';
-    if (on && !firstVisible) firstVisible = d.source;
-  });
-  const activeBtn = document.querySelector('.tab[data-form].active');
-  if (!activeBtn || activeBtn.style.display === 'none') {
-    document.querySelectorAll('.tab[data-form]').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('#apanel-daily .form-block').forEach(x=>x.classList.remove('active'));
-    if (firstVisible) {
-      document.querySelector(`.tab[data-form="${firstVisible}"]`).classList.add('active');
-      document.getElementById('form-'+firstVisible).classList.add('active');
-    }
-  }
-}
-function fillSymTabsConfig() {
+function fillSymCats() {
   const box = document.getElementById('symTabsConfig'); if (!box) return;
-  const enabled = new Set(dailySymSources());
-  box.innerHTML = DAILY_SYM.map(d =>
-    `<div class="disp-row"><input type="checkbox" id="symtab-${d.source}" ${enabled.has(d.source)?'checked':''}><label for="symtab-${d.source}">${d.label}</label></div>`
-  ).join('');
+  const cats = dailyCats();
+  const present = new Set(cats.map(c=>c.source));
+  const rows = cats.length ? cats.map(c =>
+    `<div class="disp-row">
+       <input type="text" id="catlbl-${c.source}" value="${(c.label||'').replace(/"/g,'&quot;')}" style="flex:1;margin:0">
+       <span style="color:var(--text-muted);font-size:11px;font-family:'IBM Plex Mono',monospace">${c.source}</span>
+       <span style="color:var(--red);cursor:pointer" onclick="symCatDel('${c.source}')">ลบ</span>
+     </div>`).join('') : '<div class="hint">ยังไม่มีหมวด</div>';
+  const quick = Object.keys(SYM_KNOWN).filter(s=>!present.has(s))
+    .map(s=>`<button class="btn btn-ghost" style="width:auto;margin:6px 6px 0 0;padding:7px 12px" onclick="symCatAddKnown('${s}')">+ ${SYM_KNOWN[s]}</button>`).join('');
+  box.innerHTML = rows
+    + (cats.length ? `<button class="btn" style="margin-top:12px" onclick="symCatRenameSave()">บันทึกชื่อหมวด + อัพขึ้น GitHub</button>` : '')
+    + (quick ? `<div class="section-label" style="margin:20px 0 2px">เพิ่มหมวดสำเร็จรูป</div>${quick}` : '')
+    + `<div class="section-label" style="margin:20px 0 4px">เพิ่มหมวดใหม่ (กำหนดเอง)</div>
+       <input type="text" id="newcat-label" placeholder="ชื่อหมวด เช่น ชัก / เบื่ออาหาร / ไอ">
+       <button class="btn btn-ghost" style="margin-top:8px" onclick="symCatAddCustom()">+ เพิ่มหมวด</button>`;
 }
-async function saveSymTabs() {
+async function symCatRenameSave() {
   const token = document.getElementById('ghToken').value.trim();
   if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
   if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
   try {
-    const chosen = DAILY_SYM.filter(d => document.getElementById('symtab-'+d.source).checked);
-    if (!currentData.display) currentData.display = {};
-    const oldTabs = currentData.display.tabs || [];
-    const tx = oldTabs.find(t=>t.source==='treatments') || { source:'treatments', label:'การรักษา' };
-    currentData.display.tabs = [tx, ...chosen.map(d=>({ source:d.source, label:d.label }))];
-    await commit('ตั้งค่าอาการประจำวันที่แสดง');
-    applyDailyTabs();
-    ['nosebleed','diarrhea','vomiting','general'].forEach(fillSymList);
-    fillSymTabsConfig();
+    const cats = dailyCats().map(c => {
+      const el = document.getElementById('catlbl-'+c.source);
+      return { source:c.source, label:(el && el.value.trim()) || c.label };
+    });
+    await writeDailyCats(cats, 'แก้ชื่อหมวดอาการประจำวัน');
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+async function symCatDel(source) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  if (!confirm(`เอาหมวด "${symDefaultLabel(source)}" ออกจากโปรไฟล์นี้?\n(ข้อมูลที่บันทึกไว้ไม่ถูกลบ — เปิดหมวดกลับมาก็เห็นเหมือนเดิม)`)) return;
+  try {
+    const cats = dailyCats().filter(c => c.source !== source);
+    await writeDailyCats(cats, `เอาหมวด ${symDefaultLabel(source)} ออก`);
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+async function symCatAddKnown(source) {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  try {
+    const cats = dailyCats();
+    if (cats.some(c=>c.source===source)) return;
+    cats.push({ source, label: SYM_KNOWN[source] });
+    await writeDailyCats(cats, `เพิ่มหมวด ${SYM_KNOWN[source]}`);
+  } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
+}
+async function symCatAddCustom() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (!token) return toast('กรุณากรอก GitHub Token ก่อน', false);
+  if (!currentData) return toast('เลือกสัตว์เลี้ยง/โหลดข้อมูลก่อน', false);
+  const label = (document.getElementById('newcat-label').value||'').trim();
+  if (!label) return toast('พิมพ์ชื่อหมวดก่อน', false);
+  try {
+    const source = 'sym_' + Date.now().toString(36);  // key เฉพาะของหมวด custom
+    const cats = dailyCats();
+    cats.push({ source, label });
+    await writeDailyCats(cats, `เพิ่มหมวด ${label}`);
   } catch(e) { toast('ผิดพลาด: '+e.message, false); alert('เกิดข้อผิดพลาด:\n\n'+e.message); }
 }
 
@@ -1062,98 +1104,8 @@ async function addEntry(type) {
   if (!currentSha) throw new Error('อ่าน sha ของไฟล์ไม่ได้ (โทเคนอาจไม่มีสิทธิ์ Contents หรือ repo/branch ผิด)');
 
   let msg = '';
-  if (type === 'nosebleed') {
-    const date=val('nb-date'), side=val('nb-side'), detail=val('nb-detail');
-    if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
-    if (!currentData.symptoms) currentData.symptoms = {};
-    if (!currentData.symptoms.nosebleed) currentData.symptoms.nosebleed = [];
-    const arr = currentData.symptoms.nosebleed;
-    if (symEdit.nosebleed != null && arr[symEdit.nosebleed]) arr[symEdit.nosebleed] = { ...arr[symEdit.nosebleed], date, side, detail };
-    else arr.unshift({ date, side, detail });
-    arr.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `${symEdit.nosebleed!=null?'แก้ไข':'เพิ่ม'}บันทึกเลือดกำเดา ${date}`;
-  } else if (type === 'diarrhea') {
-    const date=val('dr-date'), detail=val('dr-detail');
-    if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
-    const photos = [];
-    const files = document.getElementById('dr-photos').files;
-    if (files.length) {
-      toast(`กำลังอัพรูป ${files.length} รูป...`);
-      try {
-        for (let i=0; i<files.length; i++) {
-          const b64 = await resizeImage(files[i]);
-          const path = `img/diarrhea-${date}-${Date.now()}-${i}.jpg`;
-          await uploadImage(token, path, b64);
-          photos.push(path);
-        }
-      } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
-      document.getElementById('dr-photos').value = '';
-    }
-    if (!currentData.symptoms) currentData.symptoms = {};
-    if (!currentData.symptoms.diarrhea) currentData.symptoms.diarrhea = [];
-    const arr = currentData.symptoms.diarrhea;
-    if (symEdit.diarrhea != null && arr[symEdit.diarrhea]) {
-      const old = arr[symEdit.diarrhea]; const merged = { ...old, date, detail };
-      const all = (old.photos||[]).concat(photos); if (all.length) merged.photos = all; else delete merged.photos;
-      arr[symEdit.diarrhea] = merged;
-    } else { const entry = { date, detail }; if (photos.length) entry.photos = photos; arr.unshift(entry); }
-    arr.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `${symEdit.diarrhea!=null?'แก้ไข':'เพิ่ม'}บันทึกท้องเสีย ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
-  } else if (type === 'vomiting') {
-    const date=val('vo-date'), detail=val('vo-detail');
-    if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
-    const photos = [];
-    const files = document.getElementById('vo-photos').files;
-    if (files.length) {
-      toast(`กำลังอัพรูป ${files.length} รูป...`);
-      try {
-        for (let i=0; i<files.length; i++) {
-          const b64 = await resizeImage(files[i]);
-          const path = `img/vomiting-${date}-${Date.now()}-${i}.jpg`;
-          await uploadImage(token, path, b64);
-          photos.push(path);
-        }
-      } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
-      document.getElementById('vo-photos').value = '';
-    }
-    if (!currentData.symptoms) currentData.symptoms = {};
-    if (!currentData.symptoms.vomiting) currentData.symptoms.vomiting = [];
-    const arr = currentData.symptoms.vomiting;
-    if (symEdit.vomiting != null && arr[symEdit.vomiting]) {
-      const old = arr[symEdit.vomiting]; const merged = { ...old, date, detail };
-      const all = (old.photos||[]).concat(photos); if (all.length) merged.photos = all; else delete merged.photos;
-      arr[symEdit.vomiting] = merged;
-    } else { const entry = { date, detail }; if (photos.length) entry.photos = photos; arr.unshift(entry); }
-    arr.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `${symEdit.vomiting!=null?'แก้ไข':'เพิ่ม'}บันทึกอาเจียน ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
-  } else if (type === 'general') {
-    const date=val('gn-date'), detail=val('gn-detail');
-    if(!date||!detail) return toast('กรอกวันที่และรายละเอียด', false);
-    const photos = [];
-    const files = document.getElementById('gn-photos').files;
-    if (files.length) {
-      toast(`กำลังอัพรูป ${files.length} รูป...`);
-      try {
-        for (let i=0; i<files.length; i++) {
-          const b64 = await resizeImage(files[i]);
-          const path = `img/general-${date}-${Date.now()}-${i}.jpg`;
-          await uploadImage(token, path, b64);
-          photos.push(path);
-        }
-      } catch(e) { throw new Error('อัพรูปไม่สำเร็จ: ' + e.message); }
-      document.getElementById('gn-photos').value = '';
-    }
-    if (!currentData.symptoms) currentData.symptoms = {};
-    if (!currentData.symptoms.general) currentData.symptoms.general = [];
-    const arr = currentData.symptoms.general;
-    if (symEdit.general != null && arr[symEdit.general]) {
-      const old = arr[symEdit.general]; const merged = { ...old, date, detail };
-      const all = (old.photos||[]).concat(photos); if (all.length) merged.photos = all; else delete merged.photos;
-      arr[symEdit.general] = merged;
-    } else { const entry = { date, detail }; if (photos.length) entry.photos = photos; arr.unshift(entry); }
-    arr.sort((a,b)=>b.date.localeCompare(a.date));
-    msg = `${symEdit.general!=null?'แก้ไข':'เพิ่ม'}บันทึกอาการทั่วไป ${date}${photos.length?` (+${photos.length} รูป)`:''}`;
-  } else if (type === 'labs') {
+  // หมายเหตุ: อาการประจำวัน (nosebleed/diarrhea/vomiting/general/custom) ใช้ symSave() แยกต่างหาก ไม่ผ่าน addEntry แล้ว
+  if (type === 'labs') {
     const panel = document.getElementById('lb-panel').value;
     const date = val('lb-date');
     if (!panel) return toast('เลือกหมวด', false);
@@ -1258,8 +1210,7 @@ async function addEntry(type) {
   }
 
   await commit(msg);
-  // รีเฟรชลิสต์ inline + รีเซ็ตโหมดแก้ไข
-  if (symEdit.hasOwnProperty(type)) { symEdit[type] = null; resetSymForm(type); fillSymList(type); }
+  // รีเฟรชลิสต์ inline + รีเซ็ตโหมดแก้ไข (อาการประจำวันใช้ symSave แยกต่างหาก)
   if (type === 'treatment') { trEdit = null; resetTreatForm(); fillTreatList(); }
   if (type === 'labs') { labEdit = null; resetLabForm(); fillLabList(); }
   if (type === 'liverTumor') { ltEdit = null; resetLiverForm(); fillLiverList(); }

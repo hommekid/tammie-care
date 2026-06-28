@@ -58,12 +58,12 @@ img/              header.jpg, frappe.jpg, wafer.jpg, favicon-32/180/192/512.png,
 - **จัดเป็นแท็บหลักแบบเดียวกับ dashboard** (`.dtab` / `#adminTabs` / `.atab-panel`): **สรุป / อาการประจำวัน / 🏥 การรักษา / 🧪 ผลเลือด / 💊 ยา / 📅 นัดหมาย / ⚙️ ตั้งค่า**
 - **ทุกหมวดมี list + เพิ่ม/แก้/ลบ inline ในแท็บตัวเอง** (ไม่มีเมนู "แก้ไข/ลบ รายการเดิม" รวมแล้ว) · กดแก้ = ดึงขึ้นฟอร์ม ปุ่มเปลี่ยนเป็น "บันทึกการแก้ไข", กดลบ = ยืนยันก่อน
   - **สรุป**: ค่าตรวจล่าสุด (vitals), 📈 ขนาดก้อนในตับ (list+แก้/ลบ), 📋 สิ่งที่ต้องติดตาม (watchList), 🚨 สัญญาณต้องไปหาหมอทันที (dangerSigns liverFailure+wbc), เกณฑ์ฉีด Leuco Plus
-  - **อาการประจำวัน**: แท็บย่อย เลือดกำเดา/ท้องเสีย/อาเจียน/อาการทั่วไป (`.tab[data-form]`+`.form-block`) · แต่ละหมวดมี list+แก้/ลบ · ท้องเสีย+อาเจียน+อาการทั่วไปแนบรูปได้ (แก้แล้วเลือกรูปใหม่ = เพิ่มต่อจากเดิม)
+  - **อาการประจำวัน**: แท็บย่อย+ฟอร์ม **generate แบบ dynamic ตามหมวดของโปรไฟล์** (`dailyCats()` อ่านจาก `display.tabs` source≠treatments) · id ฟอร์มแบบ `sym-<source>-date/detail/side/photos/list/btn` · แต่ละหมวดมี list+แก้/ลบ + แนบรูป (แก้แล้วเลือกรูปใหม่ = เพิ่มต่อจากเดิม) · nosebleed มีช่อง "รูจมูก" พิเศษ · ฟังก์ชัน `renderDailyAdmin/symList/symEditStart/symSave/symDel` (อาการไม่ผ่าน `addEntry` แล้ว)
   - **การรักษา**: list+แก้/ลบ · วันที่+หมอ+แผนก+บันทึก · แนบรูป (tr-photos) + Flowchart Mermaid (tr-flow)
   - **ผลเลือด**: list+แก้/ลบ · เลือกหมวด→กรอกค่าตาม labConfig · เพิ่มหมวดใหม่ · เพิ่ม/ลบพารามิเตอร์
   - **ยา**: 💊 ยาประจำ list+แก้/ลบ
   - **นัดหมาย**: list+แก้/ลบ
-  - **⚙️ ตั้งค่า**: (1) **🗂 อาการประจำวันที่มีในโปรไฟล์นี้** — ติ๊กเลือกหมวด (เลือดกำเดา/ท้องเสีย/อาเจียน/อาการทั่วไป) ต่อ profile → เขียน `display.tabs` (คง treatments ไว้เสมอ) · มีผลทั้ง dashboard และแท็บกรอกใน admin (ปุ่มแท็บย่อยโชว์ตามที่เปิด ผ่าน `applyDailyTabs`) · ฟังก์ชัน `dailySymSources/fillSymTabsConfig/saveSymTabs` (2) **ตั้งค่าหน้า Dashboard** (ซ่อน/จัดลำดับ section · DISP_SECTIONS แยก daily/treat)
+  - **⚙️ ตั้งค่า**: (1) **🗂 อาการประจำวันที่มีในโปรไฟล์นี้** — จัดการหมวดต่อ profile: **แก้ชื่อ** (input ต่อหมวด → `symCatRenameSave`), **ลบ** (`symCatDel` — ไม่ลบข้อมูลที่บันทึก), **เพิ่มสำเร็จรูป** (4 หมวดที่รู้จัก `symCatAddKnown`), **เพิ่มกำหนดเอง** (พิมพ์ชื่อ → source `sym_<base36>` `symCatAddCustom`) · ทุกอย่างเขียนลง `display.tabs` ผ่าน `writeDailyCats` (คง treatments เสมอ) · มีผลทั้ง dashboard และแท็บกรอก admin (2) **ตั้งค่าหน้า Dashboard** (ซ่อน/จัดลำดับ section · DISP_SECTIONS แยก daily/treat)
   - มี guard กันพังเมื่อสัตว์ตัวนั้นยังไม่มี structure — สร้างให้อัตโนมัติเมื่อบันทึก
 - footer: Tammie Care · หน้าแรก
 - ทุกการบันทึก commit ขึ้น GitHub ผ่าน Token → Pages rebuild ~1 นาที · error เด้ง popup ชัดเจน
