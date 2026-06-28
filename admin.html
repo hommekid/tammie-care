@@ -73,6 +73,12 @@
   .tab:hover { border-color:var(--sky-dim); color:var(--text); }
   .tab.active { background:var(--sky-dim); color:#fff; border-color:var(--sky); }
   .form-block { display:none; } .form-block.active { display:block; }
+  /* แท็บหลัก (ให้โครงเหมือนหน้า dashboard) */
+  .dash-tabs { display:flex; gap:8px; margin:8px 0 22px; flex-wrap:wrap; border-bottom:1px solid var(--border); padding-bottom:14px; }
+  .dtab { padding:9px 18px; border-radius:22px; background:var(--surface); border:1px solid var(--border); font-size:14px; font-weight:600; font-family:var(--cute); cursor:pointer; color:var(--text-dim); transition:all 0.15s; }
+  .dtab:hover { border-color:var(--sky-dim); color:var(--text); transform:translateY(-1px); }
+  .dtab.active { background:linear-gradient(135deg,var(--sky),var(--pink)); color:#1a1320; border-color:transparent; box-shadow:0 4px 14px rgba(143,189,240,0.3); }
+  .atab-panel { display:none; } .atab-panel.active { display:block; }
 
   .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); padding:12px 24px; border-radius:8px; font-size:14px; z-index:100; opacity:0; transition:opacity 0.3s; }
   .toast.show { opacity:1; }
@@ -122,21 +128,83 @@
       <option value="frappe">🐶 เฟรปเป้ (เฟ่)</option>
     </select>
 
-    <details class="acc"><summary>เพิ่มบันทึก</summary>
-    <div class="tabs">
-      <div class="tab active" data-form="nosebleed">🩸 เลือดกำเดา</div>
-      <div class="tab" data-form="diarrhea">💊 ท้องเสีย</div>
-      <div class="tab" data-form="vomiting">🤢 อาเจียน</div>
-      <div class="tab" data-form="general">🩺 อาการทั่วไป</div>
-      <div class="tab" data-form="labs">🧪 ผลเลือด</div>
-      <div class="tab" data-form="vitals">📊 ค่าตรวจล่าสุด</div>
-      <div class="tab" data-form="treatment">🏥 การรักษา</div>
-      <div class="tab" data-form="appointment">📅 นัดหมาย</div>
+    <div class="dash-tabs" id="adminTabs">
+      <div class="dtab active" data-atab="overview">สรุป</div>
+      <div class="dtab" data-atab="daily">อาการประจำวัน</div>
+      <div class="dtab" data-atab="treat">🏥 การรักษา</div>
+      <div class="dtab" data-atab="labs">🧪 ผลเลือด</div>
+      <div class="dtab" data-atab="meds">💊 ยา</div>
+      <div class="dtab" data-atab="appts">📅 นัดหมาย</div>
+      <div class="dtab" data-atab="tools">⚙️ จัดการ</div>
     </div>
 
+    <!-- ===== สรุป ===== -->
+    <div class="atab-panel active" id="apanel-overview">
+      <details class="acc" open><summary>📊 ค่าตรวจล่าสุด</summary>
+      <div class="card">
+        <label>วันที่ตรวจ</label><input type="date" id="vt-date">
+        <div class="row">
+          <div><label>ค่าหัวใจขาดเลือด</label><input type="number" step="0.01" id="vt-ischemia"></div>
+          <div><label>อัตราเต้นหัวใจ</label><input type="number" id="vt-hr"></div>
+        </div>
+        <div class="row">
+          <div><label>ขนาดหัวใจ</label><input type="number" step="0.1" id="vt-hs"></div>
+          <div><label>WBC (× 10³)</label><input type="number" step="0.01" id="vt-wbc"></div>
+        </div>
+        <label>X-Ray ปอด</label><input type="text" id="vt-lung" placeholder="เช่น เคลียร์">
+        <div class="hint">เว้นว่างช่องที่ไม่ได้ตรวจได้</div>
+        <button class="btn" onclick="addEntry('vitals')">อัพเดทค่าล่าสุด + อัพขึ้น GitHub</button>
+      </div></details>
+
+      <details class="acc"><summary>ขนาดก้อนในตับ (ซาวด์)</summary>
     <div class="card">
-      <!-- Nosebleed -->
-      <div class="form-block active" id="form-nosebleed">
+      <div class="row">
+        <div><label>วันที่</label><input type="date" id="lt-date"></div>
+        <div><label>ขนาด cm (เว้นว่างได้)</label><input type="number" step="0.1" id="lt-size"></div>
+      </div>
+      <label>หมายเหตุ</label><input type="text" id="lt-note" placeholder="เช่น ใหญ่ขึ้นนิดนึง">
+      <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
+    </div></details>
+
+      <details class="acc"><summary>📋 สิ่งที่ต้องติดตาม</summary>
+    <div class="card">
+      <div id="watch-list"></div>
+      <label>หัวข้อใหม่</label>
+      <textarea id="wl-text" placeholder="เช่น ก้อนในตับ — ซาวด์ทุก 1-2 เดือน"></textarea>
+      <button class="btn" id="wl-btn" onclick="addWatch()">เพิ่มหัวข้อ + อัพขึ้น GitHub</button>
+    </div></details>
+
+      <details class="acc"><summary>🚨 สัญญาณต้องไปหาหมอทันที</summary>
+    <div class="card">
+      <div id="danger-list"></div>
+      <label>สัญญาณใหม่</label>
+      <textarea id="dg-text" placeholder="เช่น ตัวเหลือง / ชัก สั่น หัวเอียง"></textarea>
+      <button class="btn" id="dg-btn" onclick="addDanger()">เพิ่มสัญญาณ + อัพขึ้น GitHub</button>
+    </div></details>
+
+      <details class="acc"><summary>เกณฑ์ฉีด Leuco Plus</summary>
+    <div class="card">
+      <div class="row">
+        <div><label>ฉีดเสมอเมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-always" placeholder="4000"></div>
+        <div><label>ฉีดถ้ามีอาการอื่น เมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-withsym" placeholder="4500"></div>
+      </div>
+      <label>ข้อความเกณฑ์ (บรรทัดละ 1 ข้อ)</label>
+      <textarea id="lp-rules" placeholder="WBC ต่ำกว่า 4,500 + มีอาการอื่น → ฉีด Leuco Plus&#10;WBC ต่ำกว่า 4,000 แม้อาการปกติ → ฉีด Leuco Plus"></textarea>
+      <div class="hint">ค่าเป็นจำนวนนับดิบ (เช่น 4000) — ระบบจะเทียบกับ WBC ที่กรอกหน่วย ×10³ ให้อัตโนมัติ · ค่าปัจจุบันจะถูกดึงมาแสดงหลังเลือกสัตว์เลี้ยง</div>
+      <button class="btn" onclick="addEntry('leucoPlus')">บันทึกเกณฑ์ + อัพขึ้น GitHub</button>
+    </div></details>
+    </div>
+
+    <!-- ===== อาการประจำวัน ===== -->
+    <div class="atab-panel" id="apanel-daily">
+      <div class="tabs">
+        <div class="tab active" data-form="nosebleed">🩸 เลือดกำเดา</div>
+        <div class="tab" data-form="diarrhea">💧 ท้องเสีย</div>
+        <div class="tab" data-form="vomiting">🤢 อาเจียน</div>
+        <div class="tab" data-form="general">🩺 อาการทั่วไป</div>
+      </div>
+      <div class="card">
+        <div class="form-block active" id="form-nosebleed">
         <div class="row">
           <div><label>วันที่</label><input type="date" id="nb-date"></div>
           <div><label>รูจมูก</label><select id="nb-side"><option value="left">ซ้าย</option><option value="right">ขวา</option><option value="unknown">ไม่ระบุ</option></select></div>
@@ -145,7 +213,6 @@
         <textarea id="nb-detail" placeholder="เช่น เลือดออกรูจมูกขวา ตอนตื่นนอน"></textarea>
         <button class="btn" onclick="addEntry('nosebleed')">บันทึก + อัพขึ้น GitHub</button>
       </div>
-      <!-- Diarrhea -->
       <div class="form-block" id="form-diarrhea">
         <label>วันที่</label><input type="date" id="dr-date">
         <label>รายละเอียด</label>
@@ -155,7 +222,6 @@
         <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
         <button class="btn" onclick="addEntry('diarrhea')">บันทึก + อัพขึ้น GitHub</button>
       </div>
-      <!-- Vomiting -->
       <div class="form-block" id="form-vomiting">
         <label>วันที่</label><input type="date" id="vo-date">
         <label>รายละเอียด</label>
@@ -165,7 +231,6 @@
         <div class="hint">เว้นว่างได้ถ้าไม่มีรูป · ระบบย่อขนาดรูปแล้วอัพขึ้น GitHub ให้</div>
         <button class="btn" onclick="addEntry('vomiting')">บันทึก + อัพขึ้น GitHub</button>
       </div>
-      <!-- General symptoms -->
       <div class="form-block" id="form-general">
         <label>วันที่</label><input type="date" id="gn-date">
         <label>รายละเอียด</label>
@@ -175,8 +240,31 @@
         <div class="hint">ระบบจะย่อขนาดรูปแล้วอัพขึ้น GitHub ให้อัตโนมัติ · จิ้มดูในหน้า dashboard ได้เลย</div>
         <button class="btn" onclick="addEntry('general')">บันทึก + อัพขึ้น GitHub</button>
       </div>
-      <!-- Labs (blood test) -->
-      <div class="form-block" id="form-labs">
+      </div>
+    </div>
+
+    <!-- ===== การรักษา ===== -->
+    <div class="atab-panel" id="apanel-treat">
+      <div class="card">
+        <label>วันที่</label><input type="date" id="tr-date">
+        <div class="row">
+          <div><label>หมอ</label><input type="text" id="tr-doctor" placeholder="เช่น อ.กอล์ฟ"></div>
+          <div><label>แผนก</label><input type="text" id="tr-spec" placeholder="เช่น ตับ"></div>
+        </div>
+        <label>บันทึก</label>
+        <textarea id="tr-notes" placeholder="ผลการตรวจ / การรักษา"></textarea>
+        <label>แนบรูป (เช่น flowchart ที่หมอวาด / ภาพถ่าย)</label>
+        <input type="file" id="tr-photos" accept="image/*" multiple>
+        <label>Flowchart (Mermaid) <span class="hint" style="display:inline">— เว้นว่างได้</span></label>
+        <textarea id="tr-flow" placeholder="เช่น&#10;graph TD&#10;A[เจาะเลือด] --> B{โปรตีนขึ้น?}&#10;B -->|ขึ้น| C[ลดยา]&#10;B -->|ไม่ขึ้น| D[ส่งต่อเฉพาะทาง]" style="font-family:'IBM Plex Mono',monospace;font-size:13px;min-height:90px"></textarea>
+        <div class="hint">รูปแบบ Mermaid: บรรทัดแรก <b>graph TD</b> (บนลงล่าง) หรือ <b>graph LR</b> (ซ้ายไปขวา) · ลูกศร <b>--&gt;</b> · กล่อง <b>A[ข้อความ]</b> · เงื่อนไข <b>B{คำถาม}</b></div>
+        <button class="btn" onclick="addEntry('treatment')">บันทึก + อัพขึ้น GitHub</button>
+      </div>
+    </div>
+
+    <!-- ===== ผลเลือด ===== -->
+    <div class="atab-panel" id="apanel-labs">
+      <div class="card">
         <label>หมวด</label>
         <select id="lb-panel" onchange="fillLabForm()"></select>
         <label>วันที่ตรวจ</label><input type="date" id="lb-date">
@@ -206,57 +294,11 @@
         <div class="hint">ค่าต่ำ/สูงเว้นว่างได้ (ไม่ตั้งช่วงปกติ = ไม่เตือนแดง) · ค่าปกติแต่ละตัวควรเช็คกับสัตวแพทย์</div>
         <button class="btn btn-ghost" onclick="addLabParam()">+ เพิ่มพารามิเตอร์</button>
       </div>
-      <!-- Vitals -->
-      <div class="form-block" id="form-vitals">
-        <label>วันที่ตรวจ</label><input type="date" id="vt-date">
-        <div class="row">
-          <div><label>ค่าหัวใจขาดเลือด</label><input type="number" step="0.01" id="vt-ischemia"></div>
-          <div><label>อัตราเต้นหัวใจ</label><input type="number" id="vt-hr"></div>
-        </div>
-        <div class="row">
-          <div><label>ขนาดหัวใจ</label><input type="number" step="0.1" id="vt-hs"></div>
-          <div><label>WBC (× 10³)</label><input type="number" step="0.01" id="vt-wbc"></div>
-        </div>
-        <label>X-Ray ปอด</label><input type="text" id="vt-lung" placeholder="เช่น เคลียร์">
-        <div class="hint">เว้นว่างช่องที่ไม่ได้ตรวจได้</div>
-        <button class="btn" onclick="addEntry('vitals')">อัพเดทค่าล่าสุด + อัพขึ้น GitHub</button>
-      </div>
-      <!-- Treatment -->
-      <div class="form-block" id="form-treatment">
-        <label>วันที่</label><input type="date" id="tr-date">
-        <div class="row">
-          <div><label>หมอ</label><input type="text" id="tr-doctor" placeholder="เช่น อ.กอล์ฟ"></div>
-          <div><label>แผนก</label><input type="text" id="tr-spec" placeholder="เช่น ตับ"></div>
-        </div>
-        <label>บันทึก</label>
-        <textarea id="tr-notes" placeholder="ผลการตรวจ / การรักษา"></textarea>
-        <label>แนบรูป (เช่น flowchart ที่หมอวาด / ภาพถ่าย)</label>
-        <input type="file" id="tr-photos" accept="image/*" multiple>
-        <label>Flowchart (Mermaid) <span class="hint" style="display:inline">— เว้นว่างได้</span></label>
-        <textarea id="tr-flow" placeholder="เช่น&#10;graph TD&#10;A[เจาะเลือด] --> B{โปรตีนขึ้น?}&#10;B -->|ขึ้น| C[ลดยา]&#10;B -->|ไม่ขึ้น| D[ส่งต่อเฉพาะทาง]" style="font-family:'IBM Plex Mono',monospace;font-size:13px;min-height:90px"></textarea>
-        <div class="hint">รูปแบบ Mermaid: บรรทัดแรก <b>graph TD</b> (บนลงล่าง) หรือ <b>graph LR</b> (ซ้ายไปขวา) · ลูกศร <b>--&gt;</b> · กล่อง <b>A[ข้อความ]</b> · เงื่อนไข <b>B{คำถาม}</b></div>
-        <button class="btn" onclick="addEntry('treatment')">บันทึก + อัพขึ้น GitHub</button>
-      </div>
-      <!-- Appointment -->
-      <div class="form-block" id="form-appointment">
-        <label>วันที่นัด</label><input type="date" id="ap-date">
-        <label>หมอ / การตรวจ</label><input type="text" id="ap-doctor" placeholder="เช่น อ.กอล์ฟ / Echo / ตรวจเลือด">
-        <label>หมายเหตุ</label><input type="text" id="ap-note" placeholder="เช่น เอาปัสสาวะไปด้วย (เว้นว่างได้)">
-        <button class="btn" onclick="addEntry('appointment')">บันทึกนัด + อัพขึ้น GitHub</button>
-      </div>
-    </div></details>
+    </div>
 
-    <details class="acc"><summary>ขนาดก้อนในตับ (ซาวด์)</summary>
-    <div class="card">
-      <div class="row">
-        <div><label>วันที่</label><input type="date" id="lt-date"></div>
-        <div><label>ขนาด cm (เว้นว่างได้)</label><input type="number" step="0.1" id="lt-size"></div>
-      </div>
-      <label>หมายเหตุ</label><input type="text" id="lt-note" placeholder="เช่น ใหญ่ขึ้นนิดนึง">
-      <button class="btn" onclick="addEntry('liverTumor')">บันทึก + อัพขึ้น GitHub</button>
-    </div></details>
-
-    <details class="acc"><summary>💊 ยาประจำ</summary>
+    <!-- ===== ยา ===== -->
+    <div class="atab-panel" id="apanel-meds">
+      <details class="acc"><summary>💊 ยาประจำ</summary>
     <div class="card">
       <div id="med-list"></div>
       <label>ชื่อยา</label><input type="text" id="md-name" placeholder="เช่น Palladia">
@@ -267,24 +309,21 @@
       <label>หมายเหตุ</label><input type="text" id="md-note" placeholder="เช่น ก่อนอาหาร / Mon Wed Fri">
       <button class="btn" id="md-btn" onclick="addMed()">เพิ่มยา + อัพขึ้น GitHub</button>
     </div></details>
+    </div>
 
-    <details class="acc"><summary>📋 สิ่งที่ต้องติดตาม</summary>
-    <div class="card">
-      <div id="watch-list"></div>
-      <label>หัวข้อใหม่</label>
-      <textarea id="wl-text" placeholder="เช่น ก้อนในตับ — ซาวด์ทุก 1-2 เดือน"></textarea>
-      <button class="btn" id="wl-btn" onclick="addWatch()">เพิ่มหัวข้อ + อัพขึ้น GitHub</button>
-    </div></details>
+    <!-- ===== นัดหมาย ===== -->
+    <div class="atab-panel" id="apanel-appts">
+      <div class="card">
+        <label>วันที่นัด</label><input type="date" id="ap-date">
+        <label>หมอ / การตรวจ</label><input type="text" id="ap-doctor" placeholder="เช่น อ.กอล์ฟ / Echo / ตรวจเลือด">
+        <label>หมายเหตุ</label><input type="text" id="ap-note" placeholder="เช่น เอาปัสสาวะไปด้วย (เว้นว่างได้)">
+        <button class="btn" onclick="addEntry('appointment')">บันทึกนัด + อัพขึ้น GitHub</button>
+      </div>
+    </div>
 
-    <details class="acc"><summary>🚨 สัญญาณต้องไปหาหมอทันที</summary>
-    <div class="card">
-      <div id="danger-list"></div>
-      <label>สัญญาณใหม่</label>
-      <textarea id="dg-text" placeholder="เช่น ตัวเหลือง / ชัก สั่น หัวเอียง"></textarea>
-      <button class="btn" id="dg-btn" onclick="addDanger()">เพิ่มสัญญาณ + อัพขึ้น GitHub</button>
-    </div></details>
-
-    <details class="acc"><summary>แก้ไข / ลบ รายการเดิม</summary>
+    <!-- ===== จัดการ ===== -->
+    <div class="atab-panel" id="apanel-tools">
+      <details class="acc"><summary>แก้ไข / ลบ รายการเดิม</summary>
     <div class="card">
       <label>หมวด</label>
       <select id="ed-cat" onchange="edLoadList()">
@@ -303,19 +342,7 @@
       <div id="ed-form" style="display:none"></div>
     </div></details>
 
-    <details class="acc"><summary>เกณฑ์ฉีด Leuco Plus</summary>
-    <div class="card">
-      <div class="row">
-        <div><label>ฉีดเสมอเมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-always" placeholder="4000"></div>
-        <div><label>ฉีดถ้ามีอาการอื่น เมื่อ WBC ต่ำกว่า</label><input type="number" id="lp-withsym" placeholder="4500"></div>
-      </div>
-      <label>ข้อความเกณฑ์ (บรรทัดละ 1 ข้อ)</label>
-      <textarea id="lp-rules" placeholder="WBC ต่ำกว่า 4,500 + มีอาการอื่น → ฉีด Leuco Plus&#10;WBC ต่ำกว่า 4,000 แม้อาการปกติ → ฉีด Leuco Plus"></textarea>
-      <div class="hint">ค่าเป็นจำนวนนับดิบ (เช่น 4000) — ระบบจะเทียบกับ WBC ที่กรอกหน่วย ×10³ ให้อัตโนมัติ · ค่าปัจจุบันจะถูกดึงมาแสดงหลังเลือกสัตว์เลี้ยง</div>
-      <button class="btn" onclick="addEntry('leucoPlus')">บันทึกเกณฑ์ + อัพขึ้น GitHub</button>
-    </div></details>
-
-    <details class="acc"><summary>ตั้งค่าหน้า Dashboard</summary>
+      <details class="acc"><summary>ตั้งค่าหน้า Dashboard</summary>
     <div class="card">
       <div class="hint" style="margin-top:0">เลือกว่าหน้าของตัวนี้จะแสดง section ไหนบ้าง · ติ๊กออก = ซ่อน · ปุ่ม ↑↓ จัดลำดับ · section ที่ไม่มีข้อมูลจะถูกซ่อนอัตโนมัติอยู่แล้ว</div>
       <div id="dispList"></div>
@@ -325,6 +352,7 @@
       </div>
       <button class="btn" onclick="saveDisplay()">บันทึกการตั้งค่า + อัพขึ้น GitHub</button>
     </div></details>
+    </div>
 
   </div>
   <footer style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px;border-top:1px solid var(--border)">
@@ -380,6 +408,14 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   document.querySelectorAll('.form-block').forEach(x=>x.classList.remove('active'));
   t.classList.add('active');
   document.getElementById('form-'+t.dataset.form).classList.add('active');
+});
+
+// แท็บหลัก admin (โครงเหมือนหน้า dashboard)
+document.querySelectorAll('#adminTabs .dtab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('#adminTabs .dtab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.atab-panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('apanel-'+t.dataset.atab).classList.add('active');
 });
 
 async function loadPet() {

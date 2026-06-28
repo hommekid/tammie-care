@@ -122,7 +122,35 @@ line-height เนื้อหา 1.6–1.8
 
 ---
 
-## 7. โทนและน้ำเสียง (Voice)
+## 7. แท็บหลัก (Tab navigation)
+
+หน้า dashboard (pet.html) และ admin ใช้ระบบแท็บหลักหน้าตาเดียวกัน (`.dash-tabs` + `.dtab` + panel)
+- แท็บปกติ: pill พื้นขาว ขอบ `--border` ตัวอักษร `--text-dim`
+- แท็บ active: `linear-gradient(135deg, var(--sky), var(--pink))` ตัวอักษร `#1a1320` เงา `0 4px 14px rgba(143,189,240,0.3)` ไม่มีขอบ
+- แถบแท็บมีเส้นใต้ `1px solid var(--border)` คั่นจากเนื้อหา
+- ลำดับแท็บ dashboard: **สรุป / อาการประจำวัน / การรักษา / ผลเลือด / 💊 ยา / 📅 นัดหมาย** · admin เพิ่ม **⚙️ จัดการ**
+
+---
+
+## 8. Flowchart (Mermaid)
+
+ใช้ Mermaid (cdnjs 10.9.1) เรนเดอร์ flowchart ในผลการรักษา · init ด้วย `theme:'base'` + themeVariables โทนพาสเทล:
+- `primaryColor: #fbf4ec` · `primaryBorderColor: #d99e3e` · `primaryTextColor: #4a4035`
+- `lineColor: #8c7f6f` · `secondaryColor: #e6eef9` · `tertiaryColor: #f8e0e0`
+- `fontFamily: 'Sarabun, sans-serif'` · `fontSize: 14px`
+
+กล่องครอบ flowchart (`.tx-flow`): พื้นขาว ขอบ `--gold-dim` radius 8px padding 12px · มี label เล็ก "🗺 ขั้นตอน/แผนการรักษา" (IBM Plex Mono สีทอง) · `svg { max-width:100%; height:auto }`
+
+---
+
+## 9. ข้อความหลายบรรทัด
+
+ช่อง free-text จาก admin (textarea) เก็บ `\n` ได้ · ฝั่งแสดงใช้ `white-space: pre-line` กับ
+`.alert-box ul`, `.watch-box ul`, `.tl-item p`, `.nb-detail-card p`, `.appt-note`, `.med-note` เพื่อให้ขึ้นบรรทัดใหม่ตามที่พิมพ์
+
+---
+
+## โทนและน้ำเสียง (Voice)
 
 ภาษาไทยเป็นกันเอง อบอุ่น ห่วงใย ("ไม่ได้แค่เลี้ยง แต่เราแคร์") เหมาะกับเจ้าของสัตว์ที่กำลังดูแลสัตว์ป่วย —
 ให้ความรู้สึกปลอดภัย อ่อนโยน แต่ข้อมูลสุขภาพต้องชัดและอ่านง่าย โดยเฉพาะส่วนเตือน/อันตราย
@@ -131,5 +159,5 @@ line-height เนื้อหา 1.6–1.8
 
 ## หมายเหตุการนำไปใช้
 - เว็บเป็น **static HTML/JS** ล้วน + ข้อมูลจาก `data/*.json` — design system นี้ครอบ "หน้าตา" ส่วนตรรกะดึงข้อมูลคงเดิม
-- ตัวแปรทั้งหมดประกาศใน `:root` ของแต่ละไฟล์ (`index.html` / `pet.html` / `admin.html`) เปลี่ยนที่เดียวกระทบทั้งหน้า
+- ตัวแปรทั้งหมดประกาศใน `:root` ของแต่ละไฟล์ (`index.html` / `pet.html` / `admin.html`) เปลี่ยนที่เดียวกระทบทั้งหน้า · ทั้ง 3 หน้าใช้ palette เดียวกัน (ธีมพาสเทลสว่าง)
 - แบนเนอร์อ้างอิง: `img/header.jpg`
