@@ -139,6 +139,7 @@
   .cal-cell .cdot { width: 4px; height: 4px; border-radius: 50%; }
   .cal-cell .tip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #4a4035; border: 1px solid #4a4035; padding: 6px 10px; border-radius: 6px; font-size: 12px; color: #fff; white-space: normal; width: 180px; z-index: 20; font-weight: 400; line-height: 1.4; box-shadow: 0 6px 16px rgba(74,64,53,0.28); }
   .cal-cell:hover .tip { display: block; }
+  .cal-cell.today { outline: 2px solid var(--blue); outline-offset: -2px; color: var(--blue); font-weight: 700; }
 
   .timeline { display: flex; flex-direction: column; }
   .tl-date-group { margin-bottom: 18px; }
@@ -161,13 +162,6 @@
   .tx-flow .mermaid { font-family: 'Sarabun', sans-serif; text-align: center; }
   .tx-flow .mermaid svg { max-width: 100%; height: auto; }
 
-  .tl-acc { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: var(--surface); }
-  .tl-acc-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--gold); user-select: none; }
-  .tl-acc-head:hover { background: var(--surface2); }
-  .tl-acc-head .chev { margin-left: auto; transition: transform 0.2s; color: var(--text-muted); font-size: 16px; }
-  .tl-acc.open .tl-acc-head .chev { transform: rotate(90deg); }
-  .tl-acc-body { display: none; padding: 0 14px 12px; }
-  .tl-acc.open .tl-acc-body { display: block; }
 
   .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
   .tab { padding: 7px 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; font-family: var(--cute); cursor: pointer; color: var(--text-dim); transition: all 0.15s; }
@@ -197,7 +191,6 @@
   .nb-detail-card:last-child { margin-bottom: 0; }
   .nb-detail-card .nb-detail-date { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); font-weight: 600; margin-bottom: 6px; }
   .nb-detail-card p { color: var(--text); line-height: 1.7; }
-  .nb-list { margin-top: 18px; }
   .cal-cell.has-event { cursor: pointer; }
   .med-box { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow-x: auto; }
   .med-tbl { border-collapse: collapse; width: 100%; font-size: 13px; }
@@ -271,6 +264,16 @@ const params = new URLSearchParams(location.search);
 const petId = params.get('id') || 'frappe';
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const TH_DAYS = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+// วันนี้ (ใช้ไฮไลต์ Today + ให้ปฏิทินเปิดที่เดือนปัจจุบันเสมอ)
+const TODAY_ISO = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
+const TODAY_MK = TODAY_ISO.slice(0,7);
+// รวมเดือนจาก data + แทรกเดือนปัจจุบันเสมอ (เรียงใหม่→เก่า)
+function calMonthsWithToday(byMonth) {
+  if (!byMonth[TODAY_MK]) byMonth[TODAY_MK] = [];
+  return Object.keys(byMonth).sort().reverse().map(mk => ({ mk, evs: byMonth[mk] }));
+}
+// index ของเดือนปัจจุบันในลิสต์ (ให้ปฏิทินเปิดที่เดือนนี้)
+function todayIdx(months) { const i = months.findIndex(x => x.mk === TODAY_MK); return i >= 0 ? i : 0; }
 
 // ค่า default — override ได้ต่อตัวผ่าน key `display` ใน data/<id>.json
 // display: { order:[...], hidden:[...], calendar:{source,title}, tabs:[{source,label}], stats:[{key,label,note,color,check}] }
@@ -627,8 +630,8 @@ let calMonths = [], calIdx = 0;
 function renderCalendar(events) {
   const byMonth = {};
   events.forEach(e => { const k = e.date.slice(0,7); (byMonth[k]=byMonth[k]||[]).push(e); });
-  calMonths = Object.keys(byMonth).sort().reverse().map(mk => ({ mk, evs: byMonth[mk] }));
-  calIdx = 0;
+  calMonths = calMonthsWithToday(byMonth);
+  calIdx = todayIdx(calMonths);
   document.getElementById('calPrev').onclick = () => { if (calIdx < calMonths.length-1) { calIdx++; drawMonth(); } };
   document.getElementById('calNext').onclick = () => { if (calIdx > 0) { calIdx--; drawMonth(); } };
   drawMonth();
@@ -646,11 +649,12 @@ function drawMonth() {
   let cells = '';
   for (let i=0;i<firstDay;i++) cells += '<div></div>';
   for (let d=1; d<=daysInMonth; d++) {
+    const tcls = `${mk}-${String(d).padStart(2,'0')}`===TODAY_ISO ? ' today' : '';
     const ev = evMap[d];
     if (ev) {
       const cls = ev.side==='left'?'ev-left':ev.side==='right'?'ev-right':(ev.side?'ev-unknown':'ev-any');
-      cells += `<div class="cal-cell has-event ${cls}" onclick="showNbDetail('${ev.date}')">${d}</div>`;
-    } else cells += `<div class="cal-cell">${d}</div>`;
+      cells += `<div class="cal-cell has-event ${cls}${tcls}" onclick="showNbDetail('${ev.date}')">${d}</div>`;
+    } else cells += `<div class="cal-cell${tcls}">${d}</div>`;
   }
   titleEl.textContent = `${TH_MONTHS[m-1]} ${y+543}`;
   gridEl.innerHTML = `<div class="cal-grid">${cells}</div>`;
@@ -697,14 +701,6 @@ function txFlow(e) {
 function txEntryHTML(e) {
   return `<div class="tl-item"><div class="doctor">${e.doctor} — ${e.specialty}</div><p>${e.notes||''}${photoLinks(e.photos)}</p>${txFlow(e)}</div>`;
 }
-function txToggleAcc(head) {
-  const acc = head.parentElement;
-  acc.classList.toggle('open');
-  if (acc.classList.contains('open')) renderMermaid(acc);
-}
-function txListItem(t) {
-  return `<div class="tl-acc"><div class="tl-acc-head" onclick="txToggleAcc(this)">📅 ${fmtDate(t.date)}<span class="chev">›</span></div><div class="tl-acc-body"><div class="tl-items">${t.entries.map(txEntryHTML).join('')}</div></div></div>`;
-}
 function renderTreatments(elId, treatments) {
   txEvents = treatments;
   const legend = `<div class="legend"><span><i class="dot dot-tx"></i> วันที่มีการรักษา</span></div>`;
@@ -720,15 +716,14 @@ function renderTreatments(elId, treatments) {
         <div id="txCalMonths"></div>
       </div>
       <div class="nb-detail" id="txDetail"><div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูรายละเอียดการรักษา</div></div>
-    </div>
-    <div class="nb-list" id="txList"></div>`;
+    </div>`;
   renderTxCalendar(treatments);
 }
 function renderTxCalendar(events) {
   const byMonth = {};
   events.forEach(e => { const k = e.date.slice(0,7); (byMonth[k]=byMonth[k]||[]).push(e); });
-  txCalMonths = Object.keys(byMonth).sort().reverse().map(mk => ({ mk, evs: byMonth[mk] }));
-  txCalIdx = 0;
+  txCalMonths = calMonthsWithToday(byMonth);
+  txCalIdx = todayIdx(txCalMonths);
   document.getElementById('txCalPrev').onclick = () => { if (txCalIdx < txCalMonths.length-1) { txCalIdx++; drawTxMonth(); } };
   document.getElementById('txCalNext').onclick = () => { if (txCalIdx > 0) { txCalIdx--; drawTxMonth(); } };
   drawTxMonth();
@@ -745,14 +740,13 @@ function drawTxMonth() {
   let cells = '';
   for (let i=0;i<firstDay;i++) cells += '<div></div>';
   for (let d=1; d<=daysInMonth; d++) {
+    const tcls = `${mk}-${String(d).padStart(2,'0')}`===TODAY_ISO ? ' today' : '';
     const ev = evMap[d];
-    if (ev) cells += `<div class="cal-cell has-event ev-tx" onclick="showTxDetail('${ev.date}')">${d}</div>`;
-    else cells += `<div class="cal-cell">${d}</div>`;
+    if (ev) cells += `<div class="cal-cell has-event ev-tx${tcls}" onclick="showTxDetail('${ev.date}')">${d}</div>`;
+    else cells += `<div class="cal-cell${tcls}">${d}</div>`;
   }
   titleEl.textContent = `${TH_MONTHS[m-1]} ${y+543}`;
   gridEl.innerHTML = `<div class="cal-grid">${cells}</div>`;
-  const listEl = document.getElementById('txList');
-  if (listEl) listEl.innerHTML = [...evs].sort((a,b)=>b.date.localeCompare(a.date)).map(txListItem).join('');
   document.getElementById('txCalPrev').disabled = txCalIdx >= txCalMonths.length-1;
   document.getElementById('txCalNext').disabled = txCalIdx <= 0;
 }
@@ -775,10 +769,6 @@ function symColor(src) { return SYM_COLORS[src] || '#e8b84b'; }
 function hexA(hex, a) { const n = parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
 function dailySide(d) { return (d._src==='nosebleed' && d.side) ? ' · '+sideLabel(d.side) : ''; }
 let dailyEvents = [], dyCalMonths = [], dyCalIdx = 0;
-function dailyListItem(d) {
-  const c = symColor(d._src);
-  return `<div class="tl-item" style="border-left:3px solid ${c}"><div class="doctor">${fmtDate(d.date)} · <span style="color:${c}">${d._label}</span>${dailySide(d)}</div><p>${d.detail||''}${photoLinks(d.photos)}</p></div>`;
-}
 function renderDailyCalendar(elId, sources) {
   dailyEvents = [];
   sources.forEach(s => (s.items||[]).forEach(it => dailyEvents.push({ ...it, _src:s.source, _label:s.label })));
@@ -795,15 +785,14 @@ function renderDailyCalendar(elId, sources) {
         <div id="dyCalMonths"></div>
       </div>
       <div class="nb-detail" id="dyDetail"><div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูอาการของวันนั้น</div></div>
-    </div>
-    <div class="nb-list" id="dyList"></div>`;
+    </div>`;
   renderDailyCal();
 }
 function renderDailyCal() {
   const byMonth = {};
   dailyEvents.forEach(e => { const k = e.date.slice(0,7); (byMonth[k]=byMonth[k]||[]).push(e); });
-  dyCalMonths = Object.keys(byMonth).sort().reverse().map(mk => ({ mk, evs: byMonth[mk] }));
-  dyCalIdx = 0;
+  dyCalMonths = calMonthsWithToday(byMonth);
+  dyCalIdx = todayIdx(dyCalMonths);
   document.getElementById('dyCalPrev').onclick = () => { if (dyCalIdx < dyCalMonths.length-1) { dyCalIdx++; drawDailyMonth(); } };
   document.getElementById('dyCalNext').onclick = () => { if (dyCalIdx > 0) { dyCalIdx--; drawDailyMonth(); } };
   drawDailyMonth();
@@ -820,17 +809,16 @@ function drawDailyMonth() {
   let cells = '';
   for (let i=0;i<firstDay;i++) cells += '<div></div>';
   for (let d=1; d<=daysInMonth; d++) {
+    const tcls = `${mk}-${String(d).padStart(2,'0')}`===TODAY_ISO ? ' today' : '';
     const list = dayMap[d];
     if (list) {
       const srcs = [...new Set(list.map(e=>e._src))];
       const dots = srcs.map(s=>`<i class="cdot" style="background:${symColor(s)}"></i>`).join('');
-      cells += `<div class="cal-cell has-event dy-event" onclick="showDailyDetail('${list[0].date}')">${d}<span class="cell-dots">${dots}</span></div>`;
-    } else cells += `<div class="cal-cell">${d}</div>`;
+      cells += `<div class="cal-cell has-event dy-event${tcls}" onclick="showDailyDetail('${list[0].date}')">${d}<span class="cell-dots">${dots}</span></div>`;
+    } else cells += `<div class="cal-cell${tcls}">${d}</div>`;
   }
   titleEl.textContent = `${TH_MONTHS[m-1]} ${y+543}`;
   gridEl.innerHTML = `<div class="cal-grid">${cells}</div>`;
-  const listEl = document.getElementById('dyList');
-  if (listEl) listEl.innerHTML = '<div class="timeline"><div class="tl-items">' + [...evs].sort((a,b)=>b.date.localeCompare(a.date)).map(dailyListItem).join('') + '</div></div>';
   document.getElementById('dyCalPrev').disabled = dyCalIdx >= dyCalMonths.length-1;
   document.getElementById('dyCalNext').disabled = dyCalIdx <= 0;
 }
@@ -868,9 +856,6 @@ function renderNosebleedTab(elId, events) {
   const legend = hasSide
     ? `<div class="legend"><span><i class="dot dot-left"></i> รูจมูกซ้าย</span><span><i class="dot dot-right"></i> รูจมูกขวา</span><span><i class="dot dot-unknown"></i> ไม่ระบุ</span></div>`
     : `<div class="legend"><span><i class="dot dot-any"></i> วันที่มีอาการ</span></div>`;
-  const list = '<div class="timeline"><div class="tl-items">' + [...events].sort((a,b)=>b.date.localeCompare(a.date)).map(d =>
-    `<div class="tl-item"><div class="doctor">${fmtDate(d.date)}${d.side?' · '+sideLabel(d.side):''}</div><p>${d.detail||''}${photoLinks(d.photos)}</p></div>`
-  ).join('') + '</div></div>';
   document.getElementById(elId).innerHTML = `
     <div class="nb-top">
       <div class="nb-cal">
@@ -883,8 +868,7 @@ function renderNosebleedTab(elId, events) {
         <div id="calMonths"></div>
       </div>
       <div class="nb-detail" id="nbDetail"><div class="nb-detail-empty">จิ้มวันที่มีจุดสี เพื่อดูรายละเอียด</div></div>
-    </div>
-    <div class="nb-list">${list}</div>`;
+    </div>`;
   renderCalendar(events);
 }
 function showNbDetail(date) {

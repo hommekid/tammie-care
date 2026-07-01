@@ -92,6 +92,7 @@
   .mcal-cell.has { color:var(--text); font-weight:700; }
   .mcal-cell.has::after { content:''; position:absolute; bottom:5px; left:50%; transform:translateX(-50%); width:5px; height:5px; border-radius:50%; background:var(--gold); }
   .mcal-cell.sel { border-color:var(--sky); background:var(--blue-dim); color:var(--blue); font-weight:700; }
+  .mcal-cell.today { outline:2px solid var(--blue); outline-offset:-2px; color:var(--blue); font-weight:700; }
   .day-box { border:1px solid var(--gold-dim); border-radius:10px; padding:12px 14px; margin-bottom:12px; background:#fff; box-shadow:0 4px 14px rgba(160,140,110,0.14); }
   .day-box .day-head { font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--gold); font-weight:600; margin-bottom:8px; }
 
@@ -640,12 +641,12 @@ function symArr(src) { return (currentData && currentData.symptoms && currentDat
 const calState = {};
 const CAL_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const CAL_DOW = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+const CAL_TODAY_ISO = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })();
 function calRender(id, dateList, onPick) {
   const wrap = document.getElementById(id); if (!wrap) return;
   let st = calState[id];
   if (!st) {
-    const latest = dateList.slice().sort().pop();
-    const base = latest ? new Date(latest+'T00:00:00') : new Date();
+    const base = new Date();  // เปิดที่เดือนปัจจุบันเสมอ
     st = calState[id] = { year: base.getFullYear(), month: base.getMonth(), sel: null };
   }
   st._dates = dateList; st._onPick = onPick;
@@ -657,7 +658,7 @@ function calRender(id, dateList, onPick) {
   for (let i=0;i<startDow;i++) cells += `<div class="mcal-cell empty"></div>`;
   for (let d=1; d<=days; d++) {
     const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const cls = ['mcal-cell']; if (has.has(ds)) cls.push('has'); if (st.sel===ds) cls.push('sel');
+    const cls = ['mcal-cell']; if (has.has(ds)) cls.push('has'); if (st.sel===ds) cls.push('sel'); if (ds===CAL_TODAY_ISO) cls.push('today');
     cells += `<div class="${cls.join(' ')}" onclick="calPick('${id}','${ds}')">${d}</div>`;
   }
   wrap.innerHTML = `<div class="mcal">
