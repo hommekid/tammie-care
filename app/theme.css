@@ -156,6 +156,84 @@ a { color: var(--sky); text-decoration: none; }
 .tumor-box { width: 100%; height: 250px; }
 .tumor-box canvas { width: 100% !important; height: 250px !important; }
 
+/* ---------- ตารางยา ---------- */
+.med-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.med-tbl th, .med-tbl td { border: 1px solid var(--border); padding: 10px 12px; text-align: left; vertical-align: top; }
+.med-tbl th { background: var(--surface2); color: var(--text-dim); font-weight: 500; font-size: 12.5px; }
+.med-tbl th.dose, .med-tbl td.dose { text-align: center; white-space: nowrap; width: 62px; }
+.med-tbl td.dose { font-family: var(--mono); font-weight: 500; }
+.med-tbl .med-name { font-weight: 600; }
+.med-tbl .med-note { font-size: 12.5px; color: var(--text-dim); }
+.med-tbl tr:nth-child(even) td { background: rgba(251,244,236,0.5); }
+.tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ---------- การ์ดนัดหมาย ---------- */
+.appt { border: 1px solid var(--border); border-radius: 12px; padding: 13px 15px; background: var(--surface); box-shadow: var(--sh-card); }
+.appt + .appt { margin-top: 10px; }
+.appt.soon { border-color: var(--gold); border-left: 4px solid var(--gold); }
+.appt.today { border-color: var(--red); border-left: 4px solid var(--red); background: #fffafa; }
+.appt.past { box-shadow: none; background: var(--surface2); }
+.appt-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.appt-date { font-family: var(--mono); font-size: 12.5px; color: var(--gold); }
+.appt-doctor { font-weight: 600; font-family: var(--cute); }
+.appt-when { margin-left: auto; font-size: 11.5px; font-weight: 600; padding: 4px 11px; border-radius: 20px;
+             background: rgba(217,158,62,0.14); color: #b07d22; border: 1px solid var(--gold-dim); }
+.appt-when.urgent { background: rgba(224,122,122,0.14); color: #c44d4d; border-color: #f0c3c3; }
+.appt-note { font-size: 13px; color: var(--text-dim); margin-top: 6px; white-space: pre-line; }
+details.past-appts { margin-top: 16px; }
+details.past-appts > summary { cursor: pointer; font-size: 13px; color: var(--gold); font-family: var(--mono); user-select: none; padding: 6px 0; }
+
+/* ---------- ปฏิทินอาการ ---------- */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 14px; font-size: 12.5px; color: var(--text-dim); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+.cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.cal-nav button {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font-size: 16px; line-height: 1;
+}
+.cal-nav button:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.cal-nav button:disabled { opacity: .3; cursor: default; }
+.cal-title { font-size: 13px; font-family: var(--mono); color: var(--gold); }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-dow { text-align: center; font-size: 10.5px; color: var(--text-muted); font-family: var(--mono); padding-bottom: 2px; }
+.cal-cell {
+  aspect-ratio: 1; border-radius: 6px; background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--text-muted); position: relative; border: 1px solid transparent;
+}
+.cal-cell.has { background: var(--surface); border-color: var(--border); color: var(--text); font-weight: 600; cursor: pointer; }
+.cal-cell.has:hover { border-color: var(--sky); }
+.cal-cell.sel { border-color: var(--sky); background: var(--blue-dim); }
+.cal-cell.today { outline: 2px solid var(--blue); outline-offset: -2px; color: var(--blue); font-weight: 700; }
+.cal-cell .cell-dots { position: absolute; bottom: 3px; left: 0; right: 0; display: flex; justify-content: center; gap: 2px; }
+.cal-cell .cdot { width: 5px; height: 5px; border-radius: 50%; }
+
+.day-box { margin-top: 16px; border: 1px solid var(--gold-dim); border-radius: 12px; background: var(--surface); padding: 14px 16px; box-shadow: var(--sh-card); }
+.day-head { font-family: var(--mono); font-size: 12.5px; color: var(--gold); margin-bottom: 12px; }
+.sym-card { border-left: 3px solid var(--border); padding: 4px 0 4px 12px; }
+.sym-card + .sym-card { margin-top: 14px; }
+.sym-kind { font-size: 12.5px; font-weight: 600; font-family: var(--cute); margin-bottom: 4px; }
+.sym-detail { font-size: 13.5px; white-space: pre-line; }
+.sym-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.sym-photos img { width: 88px; height: 88px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: zoom-in; }
+
+/* ---------- การรักษา ---------- */
+.tx-entry { border-left: 3px solid var(--gold-dim); padding: 4px 0 4px 12px; }
+.tx-entry + .tx-entry { margin-top: 16px; }
+.tx-doctor { font-family: var(--mono); font-size: 12px; color: var(--gold); font-weight: 500; margin-bottom: 5px; }
+.tx-notes { font-size: 13.5px; white-space: pre-line; }
+.tx-flow { background: var(--surface); border: 1px solid var(--gold-dim); border-radius: 8px; padding: 12px; margin-top: 10px; }
+.tx-flow-label { font-family: var(--mono); font-size: 11px; color: var(--gold); margin-bottom: 8px; }
+.tx-flow svg { max-width: 100%; height: auto; }
+
+/* ---------- lightbox ---------- */
+.lightbox { position: fixed; inset: 0; background: rgba(74,64,53,0.86); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+.lightbox .close { position: absolute; top: 16px; right: 20px; color: #fff; font-size: 32px; cursor: pointer; line-height: 1; }
+
 .loading { text-align: center; padding: 50px 20px; color: var(--text-dim); }
 .empty { color: var(--text-muted); font-size: 13.5px; padding: 10px 0; }
 

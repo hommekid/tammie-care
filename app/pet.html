@@ -6,7 +6,7 @@
 <title>Dashboard 🐾 · Tammie Care</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32.png?v=2">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="theme.css?v=5">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -39,6 +39,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
 <script src="lib.js"></script>
 <script>
@@ -118,8 +119,333 @@ function showTab(key) {
   const c = document.getElementById('content');
   c.innerHTML = '';
   if (key === 'summary') renderSummary(c);
+  else if (key === 'meds') renderMeds(c);
+  else if (key === 'appts') renderAppts(c);
+  else if (key === "daily") renderDaily(c);
+  else if (key === "treat") renderTreat(c);
   else c.innerHTML = `<div class="soon"><span class="big">🚧</span>แท็บนี้กำลังพอร์ตมาระบบใหม่<br>
     <span style="font-size:13px">ระหว่างนี้ดูได้จากเว็บเดิม</span></div>`;
+}
+
+/* ================= แท็บ 🌡️ อาการประจำวัน ================= */
+
+const SYM_COLORS = { diarrhea: '#d98a3d', general: '#5b8def', nosebleed: '#e85555', vomiting: '#b06be8' };
+const SYM_LABELS = { diarrhea: 'ท้องเสีย', general: 'อาการทั่วไป', nosebleed: 'เลือดกำเดา', vomiting: '🤢 อาเจียน' };
+const symColor = (src) => SYM_COLORS[src] || '#e8b84b';
+const sideLabel = (s) => (s === 'left' ? 'รูจมูกซ้าย' : s === 'right' ? 'รูจมูกขวา' : s || '');
+
+/** หมวดอาการของโปรไฟล์นี้ — ใช้ display.tabs ถ้ามี ไม่มีก็อนุมานจาก symptoms */
+function dailyCats(d) {
+  const tabs = (d.display && d.display.tabs) || null;
+  if (tabs) {
+    return tabs.filter((t) => t.source !== 'treatments')
+               .map((t) => ({ source: t.source, label: t.label || SYM_LABELS[t.source] || t.source }));
+  }
+  return Object.keys(d.symptoms || {})
+    .map((k) => ({ source: k, label: SYM_LABELS[k] || k }));
+}
+
+/* ---------- ปฏิทินกลาง (ใช้ทั้งแท็บอาการและการรักษา) ---------- */
+
+/**
+ * สร้างปฏิทินหนึ่งชุดในกล่องที่กำหนด
+ *   events   : [{date, ...}] แต่ละรายการต้องมี date รูปแบบ YYYY-MM-DD
+ *   dotsOf   : (itemsของวันนั้น) => [สี...]  ใช้วาดจุดใต้ตัวเลขวัน
+ *   onDetail : (iso, items, boxEl) => void  วาดรายละเอียดของวันที่เลือก
+ * เปิดที่เดือนปัจจุบันเสมอ · ไฮไลต์วันนี้ · กดวันเดิมซ้ำ = ซ่อน
+ */
+function buildCalendar(root, { events, dotsOf, onDetail }) {
+  const now = new Date();
+  const keys = new Set(events.map((e) => {
+    const d = new Date(e.date); return `${d.getFullYear()}-${d.getMonth()}`;
+  }));
+  keys.add(`${now.getFullYear()}-${now.getMonth()}`);   // แทรกเดือนปัจจุบันถึงไม่มีข้อมูล
+
+  const st = {
+    months: [...keys].map((k) => k.split('-').map(Number)).sort((a, b) => (a[0] - b[0]) || (a[1] - b[1])),
+    idx: 0, sel: null,
+  };
+  st.idx = Math.max(0, st.months.findIndex(([y, m]) => y === now.getFullYear() && m === now.getMonth()));
+
+  root.innerHTML = `
+    <div class="card">
+      <div class="cal-nav">
+        <button class="calPrev" aria-label="เดือนก่อน">‹</button>
+        <span class="cal-title"></span>
+        <button class="calNext" aria-label="เดือนถัดไป">›</button>
+      </div>
+      <div class="cal-grid"></div>
+    </div>
+    <div class="dayBoxHolder"></div>`;
+
+  const $ = (s) => root.querySelector(s);
+  $('.calPrev').onclick = () => { if (st.idx > 0) { st.idx--; st.sel = null; draw(); } };
+  $('.calNext').onclick = () => { if (st.idx < st.months.length - 1) { st.idx++; st.sel = null; draw(); } };
+
+  function draw() {
+    const [y, m] = st.months[st.idx];
+    $('.cal-title').textContent = `${TC.TH_MONTHS[m]} ${y + 543}`;
+    $('.calPrev').disabled = st.idx === 0;
+    $('.calNext').disabled = st.idx === st.months.length - 1;
+
+    const first = new Date(y, m, 1).getDay();
+    const days = new Date(y, m + 1, 0).getDate();
+    const t = new Date();
+    const todayISO = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+
+    const byDay = {};
+    events.forEach((e) => {
+      const d = new Date(e.date);
+      if (d.getFullYear() === y && d.getMonth() === m) (byDay[d.getDate()] ||= []).push(e);
+    });
+
+    let html = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((s) => `<div class="cal-dow">${s}</div>`).join('');
+    for (let i = 0; i < first; i++) html += '<div></div>';
+
+    for (let day = 1; day <= days; day++) {
+      const items = byDay[day] || [];
+      const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const cls = ['cal-cell'];
+      if (items.length) cls.push('has');
+      if (iso === todayISO) cls.push('today');
+      if (st.sel === iso) cls.push('sel');
+      const dots = items.length ? dotsOf(items) : [];
+      html += `<div class="${cls.join(' ')}" ${items.length ? `data-iso="${iso}"` : ''}>${day}
+        ${dots.length ? `<span class="cell-dots">${dots.map((c) =>
+          `<i class="cdot" style="background:${c}"></i>`).join('')}</span>` : ''}
+      </div>`;
+    }
+
+    const grid = $('.cal-grid');
+    grid.innerHTML = html;
+    grid.querySelectorAll('[data-iso]').forEach((cell) => {
+      cell.onclick = () => {
+        st.sel = (st.sel === cell.dataset.iso) ? null : cell.dataset.iso;   // กดซ้ำ = ซ่อน
+        draw();
+      };
+    });
+
+    const box = $('.dayBoxHolder');
+    box.innerHTML = '';
+    if (st.sel) onDetail(st.sel, events.filter((e) => e.date === st.sel), box);
+  }
+
+  draw();
+}
+
+function openLightbox(url) {
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  lb.innerHTML = `<span class="close">×</span><img src="${url}" alt="">`;
+  lb.onclick = () => lb.remove();
+  document.body.appendChild(lb);
+}
+
+/** ใส่รูปจาก Storage ลงกล่อง (ต้องขอ signed URL ทีละใบเพราะ bucket เป็น private) */
+function attachPhotos(holder, paths) {
+  (paths || []).forEach(async (p) => {
+    const url = await TC.signedUrl(p);
+    if (!url) return;
+    const img = document.createElement('img');
+    img.src = url;
+    img.onclick = () => openLightbox(url);
+    holder.appendChild(img);
+  });
+}
+
+/* ---------- แท็บอาการประจำวัน ---------- */
+function renderDaily(root) {
+  const d = PET.data || {};
+  const cats = dailyCats(d).filter((c) => ((d.symptoms || {})[c.source] || []).length);
+
+  const events = [];
+  cats.forEach((c) => (d.symptoms[c.source] || []).forEach((it) =>
+    events.push({ ...it, _src: c.source, _label: c.label })));
+
+  if (!events.length) { root.innerHTML = '<div class="empty">ยังไม่มีบันทึกอาการ</div>'; return; }
+
+  root.innerHTML = `
+    <div class="section-label">🌡️ อาการประจำวัน</div>
+    <div class="legend">${cats.map((c) =>
+      `<span><i class="dot" style="background:${symColor(c.source)}"></i> ${TC.esc(c.label)}</span>`).join('')}</div>
+    <div id="dailyCal"></div>`;
+
+  buildCalendar(document.getElementById('dailyCal'), {
+    events,
+    dotsOf: (items) => [...new Set(items.map((i) => i._src))].map(symColor),
+    onDetail: (iso, items, box) => {
+      box.innerHTML = `
+        <div class="day-box">
+          <div class="day-head">📅 ${TC.thDate(iso)} · ${items.length} รายการ</div>
+          ${items.map((it, i) => `
+            <div class="sym-card" style="border-left-color:${symColor(it._src)}">
+              <div class="sym-kind" style="color:${symColor(it._src)}">
+                ${TC.esc(it._label)}${it._src === 'nosebleed' && it.side ? ' · ' + TC.esc(sideLabel(it.side)) : ''}
+              </div>
+              <div class="sym-detail">${TC.esc(it.detail || '')}</div>
+              ${(it.photos || []).length ? `<div class="sym-photos" data-i="${i}"></div>` : ''}
+            </div>`).join('')}
+        </div>`;
+      items.forEach((it, i) => {
+        const h = box.querySelector(`.sym-photos[data-i="${i}"]`);
+        if (h) attachPhotos(h, it.photos);
+      });
+    },
+  });
+}
+
+/* ================= แท็บ 🏥 การรักษา ================= */
+
+let mermaidReady = false;
+function initMermaid() {
+  if (mermaidReady || !window.mermaid) return;
+  // ธีมพาสเทลให้เข้ากับเว็บ (ค่าเดียวกับ V1)
+  window.mermaid.initialize({
+    startOnLoad: false, theme: 'base',
+    themeVariables: {
+      primaryColor: '#fbf4ec', primaryBorderColor: '#d99e3e', primaryTextColor: '#4a4035',
+      lineColor: '#8c7f6f', secondaryColor: '#e6eef9', tertiaryColor: '#f8e0e0',
+      fontFamily: 'Sarabun, sans-serif', fontSize: '14px',
+    },
+  });
+  mermaidReady = true;
+}
+
+function renderTreat(root) {
+  const list = (PET.data || {}).treatments || [];
+  if (!list.length) { root.innerHTML = '<div class="empty">ยังไม่มีบันทึกการรักษา</div>'; return; }
+
+  const total = list.reduce((n, r) => n + (r.entries || []).length, 0);
+  root.innerHTML = `
+    <div class="section-label">🏥 การรักษา (${list.length} วัน · ${total} รายการ)</div>
+    <div class="legend"><span><i class="dot" style="background:#d99e3e"></i> วันที่ไปหาหมอ</span></div>
+    <div id="treatCal"></div>`;
+
+  buildCalendar(document.getElementById('treatCal'), {
+    events: list,
+    dotsOf: () => ['#d99e3e'],
+    onDetail: (iso, items, box) => {
+      const entries = items.flatMap((r) => r.entries || []);
+      box.innerHTML = `
+        <div class="day-box">
+          <div class="day-head">🏥 ${TC.thDate(iso)} · ${entries.length} รายการ</div>
+          ${entries.map((e, i) => `
+            <div class="tx-entry">
+              <div class="tx-doctor">${TC.esc(e.doctor || 'ไม่ระบุหมอ')}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}</div>
+              <div class="tx-notes">${TC.esc(e.notes || '')}</div>
+              ${(e.photos || []).length ? `<div class="sym-photos" data-i="${i}"></div>` : ''}
+              ${e.flow ? `<div class="tx-flow"><div class="tx-flow-label">🗺 ขั้นตอน/แผนการรักษา</div><div class="mmd" data-i="${i}"></div></div>` : ''}
+            </div>`).join('')}
+        </div>`;
+
+      entries.forEach((e, i) => {
+        const h = box.querySelector(`.sym-photos[data-i="${i}"]`);
+        if (h) attachPhotos(h, e.photos);
+        if (e.flow) drawFlow(box.querySelector(`.mmd[data-i="${i}"]`), e.flow, i);
+      });
+    },
+  });
+}
+
+/** เรนเดอร์ flowchart — ไวยากรณ์ผิดก็ไม่ทำให้หน้าพัง (แสดงข้อความแทน) */
+async function drawFlow(el, code, i) {
+  if (!el) return;
+  initMermaid();
+  if (!window.mermaid) { el.innerHTML = '<div class="empty">โหลดตัวเรนเดอร์ผังไม่ได้</div>'; return; }
+  try {
+    const { svg } = await window.mermaid.render(`mmd-${Date.now()}-${i}`, code);
+    el.innerHTML = svg;
+  } catch (err) {
+    el.innerHTML = '<div class="empty">ผังนี้แสดงไม่ได้ (ไวยากรณ์ไม่ถูกต้อง)</div>';
+  }
+}
+
+/* ================= แท็บ 💊 ยา ================= */
+function renderMeds(root) {
+  const meds = (PET.data || {}).meds || [];
+  if (!meds.length) { root.innerHTML = '<div class="empty">ยังไม่มีรายการยาประจำ</div>'; return; }
+
+  root.innerHTML = `
+    <div class="section-label">💊 ยาประจำ (${meds.length} รายการ)</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tbl-scroll">
+        <table class="med-tbl">
+          <thead>
+            <tr><th>ยา</th><th class="dose">เช้า</th><th class="dose">เย็น</th><th>หมายเหตุ</th></tr>
+          </thead>
+          <tbody>
+            ${meds.map((m) => `
+              <tr>
+                <td class="med-name">${TC.esc(m.name)}</td>
+                <td class="dose">${TC.esc(m.am || '—')}</td>
+                <td class="dose">${TC.esc(m.pm || '—')}</td>
+                <td class="med-note">${TC.esc(m.note || '')}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+/* ================= แท็บ 📅 นัดหมาย ================= */
+function renderAppts(root) {
+  const list = [...((PET.data || {}).appointments || [])];
+  if (!list.length) { root.innerHTML = '<div class="empty">ยังไม่มีนัดหมาย</div>'; return; }
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const withDiff = list.map((a) => {
+    const d = new Date(a.date); d.setHours(0, 0, 0, 0);
+    return { ...a, d, diff: Math.round((d - today) / 86400000) };
+  });
+
+  const upcoming = withDiff.filter((a) => a.diff >= 0).sort((a, b) => a.d - b.d);
+  const past = withDiff.filter((a) => a.diff < 0).sort((a, b) => b.d - a.d);
+
+  root.innerHTML = `
+    <div class="section-label">📅 ปฏิทินนัดหมาย</div>
+    <div class="legend">
+      <span><i class="dot" style="background:#d96a6a"></i> วันนี้/พรุ่งนี้</span>
+      <span><i class="dot" style="background:#d99e3e"></i> นัดที่จะถึง</span>
+      <span><i class="dot" style="background:#b6a795"></i> ผ่านมาแล้ว</span>
+    </div>
+    <div id="apptCal"></div>
+
+    <div class="section-label" style="margin-top:26px">🔔 นัดที่จะถึง (${upcoming.length})</div>
+    <div>${upcoming.length ? upcoming.map(apptCard).join('') : '<div class="empty">ไม่มีนัดที่จะถึง</div>'}</div>
+    ${past.length ? `
+      <details class="past-appts">
+        <summary>▸ นัดที่ผ่านมาแล้ว (${past.length})</summary>
+        <div style="margin-top:10px">${past.map(apptCard).join('')}</div>
+      </details>` : ''}`;
+
+  buildCalendar(document.getElementById('apptCal'), {
+    events: withDiff,
+    // สีจุดบอกสถานะ: แดง = วันนี้/พรุ่งนี้ · ทอง = ยังมาไม่ถึง · เทา = ผ่านไปแล้ว
+    dotsOf: (items) => [...new Set(items.map((a) =>
+      a.diff < 0 ? '#b6a795' : a.diff <= 1 ? '#d96a6a' : '#d99e3e'))],
+    onDetail: (iso, items, box) => {
+      box.innerHTML = `
+        <div class="day-box">
+          <div class="day-head">📅 ${TC.thDate(iso)} · ${items.length} นัด</div>
+          ${items.map(apptCard).join('')}
+        </div>`;
+    },
+  });
+}
+
+function apptCard(a) {
+  const isPast = a.diff < 0;
+  const cls = isPast ? 'past' : a.diff <= 1 ? 'today' : a.diff <= 7 ? 'soon' : '';
+  const when = a.diff === 0 ? 'วันนี้' : a.diff === 1 ? 'พรุ่งนี้' : a.diff > 0 ? `อีก ${a.diff} วัน` : '';
+  return `
+    <div class="appt ${cls}">
+      <div class="appt-top">
+        <span class="appt-date">${TC.thDate(a.date)}</span>
+        <span class="appt-doctor">${TC.esc(a.doctor || '')}</span>
+        ${when ? `<span class="appt-when${a.diff <= 1 ? ' urgent' : ''}">${when}</span>` : ''}
+      </div>
+      ${a.note ? `<div class="appt-note">${TC.esc(a.note)}</div>` : ''}
+    </div>`;
 }
 
 /* ================= แท็บสรุป ================= */
