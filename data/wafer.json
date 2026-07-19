@@ -654,6 +654,10 @@
       {
         "source": "diarrhea",
         "label": "ท้องเสีย"
+      },
+      {
+        "source": "general",
+        "label": "อาการทั่วไป"
       }
     ]
   },
