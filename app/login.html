@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เข้าสู่ระบบ · Tammie Care 🐾</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32.png?v=2">
+<meta name="theme-color" content="#fdf4eb">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .wrap { max-width: 380px; margin: 0 auto; padding: 40px 22px; }
+  .logo-box { text-align: center; margin-bottom: 26px; }
+  .logo-box .paw { font-size: 46px; }
+  .logo-box h1 { font-family: var(--cute); font-size: 27px; color: var(--blue); margin-top: 4px; }
+  .logo-box .tag { font-size: 13px; color: var(--text-dim); font-family: var(--cute); margin-top: 4px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px 22px; box-shadow: var(--sh-card); }
+  .panel::before { content: ''; display: block; height: 5px; border-radius: 3px; margin: -8px -4px 18px;
+                   background: linear-gradient(90deg, var(--sky-soft), var(--pink), var(--gold-dim)); }
+  .btn { width: 100%; margin-top: 6px; }
+  .hint { text-align: center; font-size: 12.5px; color: var(--text-muted); margin-top: 18px; line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="logo-box">
+    <div class="paw">🐾</div>
+    <h1>Tammie Care</h1>
+    <div class="tag">ไม่ได้แค่เลี้ยง แต่เราแคร์ 💙</div>
+  </div>
+
+  <div class="panel">
+    <div id="msg"></div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="email">อีเมล</label>
+        <input type="email" id="email" autocomplete="username" inputmode="email" required>
+      </div>
+      <div class="field">
+        <label for="pw">รหัสผ่าน</label>
+        <input type="password" id="pw" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn" id="btn">เข้าสู่ระบบ</button>
+    </form>
+
+    <div class="hint">ยังไม่มีบัญชี? ให้คนในครอบครัวที่เป็นผู้ดูแลเพิ่มให้</div>
+  </div>
+</div>
+
+<footer>🐾 Tammie Care</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="lib.js"></script>
+<script>
+const msg = document.getElementById('msg');
+const btn = document.getElementById('btn');
+
+function showErr(text) { msg.innerHTML = `<div class="msg msg-err">${TC.esc(text)}</div>`; }
+
+// ล็อกอินอยู่แล้ว → ข้ามไปหน้ารายชื่อเลย
+(async () => {
+  const { data: { session } } = await TC.sb.auth.getSession();
+  if (session) location.replace(nextPage());
+})();
+
+function nextPage() {
+  const n = new URLSearchParams(location.search).get('next');
+  // รับเฉพาะ path ภายในแอป กัน open-redirect
+  return (n && /^[\w.-]+\.html(\?.*)?$/.test(n)) ? n : 'index.html';
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  msg.innerHTML = '';
+  btn.disabled = true;
+  btn.textContent = 'กำลังเข้าสู่ระบบ...';
+
+  const { error } = await TC.sb.auth.signInWithPassword({
+    email: document.getElementById('email').value.trim(),
+    password: document.getElementById('pw').value,
+  });
+
+  if (error) {
+    showErr(TC.authErrorTH(error));
+    btn.disabled = false;
+    btn.textContent = 'เข้าสู่ระบบ';
+    return;
+  }
+  location.replace(nextPage());
+});
+</script>
+</body>
+</html>

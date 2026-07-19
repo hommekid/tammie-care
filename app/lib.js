@@ -1,0 +1,154 @@
+/* =========================================================
+   Tammie Care V2 — ฟังก์ชันกลาง (auth / ข้อมูล / รูป)
+   ต้องโหลดหลัง supabase-js CDN และ config.js
+   ========================================================= */
+
+const TC = (() => {
+  const cfg = window.TC_CONFIG;
+
+  // ตรวจค่า config ตั้งแต่ต้น — ผิดตรงนี้จะไปโผล่เป็น error ปลายทางที่อ่านไม่รู้เรื่อง
+  (function checkConfig() {
+    const k = cfg.SUPABASE_KEY || '';
+    if (!k || /[^\x00-\xFF]/.test(k)) {
+      // มีอักขระนอก Latin-1 (เช่นภาษาไทยจาก placeholder) → ใส่ใน HTTP header ไม่ได้
+      alert('ยังไม่ได้ใส่ publishable key ใน app/config.js\n(ตอนนี้ยังเป็นข้อความ placeholder อยู่)');
+      throw new Error('TC_CONFIG.SUPABASE_KEY ยังไม่ถูกตั้งค่า');
+    }
+    if (!/^(sb_publishable_|eyJ)/.test(k)) {
+      console.warn('⚠️ SUPABASE_KEY หน้าตาไม่เหมือน publishable key — ตรวจว่าไม่ได้ใส่ secret key ผิดช่อง');
+    }
+  })();
+
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_KEY);
+
+  // ---------- auth ----------
+
+  /** บังคับให้ล็อกอินก่อน — ไม่มี session = เด้งไปหน้า login */
+  async function requireAuth() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      location.replace('login.html?next=' + encodeURIComponent(location.pathname.split('/').pop() + location.search));
+      return null;
+    }
+    return session.user;
+  }
+
+  async function signOut() {
+    await sb.auth.signOut();
+    location.replace('login.html');
+  }
+
+  /**
+   * สิทธิ์ของผู้ใช้ปัจจุบัน
+   * คืน { role: 'parent'|'vet', permission: 'view'|'edit'|'admin', canEdit, isAdmin, familyIds[] }
+   * หมายเหตุ: ใช้ควบคุมการ "แสดงปุ่ม" เท่านั้น — ความปลอดภัยจริงอยู่ที่ RLS
+   */
+  async function getMyRole() {
+    const [{ data: members }, { data: vets }] = await Promise.all([
+      sb.from('family_members').select('family_id,permission'),
+      sb.from('vet_access').select('family_id'),
+    ]);
+    if (members && members.length) {
+      const best = members.reduce((a, m) =>
+        ({ view: 0, edit: 1, admin: 2 }[m.permission] > { view: 0, edit: 1, admin: 2 }[a.permission] ? m : a));
+      return {
+        role: 'parent', permission: best.permission,
+        canEdit: best.permission !== 'view', isAdmin: best.permission === 'admin',
+        familyIds: members.map((m) => m.family_id),
+      };
+    }
+    if (vets && vets.length) {
+      return { role: 'vet', permission: 'view', canEdit: false, isAdmin: false, familyIds: vets.map((v) => v.family_id) };
+    }
+    return { role: null, permission: null, canEdit: false, isAdmin: false, familyIds: [] };
+  }
+
+  // ---------- ข้อมูลสัตว์ ----------
+  // RLS กรองให้อยู่แล้วว่าเห็นตัวไหนได้บ้าง จึงไม่ต้องใส่เงื่อนไข family เอง
+
+  async function listPets() {
+    const { data, error } = await sb
+      .from('pets').select('id,slug,name,data,sort_order')
+      .eq('archived', false).order('sort_order');
+    if (error) throw error;
+    return data;
+  }
+
+  async function getPet(id) {
+    const { data, error } = await sb.from('pets').select('id,slug,name,data').eq('id', id).single();
+    if (error) throw error;
+    return data;
+  }
+
+  // ---------- รูปใน Storage (bucket เป็น private ต้องใช้ signed URL) ----------
+
+  const urlCache = new Map();
+
+  async function signedUrl(path, expires = 3600) {
+    if (!path) return null;
+    if (urlCache.has(path)) return urlCache.get(path);
+    const { data, error } = await sb.storage.from(cfg.BUCKET).createSignedUrl(path, expires);
+    if (error) return null;
+    urlCache.set(path, data.signedUrl);
+    return data.signedUrl;
+  }
+
+  /** ใส่รูปลง <img> แบบไม่ต้องรอ (กันรูปแตกถ้าเปิดไม่ได้) */
+  async function fillImg(imgEl, path) {
+    const url = await signedUrl(path);
+    if (url) imgEl.src = url;
+    else imgEl.style.display = 'none';
+  }
+
+  // ---------- helpers ทั่วไป ----------
+
+  const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+  function calcAge(birthDate) {
+    if (!birthDate) return null;
+    const b = new Date(birthDate), now = new Date();
+    let y = now.getFullYear() - b.getFullYear();
+    if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) y--;
+    return y;
+  }
+
+  function thDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
+  }
+
+  function thDateShort(iso) {
+    const d = new Date(iso);
+    return `${d.getDate()} ${TH_MONTHS[d.getMonth()]}`;
+  }
+
+  /** นัดที่ใกล้ที่สุดภายใน 7 วัน (เลยวันนัดแล้ว = ไม่เตือน) — logic เดียวกับ V1 */
+  function nextAppt(petData) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let best = null;
+    (petData.appointments || []).forEach((a) => {
+      const d = new Date(a.date); d.setHours(0, 0, 0, 0);
+      const diff = Math.round((d - today) / 86400000);
+      if (diff >= 0 && diff <= 7 && (!best || diff < best.diff)) best = { ...a, d, diff };
+    });
+    return best;
+  }
+
+  /** แปลง error ของ Supabase เป็นภาษาคน */
+  function authErrorTH(err) {
+    const m = (err?.message || '').toLowerCase();
+    if (m.includes('invalid login')) return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+    if (m.includes('email not confirmed')) return 'อีเมลนี้ยังไม่ได้ยืนยัน';
+    if (m.includes('rate limit') || m.includes('too many')) return 'ลองบ่อยเกินไป รอสักครู่แล้วลองใหม่';
+    if (m.includes('network') || m.includes('fetch')) return 'เชื่อมต่อไม่ได้ ตรวจสอบอินเทอร์เน็ต';
+    if (m.includes('password') && m.includes('6')) return 'รหัสผ่านต้องยาวอย่างน้อย 6 ตัวอักษร';
+    return 'เกิดข้อผิดพลาด: ' + (err?.message || 'ไม่ทราบสาเหตุ');
+  }
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  return { sb, requireAuth, signOut, getMyRole, listPets, getPet, signedUrl, fillImg,
+           calcAge, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS };
+})();

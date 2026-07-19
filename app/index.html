@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tammie Care 🐾</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32.png?v=2">
+<meta name="theme-color" content="#fdf4eb">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .pet-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 22px;
+    padding: 22px 20px; text-decoration: none; color: inherit; display: block; text-align: center;
+    position: relative; overflow: hidden; box-shadow: var(--sh-card);
+    transition: transform .18s, box-shadow .18s, border-color .18s;
+  }
+  .pet-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+    background: linear-gradient(90deg, var(--sky-soft), var(--pink), var(--gold-dim));
+  }
+  .pet-card:hover { transform: translateY(-5px); border-color: var(--sky-soft); box-shadow: var(--sh-hover); }
+  .pet-card .photo {
+    width: 92px; height: 92px; border-radius: 50%; object-fit: cover; margin: 6px auto 12px; display: block;
+    border: 3px solid transparent; background-image: linear-gradient(135deg, var(--sky-soft), var(--pink));
+    background-origin: border-box; background-clip: border-box; box-shadow: 0 4px 12px rgba(91,134,191,0.18);
+  }
+  .pet-card .emoji { font-size: 46px; display: block; margin-bottom: 10px; }
+  .pet-card .name { font-size: 21px; font-weight: 700; font-family: var(--cute); }
+  .pet-card .nick { font-size: 14px; color: var(--sky); font-family: var(--cute); font-weight: 500; }
+  .pet-card .breed, .pet-card .age { font-size: 13px; color: var(--text-dim); }
+  .status-note { font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
+  .pill { margin-top: 12px; }
+  .appt-alert {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+    font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 20px;
+    background: rgba(217,158,62,0.14); color: #b07d22; border: 1px solid var(--gold-dim);
+  }
+  .appt-alert.urgent { background: rgba(224,122,122,0.14); color: #c44d4d; border-color: #f0c3c3; }
+  .appt-bell { position: absolute; top: 14px; right: 14px; font-size: 20px; animation: bell-wiggle 2s ease-in-out infinite; }
+  @keyframes bell-wiggle { 0%,92%,100%{transform:rotate(0)} 94%{transform:rotate(12deg)} 96%{transform:rotate(-12deg)} 98%{transform:rotate(8deg)} }
+  .whoami { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<header class="tc-header">
+  <span style="font-size:24px">🐾</span>
+  <div>
+    <h1>Tammie Care</h1>
+    <div class="sub" id="whoami"></div>
+  </div>
+  <div class="spacer"></div>
+  <span id="rolePill"></span>
+  <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
+</header>
+
+<div class="container">
+  <div class="section-label">🐾 สมาชิกครอบครัว</div>
+  <div class="pet-grid" id="petGrid"><div class="loading">กำลังโหลด...</div></div>
+</div>
+
+<footer>🐾 Tammie Care · ไม่ได้แค่เลี้ยง แต่เราแคร์ 💙</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="lib.js"></script>
+<script>
+const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ปกติ', alert: '🚨 ต้องดูแล' };
+
+(async function main() {
+  const user = await TC.requireAuth();
+  if (!user) return;
+
+  document.getElementById('whoami').textContent = user.email;
+
+  const role = await TC.getMyRole();
+  if (role.role === 'vet') {
+    document.getElementById('rolePill').innerHTML =
+      '<span class="pill pill-vet">🩺 โหมดสัตวแพทย์ — ดูอย่างเดียว</span>';
+  }
+
+  const grid = document.getElementById('petGrid');
+  let pets;
+  try {
+    pets = await TC.listPets();
+  } catch (e) {
+    grid.innerHTML = '<div class="loading">โหลดข้อมูลไม่สำเร็จ — ลองรีเฟรชอีกครั้ง</div>';
+    return;
+  }
+
+  if (!pets.length) {
+    grid.innerHTML = '<div class="loading">ยังไม่มีสัตว์เลี้ยงที่คุณเข้าถึงได้<br>' +
+      '<span style="font-size:13px">ถ้าคิดว่าผิดพลาด ให้ผู้ดูแลครอบครัวตรวจสอบสิทธิ์ให้</span></div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  for (const p of pets) {
+    const d = p.data || {};
+    const card = d.card || {};
+    const prof = d.profile || {};
+    const ap = TC.nextAppt(d);
+    const when = ap ? (ap.diff === 0 ? 'วันนี้' : ap.diff === 1 ? 'พรุ่งนี้' : `อีก ${ap.diff} วัน`) : '';
+    const status = card.status || 'ok';
+    const photo = card.photo || prof.photo;
+
+    const a = document.createElement('a');
+    a.href = `pet.html?id=${p.id}`;
+    a.className = 'pet-card';
+    a.innerHTML = `
+      ${ap ? '<span class="appt-bell" title="มีนัดเร็วๆ นี้">🔔</span>' : ''}
+      ${photo ? '<img class="photo" alt="">' : `<span class="emoji">${TC.esc(card.emoji || prof.emoji || '🐾')}</span>`}
+      <div class="name">${TC.esc(p.name)} <span class="nick">${TC.esc(card.nickname || prof.nickname || '')}</span></div>
+      <div class="breed">${TC.esc(card.breed || prof.breed || '')}</div>
+      ${(card.birthDate || prof.birthDate) ? `<div class="age">อายุ ${TC.calcAge(card.birthDate || prof.birthDate)} ปี</div>` : ''}
+      <div class="pill pill-${status === 'watch' ? 'watch' : status === 'alert' ? 'alert' : 'ok'}">${TC.esc(statusLabel[status] || status)}</div>
+      ${card.statusNote ? `<div class="status-note">${TC.esc(card.statusNote)}</div>` : ''}
+      ${ap ? `<div class="appt-alert${ap.diff <= 1 ? ' urgent' : ''}">🔔 นัด${when} · ${ap.d.getDate()} ${TC.TH_MONTHS[ap.d.getMonth()]}${ap.doctor ? ' · ' + TC.esc(ap.doctor) : ''}</div>` : ''}
+    `;
+    grid.appendChild(a);
+
+    // รูปอยู่ใน bucket private → ต้องขอ signed URL แยก
+    if (photo) TC.fillImg(a.querySelector('.photo'), photo);
+  }
+})();
+</script>
+</body>
+</html>

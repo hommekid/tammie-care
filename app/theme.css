@@ -1,0 +1,163 @@
+/* =========================================================
+   Tammie Care V2 — Theme & base styles
+   ---------------------------------------------------------
+   ตัวแปรสีทั้งหมดอยู่ที่ไฟล์นี้ไฟล์เดียว (V1 ซ้ำใน :root ของทุกหน้า)
+   → ตอนทำระบบเลือกธีมใน Phase 3 แค่สลับชุดตัวแปร ไม่ต้องรื้อหน้าเว็บ
+   ธีมเริ่มต้น: พาสเทลสว่าง ตาม DESIGN_SYSTEM.md
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Mali:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  /* พื้นหลัง / พื้นผิว */
+  --bg: #fdf4eb; --bg2: #f9ecdd; --surface: #ffffff; --surface2: #fbf4ec;
+  --border: #efe0cd; --border-blue: #d8e2f0;
+
+  /* สีหลัก / แอ็กเซนต์ */
+  --blue: #4a6fa5; --blue-dim: #e6eef9;
+  --sky: #5b86bf; --sky-soft: #a9c4e8; --sky-dim: #6f97cf;
+  --gold: #d99e3e; --gold-dim: #e3c485;
+  --pink: #e69bbf; --pink-dim: #dd92bb;
+
+  /* สถานะ */
+  --green: #5fa57f; --green-dim: #ddf0e6;
+  --red: #d96a6a; --red-dim: #f8e0e0;
+
+  /* ตัวอักษร */
+  --text: #4a4035; --text-dim: #8c7f6f; --text-muted: #b6a795;
+  --cute: 'Mali', 'Sarabun', cursive;
+  --mono: 'IBM Plex Mono', monospace;
+
+  /* เงา */
+  --sh-card: 0 4px 16px rgba(160,140,110,0.10);
+  --sh-hover: 0 16px 32px rgba(91,134,191,0.20);
+  --sh-header: 0 2px 14px rgba(160,140,110,0.16);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Sarabun', sans-serif;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 12% 6%, rgba(169,196,232,0.16), transparent 36%),
+    radial-gradient(circle at 88% 96%, rgba(230,155,191,0.10), transparent 40%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%23c79a55' fill-opacity='0.06'%3E%3Cellipse cx='70' cy='86' rx='18' ry='14'/%3E%3Cellipse cx='44' cy='62' rx='8' ry='10'/%3E%3Cellipse cx='60' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='80' cy='47' rx='8' ry='10'/%3E%3Cellipse cx='96' cy='62' rx='8' ry='10'/%3E%3C/g%3E%3C/svg%3E");
+  background-attachment: fixed;
+  color: var(--text); font-size: 15px; line-height: 1.6; min-height: 100vh;
+}
+
+a { color: var(--sky); text-decoration: none; }
+
+/* ---------- header ---------- */
+.tc-header {
+  border-bottom: 1px solid var(--border); padding: 14px 18px;
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(180deg, #ffffff, var(--surface2));
+  position: sticky; top: 0; z-index: 10; box-shadow: var(--sh-header);
+}
+.tc-header h1 { font-size: 20px; font-weight: 700; font-family: var(--cute); color: var(--blue); }
+.tc-header .sub { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+.tc-header .spacer { margin-left: auto; }
+.back { font-size: 22px; color: var(--sky); }
+.avatar {
+  width: 46px; height: 46px; border-radius: 50%; object-fit: cover;
+  border: 3px solid transparent; background-image: linear-gradient(135deg, var(--sky), var(--pink));
+  background-origin: border-box; background-clip: border-box; flex-shrink: 0;
+}
+
+/* ---------- ปุ่ม ---------- */
+.btn {
+  font-family: var(--cute); font-weight: 600; font-size: 15px;
+  border: none; border-radius: 20px; padding: 12px 22px; cursor: pointer;
+  background: linear-gradient(135deg, var(--sky), var(--pink)); color: #1a1320;
+  transition: transform .15s, box-shadow .15s;
+}
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(91,134,191,0.28); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn-ghost {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-dim);
+  font-family: 'Sarabun', sans-serif; font-weight: 500; font-size: 13px;
+  border-radius: 20px; padding: 7px 15px; cursor: pointer;
+}
+.btn-ghost:hover { border-color: var(--sky); color: var(--sky); }
+
+/* ---------- ฟอร์ม ---------- */
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+.field input {
+  width: 100%; padding: 12px 14px; font-size: 16px; /* 16px กัน iOS ซูมตอนโฟกัส */
+  font-family: 'Sarabun', sans-serif; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; outline: none;
+}
+.field input:focus { border-color: var(--sky); box-shadow: 0 0 0 3px rgba(91,134,191,0.14); }
+
+/* ---------- กล่องข้อความ ---------- */
+.msg { border-radius: 10px; padding: 12px 14px; font-size: 13.5px; margin-bottom: 14px; }
+.msg-err { background: var(--red-dim); border: 1px solid var(--red); color: #b83d3d; }
+.msg-ok { background: var(--green-dim); border: 1px solid var(--green); color: #34795a; }
+.msg-info { background: var(--blue-dim); border: 1px solid var(--blue); color: #3f5a85; }
+
+/* ---------- ป้าย ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 5px 12px; border-radius: 20px; font-weight: 600;
+}
+.pill-watch { background: rgba(217,158,62,0.14); color: #b07d22; border: 1px solid var(--gold-dim); }
+.pill-ok    { background: rgba(111,176,142,0.16); color: #3f8763; border: 1px solid #b6dcc6; }
+.pill-alert { background: rgba(224,122,122,0.14); color: #c44d4d; border: 1px solid #f0c3c3; }
+.pill-vet   { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--sky-soft); }
+
+/* ---------- แท็บหลัก ---------- */
+.dash-tabs {
+  display: flex; gap: 8px; overflow-x: auto; padding: 14px 18px 0;
+  border-bottom: 1px solid var(--border); -webkit-overflow-scrolling: touch;
+}
+.dtab {
+  white-space: nowrap; background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-dim); border-radius: 20px; padding: 8px 16px;
+  font-size: 13.5px; font-family: var(--cute); font-weight: 500; cursor: pointer;
+  margin-bottom: 12px;
+}
+.dtab.active {
+  background: linear-gradient(135deg, var(--sky), var(--pink)); color: #1a1320;
+  border-color: transparent; box-shadow: 0 4px 14px rgba(143,189,240,0.3); font-weight: 600;
+}
+
+/* ---------- การ์ด / กล่องเนื้อหา ---------- */
+.container { max-width: 900px; margin: 0 auto; padding: 22px 18px 40px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: var(--sh-card); }
+.section-label { font-size: 15px; font-family: var(--cute); font-weight: 600; color: var(--sky); margin-bottom: 12px; }
+
+.alert-box { background: var(--red-dim); border: 1px solid var(--red); border-radius: 10px; padding: 14px 16px; display: flex; gap: 12px; }
+.alert-box .title { font-weight: 700; color: #b83d3d; font-size: 14px; margin-bottom: 6px; }
+.alert-box ul { padding-left: 18px; font-size: 13px; color: #8a2b2b; line-height: 1.8; }
+.alert-box ul li::marker { color: #c0392b; }
+
+.watch-box { background: var(--blue-dim); border: 1px solid var(--blue); border-radius: 10px; padding: 14px 16px; }
+.watch-box .title { font-weight: 600; color: var(--blue); font-size: 14px; margin-bottom: 8px; }
+.watch-box ul { padding-left: 16px; font-size: 13px; color: #3f5a85; line-height: 1.8; }
+
+/* คงบรรทัดใหม่ที่พิมพ์จากฟอร์ม */
+.alert-box ul, .watch-box ul, .pre-line { white-space: pre-line; }
+
+.leuco-box { border: 1px solid var(--border); border-left: 4px solid var(--gold); border-radius: 10px; padding: 14px 16px; background: var(--surface); }
+.leuco-box .lp-head { font-weight: 600; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.leuco-box .lp-verdict { font-size: 14px; font-weight: 600; padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; line-height: 1.5; }
+.leuco-box .lp-rules { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--text-dim); line-height: 1.7; }
+.leuco-box.lp-red    { border-left-color: var(--red); }
+.leuco-box.lp-red .lp-verdict { background: var(--red-dim); color: #b83d3d; }
+.leuco-box.lp-yellow .lp-verdict { background: rgba(217,158,62,0.16); color: #936e1c; }
+.leuco-box.lp-green  { border-left-color: var(--green); }
+.leuco-box.lp-green .lp-verdict { background: var(--green-dim); color: #34795a; }
+.leuco-box.lp-gray .lp-verdict { background: var(--surface2); color: var(--text-muted); }
+
+.chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.tumor-box { width: 100%; height: 250px; }
+.tumor-box canvas { width: 100% !important; height: 250px !important; }
+
+.loading { text-align: center; padding: 50px 20px; color: var(--text-dim); }
+.empty { color: var(--text-muted); font-size: 13.5px; padding: 10px 0; }
+
+footer { text-align: center; padding: 26px; color: var(--text-muted); font-size: 13px; font-family: var(--cute); }
+footer a { color: var(--sky); font-weight: 500; }

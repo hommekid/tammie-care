@@ -26,8 +26,19 @@
 | 1 · สมัครบริการ | ✅ เสร็จ 19 ก.ค. 2026 | โปรเจกต์ Supabase `Tammie Care's Project` (free, region South Asia) · เก็บ Project URL + publishable key แล้ว |
 | 2 · Database + RLS | ✅ **ผ่าน checkpoint 19 ก.ค. 2026** | รัน `supabase/01_schema.sql` + `02_rls.sql` · ทดสอบ `03_test_checkpoint.sql` ผ่านครบ 4 ข้อ (parent admin เขียนได้ · vet อ่านอย่างเดียว · คนนอกไม่เห็นอะไร · view≠edit) |
 | 3 · Migrate ข้อมูล | ✅ **ผ่าน checkpoint 19 ก.ค. 2026** | ครอบครัว "บ้านแทมมี่" + บัญชีจริงเป็น admin · bucket `pet-photos` (private) + policy · รัน `supabase/migrate.py` ผ่านการตรวจครบ 5 ข้อ ทั้งเฟ่และเฟ่อ |
-| 4 · Frontend ใหม่ | ⬜ ถัดไป | login + หน้า pet อ่านจาก Supabase |
+| 4 · Frontend ใหม่ | 🔄 กำลังทำ (ชิ้นแรกผ่าน 19 ก.ค. 2026) | `app/`: login + รายชื่อสัตว์ + dashboard **แท็บสรุป** อ่านจาก Supabase · รูปผ่าน signed URL · ทดสอบผ่านทั้งเฟ่ (Leuco 🟡 WBC 4,030) และเฟ่อ (ขึ้นเฉพาะ watchList ตาม `display`) · **เหลือพอร์ต:** อาการประจำวัน · การรักษา · ผลเลือด · ยา · นัดหมาย |
 | 5–7 | ⬜ ยังไม่เริ่ม | |
+
+**โครงไฟล์ V2 (`app/`)**
+
+| ไฟล์ | หน้าที่ |
+|---|---|
+| `config.js` | Supabase URL + publishable key (ปลอดภัยที่จะ commit — RLS คุมจริง) |
+| `theme.css` | CSS variables ที่เดียว + base styles — เตรียมไว้ให้ระบบเลือกธีมใน Phase 3 |
+| `lib.js` | `TC.*` — auth guard, `getMyRole()`, อ่านข้อมูลสัตว์, signed URL, error ไทย |
+| `login.html` | เข้าสู่ระบบ (มีตัวดักว่า config ยังไม่ได้ตั้งค่า) |
+| `index.html` | รายชื่อสัตว์ + เตือนนัด 7 วัน + ป้ายโหมดสัตวแพทย์ |
+| `pet.html` | dashboard — โครงแท็บครบ 6 แท็บ ทำจริงแล้ว 1 (สรุป) |
 
 **สิ่งที่อยู่ในระบบแล้ว (19 ก.ค. 2026)**
 

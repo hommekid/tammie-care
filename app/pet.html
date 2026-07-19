@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard 🐾 · Tammie Care</title>
+<link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32.png?v=2">
+<meta name="theme-color" content="#fdf4eb">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .stack { display: flex; flex-direction: column; gap: 18px; }
+  .soon { text-align: center; padding: 44px 20px; color: var(--text-muted); font-family: var(--cute); }
+  .soon .big { font-size: 34px; display: block; margin-bottom: 8px; }
+  .tumor-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header class="tc-header">
+  <a class="back" href="index.html">←</a>
+  <img class="avatar" id="avatar" alt="" style="display:none">
+  <div>
+    <h1 id="petName">กำลังโหลด...</h1>
+    <div class="sub" id="petSub"></div>
+  </div>
+  <div class="spacer"></div>
+  <span id="rolePill"></span>
+</header>
+
+<div class="dash-tabs" id="tabs"></div>
+
+<div class="container" id="content">
+  <div class="loading">กำลังโหลด...</div>
+</div>
+
+<footer>🐾 Tammie Care · <a href="index.html">หน้าแรก</a></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="lib.js"></script>
+<script>
+// แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
+const TABS = [
+  { key: 'summary', label: '📋 สรุป' },
+  { key: 'daily',   label: '🌡️ อาการประจำวัน' },
+  { key: 'treat',   label: '🏥 การรักษา' },
+  { key: 'labs',    label: '🧪 ผลเลือด' },
+  { key: 'meds',    label: '💊 ยา' },
+  { key: 'appts',   label: '📅 นัดหมาย' },
+];
+
+let PET = null;
+
+(async function main() {
+  const user = await TC.requireAuth();
+  if (!user) return;
+
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) { location.replace('index.html'); return; }
+
+  const role = await TC.getMyRole();
+  if (role.role === 'vet') {
+    document.getElementById('rolePill').innerHTML =
+      '<span class="pill pill-vet">🩺 ดูอย่างเดียว</span>';
+  }
+
+  try {
+    PET = await TC.getPet(id);
+  } catch (e) {
+    document.getElementById('content').innerHTML =
+      '<div class="loading">ไม่พบข้อมูล หรือคุณไม่มีสิทธิ์เข้าถึงสัตว์ตัวนี้</div>';
+    document.getElementById('petName').textContent = 'เข้าถึงไม่ได้';
+    return;
+  }
+
+  renderHeader();
+  renderTabs();
+  showTab('summary');
+})();
+
+function renderHeader() {
+  const d = PET.data || {}, prof = d.profile || {}, card = d.card || {};
+  document.getElementById('petName').textContent = PET.name;
+
+  const bits = [];
+  if (card.nickname || prof.nickname) bits.push(card.nickname || prof.nickname);
+  if (card.breed || prof.breed) bits.push(card.breed || prof.breed);
+  const age = TC.calcAge(card.birthDate || prof.birthDate);
+  if (age != null) bits.push(`อายุ ${age} ปี`);
+  document.getElementById('petSub').textContent = bits.join(' · ');
+
+  const photo = card.photo || prof.photo;
+  if (photo) {
+    const img = document.getElementById('avatar');
+    img.style.display = '';
+    TC.fillImg(img, photo);
+  }
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tabs');
+  bar.innerHTML = '';
+  TABS.forEach((t) => {
+    const b = document.createElement('button');
+    b.className = 'dtab';
+    b.dataset.key = t.key;
+    b.textContent = t.label;
+    b.onclick = () => showTab(t.key);
+    bar.appendChild(b);
+  });
+}
+
+function showTab(key) {
+  document.querySelectorAll('.dtab').forEach((b) => b.classList.toggle('active', b.dataset.key === key));
+  const c = document.getElementById('content');
+  c.innerHTML = '';
+  if (key === 'summary') renderSummary(c);
+  else c.innerHTML = `<div class="soon"><span class="big">🚧</span>แท็บนี้กำลังพอร์ตมาระบบใหม่<br>
+    <span style="font-size:13px">ระหว่างนี้ดูได้จากเว็บเดิม</span></div>`;
+}
+
+/* ================= แท็บสรุป ================= */
+function renderSummary(root) {
+  const d = PET.data || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'stack';
+
+  const hidden = (d.display && d.display.hidden) || [];
+  const show = (k) => !hidden.includes(k);
+
+  if (show('leuco') && d.leucoPlus) wrap.appendChild(leucoBox(d));
+  if (show('danger') && d.dangerSigns) { const el = dangerBox(d.dangerSigns); if (el) wrap.appendChild(el); }
+  if (show('watch') && (d.watchList || []).length) wrap.appendChild(watchBox(d.watchList));
+
+  const tumor = (d.vitals && d.vitals.liverTumor) || [];
+  if (show('tumor') && tumor.length) wrap.appendChild(tumorChart(tumor));
+
+  if (!wrap.children.length) wrap.innerHTML = '<div class="empty">ยังไม่มีข้อมูลสรุปสำหรับน้องตัวนี้</div>';
+  root.appendChild(wrap);
+}
+
+/* ---- ไฟเตือน Leuco Plus (เทียบ WBC ดิบ 🔴<4000 / 🟡4000-4499 / 🟢≥4500) ---- */
+function leucoBox(d) {
+  const lp = d.leucoPlus;
+  const labs = (d.labs || []).filter((l) => l.values && l.values.wbc != null);
+  labs.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const latest = labs[0];
+
+  let cls = 'lp-gray', verdict = 'ยังไม่มีผล WBC', detail = '';
+
+  if (latest) {
+    let wbc = Number(latest.values.wbc);
+    if (lp.wbcInThousands) wbc = wbc * 1000;   // เผื่อโปรไฟล์ที่เก็บเป็นพัน
+    const always = lp.alwaysBelow ?? 4000;
+    const withSym = lp.withSymptomsBelow ?? 4500;
+
+    if (wbc < always) { cls = 'lp-red'; verdict = `🔴 WBC ${wbc.toLocaleString()} — ต่ำกว่า ${always.toLocaleString()} ควรฉีด Leuco Plus แม้อาการปกติ`; }
+    else if (wbc < withSym) { cls = 'lp-yellow'; verdict = `🟡 WBC ${wbc.toLocaleString()} — ต่ำกว่า ${withSym.toLocaleString()} ถ้ามีอาการอื่นร่วมด้วยควรฉีด`; }
+    else { cls = 'lp-green'; verdict = `🟢 WBC ${wbc.toLocaleString()} — อยู่ในเกณฑ์ ยังไม่ต้องฉีด`; }
+
+    detail = `ผลล่าสุด ${TC.thDate(latest.date)}`;
+  }
+
+  const el = document.createElement('div');
+  el.className = `leuco-box ${cls}`;
+  el.innerHTML = `
+    <div class="lp-head">💉 ${TC.esc(lp.title || 'เกณฑ์ฉีด Leuco Plus')}</div>
+    <div class="lp-verdict">${TC.esc(verdict)}</div>
+    ${detail ? `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-family:var(--mono)">${TC.esc(detail)}</div>` : ''}
+    ${(lp.rules || []).length ? `<ul class="lp-rules">${lp.rules.map((r) => `<li>${TC.esc(r)}</li>`).join('')}</ul>` : ''}
+  `;
+  return el;
+}
+
+/* ---- กล่องแดง: สัญญาณต้องไปหาหมอทันที (liverFailure + wbc) ---- */
+function dangerBox(ds) {
+  const items = [...(ds.liverFailure || []), ...(ds.wbc || [])];
+  if (!items.length) return null;
+  const el = document.createElement('div');
+  el.className = 'alert-box';
+  el.innerHTML = `
+    <div class="icon">🚨</div>
+    <div style="flex:1">
+      <div class="title">สัญญาณต้องไปหาหมอทันที</div>
+      <ul>${items.map((t) => `<li>${TC.esc(t)}</li>`).join('')}</ul>
+      ${ds.nosebleed ? `<div style="margin-top:10px;font-size:12.5px;color:#8a2b2b" class="pre-line"><b>เลือดกำเดา — ปฐมพยาบาล:</b>\n${TC.esc(ds.nosebleed)}</div>` : ''}
+    </div>`;
+  return el;
+}
+
+/* ---- สิ่งที่ต้องติดตาม ---- */
+function watchBox(list) {
+  const el = document.createElement('div');
+  el.className = 'watch-box';
+  el.innerHTML = `
+    <div class="title">📋 สิ่งที่ต้องติดตาม</div>
+    <ul>${list.map((t) => `<li>${TC.esc(t)}</li>`).join('')}</ul>`;
+  return el;
+}
+
+/* ---- กราฟขนาดก้อนในตับ ---- */
+function tumorChart(rows) {
+  const el = document.createElement('div');
+  el.className = 'chart-wrap';
+  el.innerHTML = `
+    <div class="section-label">📈 ขนาดก้อนในตับ (cm)</div>
+    <div class="tumor-box"><canvas></canvas></div>
+    <div class="tumor-note" id="tumorNotes"></div>`;
+
+  const pts = rows.filter((r) => r.size != null)
+                  .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  setTimeout(() => {
+    if (!pts.length) { el.querySelector('.tumor-box').innerHTML = '<div class="empty">ยังไม่มีค่าที่วัดได้</div>'; }
+    else {
+      new Chart(el.querySelector('canvas'), {
+        type: 'line',
+        data: {
+          labels: pts.map((p) => TC.thDateShort(p.date)),
+          datasets: [{
+            data: pts.map((p) => p.size),
+            borderColor: '#5b86bf', backgroundColor: 'rgba(169,196,232,0.25)',
+            pointBackgroundColor: pts.map((p) => (p.alert ? '#d96a6a' : '#5b86bf')),
+            pointRadius: 4, tension: 0.3, fill: true,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { color: '#8c7f6f' }, grid: { color: '#efe0cd' } },
+            x: { ticks: { color: '#8c7f6f', font: { size: 10 } }, grid: { display: false } },
+          },
+        },
+      });
+    }
+    // บันทึกล่าสุด 3 รายการ (รวมรายการที่ไม่มีตัวเลข เช่น "มีก้อนเพิ่ม")
+    const notes = rows.filter((r) => r.note).slice(-3).reverse();
+    el.querySelector('#tumorNotes').innerHTML = notes
+      .map((n) => `<div>${n.alert ? '⚠️ ' : '· '}<b>${TC.thDateShort(n.date)}</b> — ${TC.esc(n.note)}</div>`)
+      .join('');
+  }, 0);
+
+  return el;
+}
+</script>
+</body>
+</html>
