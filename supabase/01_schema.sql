@@ -74,8 +74,14 @@ create table if not exists public.pets (
 );
 
 create index if not exists pets_family_idx on public.pets(family_id);
-create unique index if not exists pets_family_slug_uniq
-  on public.pets(family_id, slug) where slug is not null;
+
+-- unique constraint (ไม่ใช่ partial index) — จำเป็นเพราะ script migrate ใช้ upsert
+-- ผ่าน ON CONFLICT (family_id, slug) ซึ่งอ้าง partial index ไม่ได้
+-- NULL แต่ละตัวถือว่าไม่เท่ากัน → สัตว์ที่ไม่มี slug มีได้หลายตัวตามเดิม
+do $$ begin
+  alter table public.pets add constraint pets_family_slug_uniq unique (family_id, slug);
+exception when duplicate_table or duplicate_object then null;
+end $$;
 
 -- ค้นใน jsonb ได้เร็วขึ้น (เผื่ออนาคตอยาก query ทะลุเข้าไปใน data)
 create index if not exists pets_data_gin on public.pets using gin (data jsonb_path_ops);

@@ -25,10 +25,26 @@
 |---|---|---|
 | 1 · สมัครบริการ | ✅ เสร็จ 19 ก.ค. 2026 | โปรเจกต์ Supabase `Tammie Care's Project` (free, region South Asia) · เก็บ Project URL + publishable key แล้ว |
 | 2 · Database + RLS | ✅ **ผ่าน checkpoint 19 ก.ค. 2026** | รัน `supabase/01_schema.sql` + `02_rls.sql` · ทดสอบ `03_test_checkpoint.sql` ผ่านครบ 4 ข้อ (parent admin เขียนได้ · vet อ่านอย่างเดียว · คนนอกไม่เห็นอะไร · view≠edit) |
-| 3 · Migrate ข้อมูล | ⬜ ถัดไป | ต้องเคาะเรื่องรูปภาพก่อน (open decision ข้อ 2) |
-| 4–7 | ⬜ ยังไม่เริ่ม | |
+| 3 · Migrate ข้อมูล | ✅ **ผ่าน checkpoint 19 ก.ค. 2026** | ครอบครัว "บ้านแทมมี่" + บัญชีจริงเป็น admin · bucket `pet-photos` (private) + policy · รัน `supabase/migrate.py` ผ่านการตรวจครบ 5 ข้อ ทั้งเฟ่และเฟ่อ |
+| 4 · Frontend ใหม่ | ⬜ ถัดไป | login + หน้า pet อ่านจาก Supabase |
+| 5–7 | ⬜ ยังไม่เริ่ม | |
 
-**ค้างอยู่ก่อนเริ่ม Step 3:** ลบข้อมูล/user ทดสอบ · สร้างบัญชีจริง (hommekidgo@gmail.com) + ครอบครัวจริง แล้วผูกเป็น `admin`
+**สิ่งที่อยู่ในระบบแล้ว (19 ก.ค. 2026)**
+
+| | เฟ่ (frappe) | เฟ่อ (wafer) |
+|---|---|---|
+| meds / labs / labConfig | 19 / 17 / 36 | 5 / 9 / 28 |
+| treatments / appointments / watchList | 8 / 9 / 5 | 6 / 7 / 5 |
+| อาการ | เลือดกำเดา 36 · ท้องเสีย 27 · ทั่วไป 15 | อาเจียน 9 · ท้องเสีย 10 · ทั่วไป 3 |
+| ก้อนในตับ / หัวใจ | 19 / 2 | — |
+| รูปใน Storage | 38 | 8 |
+
+**หมายเหตุการ migrate**
+
+- ข้อมูลจาก `pets.json` (ชื่อเล่น/emoji/status/statusNote) เก็บไว้ใน `pets.data.card` — ไม่ได้อยู่ในไฟล์ per-pet จึงต้องเก็บแยกไม่ให้ตกหล่น
+- รูปเก็บเป็น path `<pet_id>/<ชื่อไฟล์>` ใน bucket `pet-photos` (private) · frontend ต้องใช้ signed URL เปิดรูป
+- `pets` มี unique constraint `(family_id, slug)` เพื่อให้ upsert ของ script ทำงาน (partial index ใช้กับ ON CONFLICT ไม่ได้)
+- ระหว่าง dual-run: **แก้ข้อมูลผ่านระบบเดิมเท่านั้น** แล้วรัน `migrate.py` ซ้ำก่อน cutover (idempotent)
 
 ---
 
