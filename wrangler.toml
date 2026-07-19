@@ -1,0 +1,14 @@
+# Tammie Care V2 — ตั้งค่า deploy ขึ้น Cloudflare Workers (static assets)
+#
+# เสิร์ฟเฉพาะโฟลเดอร์ app/ เท่านั้น — ตั้งใจไม่รวม data/*.json กับ img/
+# เพราะข้อมูลสุขภาพย้ายไปอยู่ Supabase แล้ว ไม่ควรเปิดเป็นไฟล์สาธารณะซ้ำอีกที่
+# (เว็บเดิมบน GitHub Pages ยังใช้ไฟล์พวกนั้นอยู่ จึงยังลบออกจาก repo ไม่ได้จนกว่าจะ cutover)
+
+name = "tammie-care"
+compatibility_date = "2026-07-19"
+
+[assets]
+directory = "./app"
+
+# เปิด / แล้วเจอหน้า login เลย ไม่ต้องพิมพ์ /login.html
+not_found_handling = "404-page"
