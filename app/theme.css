@@ -229,6 +229,36 @@ details.past-appts > summary { cursor: pointer; font-size: 13px; color: var(--go
 .tx-flow-label { font-family: var(--mono); font-size: 11px; color: var(--gold); margin-bottom: 8px; }
 .tx-flow svg { max-width: 100%; height: auto; }
 
+/* ---------- โหมดแก้ไข ---------- */
+.edit-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.inline-actions { display: flex; gap: 12px; margin-top: 6px; }
+.inline-actions a { font-size: 12.5px; cursor: pointer; font-family: var(--mono); }
+.act-edit { color: var(--gold); }
+.act-del { color: var(--red); }
+
+.edit-form { border: 1px solid var(--sky-soft); border-radius: 12px; background: var(--surface); padding: 16px; margin-top: 14px; box-shadow: var(--sh-card); }
+.edit-form h3 { font-family: var(--cute); font-size: 15px; color: var(--blue); margin-bottom: 12px; }
+.edit-form label { display: block; font-size: 12.5px; color: var(--text-dim); margin-bottom: 5px; }
+.edit-form input[type=text], .edit-form input[type=date], .edit-form select, .edit-form textarea {
+  width: 100%; padding: 10px 12px; font-size: 16px; font-family: 'Sarabun', sans-serif; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; outline: none;
+}
+.edit-form textarea { min-height: 92px; resize: vertical; line-height: 1.6; }
+.edit-form input:focus, .edit-form select:focus, .edit-form textarea:focus {
+  border-color: var(--sky); box-shadow: 0 0 0 3px rgba(91,134,191,0.14);
+}
+.edit-form .fld { margin-bottom: 12px; }
+.edit-form .btns { display: flex; gap: 10px; margin-top: 6px; }
+.edit-form .btn { padding: 10px 20px; font-size: 14px; }
+.thumb-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.thumb-row .th { position: relative; }
+.thumb-row img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+.thumb-row .rm {
+  position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--red); color: #fff; border: none; cursor: pointer; font-size: 14px; line-height: 1;
+}
+.saving { font-size: 12.5px; color: var(--text-dim); font-family: var(--mono); }
+
 /* ---------- lightbox ---------- */
 .lightbox { position: fixed; inset: 0; background: rgba(74,64,53,0.86); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
 .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }

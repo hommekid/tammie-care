@@ -80,7 +80,69 @@ const TC = (() => {
     return data;
   }
 
+  // ---------- เขียนข้อมูล ----------
+
+  /**
+   * แก้เฉพาะเส้นทางที่ระบุใน pets.data (ไม่ส่งก้อนเต็มกลับไป)
+   * เช่น setPetPath(id, ['symptoms','diarrhea'], [...])
+   * กันกรณีสองคนแก้คนละหมวดพร้อมกันแล้วทับกันเอง
+   */
+  async function setPetPath(petId, path, value) {
+    const { data, error } = await sb.rpc('set_pet_path', {
+      p_pet_id: petId, p_path: path, p_value: value,
+    });
+    if (error) throw new Error(saveErrorTH(error));
+    return data;   // data ก้อนใหม่ทั้งหมด หลังบันทึก
+  }
+
+  function saveErrorTH(err) {
+    const m = (err?.message || '');
+    if (m.includes('ไม่มีสิทธิ์')) return m;                       // ข้อความจากฟังก์ชันเป็นไทยอยู่แล้ว
+    if (/row-level security|permission denied/i.test(m)) return 'คุณไม่มีสิทธิ์แก้ข้อมูลนี้';
+    if (/network|fetch/i.test(m)) return 'บันทึกไม่สำเร็จ — เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง';
+    return 'บันทึกไม่สำเร็จ: ' + m;
+  }
+
   // ---------- รูปใน Storage (bucket เป็น private ต้องใช้ signed URL) ----------
+
+  /** ย่อรูปก่อนอัป — กันไฟล์จากกล้องมือถือขนาด 5–10MB กินโควตา free tier */
+  function resizeImage(file, maxSide = 1400, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width: w, height: h } = img;
+        if (Math.max(w, h) > maxSide) {
+          const r = maxSide / Math.max(w, h);
+          w = Math.round(w * r); h = Math.round(h * r);
+        }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        cv.toBlob((b) => (b ? resolve(b) : reject(new Error('ย่อรูปไม่สำเร็จ'))), 'image/jpeg', quality);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('เปิดไฟล์รูปไม่ได้')); };
+      img.src = url;
+    });
+  }
+
+  /**
+   * อัปรูปเข้า bucket ที่ path <petId>/<ชื่อไฟล์>
+   * ชื่อไฟล์ตั้งตามรูปแบบเดิมของ V1 เพื่อให้ดูออกว่ามาจากอาการอะไร วันไหน
+   * คืน path (ไม่ใช่ URL) เพราะ bucket เป็น private — ต้องขอ signed URL ตอนแสดงผล
+   */
+  async function uploadPhoto(petId, file, prefix = 'photo', dateISO = '') {
+    const blob = await resizeImage(file);
+    const name = `${prefix}-${dateISO || new Date().toISOString().slice(0, 10)}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`;
+    const path = `${petId}/${name}`;
+    const { error } = await sb.storage.from(cfg.BUCKET).upload(path, blob, {
+      contentType: 'image/jpeg', upsert: false,
+    });
+    if (error) throw new Error('อัปโหลดรูปไม่สำเร็จ: ' + error.message);
+    return path;
+  }
+
 
   const urlCache = new Map();
 
@@ -150,5 +212,6 @@ const TC = (() => {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   return { sb, requireAuth, signOut, getMyRole, listPets, getPet, signedUrl, fillImg,
+           setPetPath, uploadPhoto, resizeImage,
            calcAge, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS };
 })();

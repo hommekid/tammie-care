@@ -6,7 +6,7 @@
 <title>Dashboard 🐾 · Tammie Care</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=5">
+<link rel="stylesheet" href="theme.css?v=6">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -54,6 +54,7 @@ const TABS = [
 ];
 
 let PET = null;
+let ROLE = { canEdit: false, isAdmin: false, role: null };
 
 (async function main() {
   const user = await TC.requireAuth();
@@ -62,7 +63,8 @@ let PET = null;
   const id = new URLSearchParams(location.search).get('id');
   if (!id) { location.replace('index.html'); return; }
 
-  const role = await TC.getMyRole();
+  ROLE = await TC.getMyRole();
+  const role = ROLE;
   if (role.role === 'vet') {
     document.getElementById('rolePill').innerHTML =
       '<span class="pill pill-vet">🩺 ดูอย่างเดียว</span>';
@@ -253,22 +255,39 @@ function attachPhotos(holder, paths) {
   });
 }
 
-/* ---------- แท็บอาการประจำวัน ---------- */
+/* ---------- แท็บอาการประจำวัน (ดู + แก้ไข) ---------- */
+
+let SYM_EDIT = null;   // {src, idx|null, photos:[path...], files:[File...]}
+
 function renderDaily(root) {
   const d = PET.data || {};
   const cats = dailyCats(d).filter((c) => ((d.symptoms || {})[c.source] || []).length);
 
-  const events = [];
-  cats.forEach((c) => (d.symptoms[c.source] || []).forEach((it) =>
-    events.push({ ...it, _src: c.source, _label: c.label })));
+  // หมวดที่เลือกได้ตอนเพิ่มบันทึก — รวมหมวดที่ยังไม่มีข้อมูลด้วย
+  const allCats = dailyCats(d);
+  const pickCats = allCats.length ? allCats
+    : Object.keys(SYM_LABELS).map((k) => ({ source: k, label: SYM_LABELS[k] }));
 
-  if (!events.length) { root.innerHTML = '<div class="empty">ยังไม่มีบันทึกอาการ</div>'; return; }
+  const events = [];
+  cats.forEach((c) => (d.symptoms[c.source] || []).forEach((it, idx) =>
+    events.push({ ...it, _src: c.source, _label: c.label, _idx: idx })));
 
   root.innerHTML = `
-    <div class="section-label">🌡️ อาการประจำวัน</div>
-    <div class="legend">${cats.map((c) =>
-      `<span><i class="dot" style="background:${symColor(c.source)}"></i> ${TC.esc(c.label)}</span>`).join('')}</div>
-    <div id="dailyCal"></div>`;
+    <div class="edit-bar">
+      <span class="section-label" style="margin:0">🌡️ อาการประจำวัน</span>
+      ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddSym">➕ เพิ่มบันทึก</button>' : ''}
+      <span class="saving" id="symMsg"></span>
+    </div>
+    ${cats.length ? `<div class="legend">${cats.map((c) =>
+      `<span><i class="dot" style="background:${symColor(c.source)}"></i> ${TC.esc(c.label)}</span>`).join('')}</div>` : ''}
+    <div id="symForm"></div>
+    ${events.length ? '<div id="dailyCal"></div>' : '<div class="empty">ยังไม่มีบันทึกอาการ</div>'}`;
+
+  if (ROLE.canEdit) {
+    document.getElementById('btnAddSym').onclick = () => openSymForm(pickCats, null);
+  }
+
+  if (!events.length) return;
 
   buildCalendar(document.getElementById('dailyCal'), {
     events,
@@ -284,14 +303,203 @@ function renderDaily(root) {
               </div>
               <div class="sym-detail">${TC.esc(it.detail || '')}</div>
               ${(it.photos || []).length ? `<div class="sym-photos" data-i="${i}"></div>` : ''}
+              ${ROLE.canEdit ? `<div class="inline-actions">
+                <a class="act-edit" data-edit="${it._src}:${it._idx}">แก้</a>
+                <a class="act-del" data-del="${it._src}:${it._idx}">ลบ</a>
+              </div>` : ''}
             </div>`).join('')}
         </div>`;
+
       items.forEach((it, i) => {
         const h = box.querySelector(`.sym-photos[data-i="${i}"]`);
         if (h) attachPhotos(h, it.photos);
       });
+
+      box.querySelectorAll('[data-edit]').forEach((a) => {
+        a.onclick = () => {
+          const [src, idx] = a.dataset.edit.split(':');
+          openSymForm(pickCats, { src, idx: Number(idx) });
+        };
+      });
+      box.querySelectorAll('[data-del]').forEach((a) => {
+        a.onclick = () => {
+          const [src, idx] = a.dataset.del.split(':');
+          delSymptom(src, Number(idx));
+        };
+      });
     },
   });
+}
+
+/** เปิดฟอร์มเพิ่ม/แก้บันทึกอาการ · edit = {src, idx} ถ้าเป็นการแก้ */
+function openSymForm(cats, edit) {
+  const d = PET.data || {};
+  const cur = edit ? (d.symptoms[edit.src] || [])[edit.idx] : null;
+  SYM_EDIT = {
+    src: edit ? edit.src : cats[0].source,
+    idx: edit ? edit.idx : null,
+    photos: [...((cur && cur.photos) || [])],
+    files: [],
+  };
+
+  const today = new Date();
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  document.getElementById('symForm').innerHTML = `
+    <div class="edit-form">
+      <h3>${edit ? '✏️ แก้บันทึกอาการ' : '➕ เพิ่มบันทึกอาการ'}</h3>
+      <div class="fld">
+        <label>หมวดอาการ</label>
+        <select id="fSrc">${cats.map((c) =>
+          `<option value="${c.source}" ${c.source === SYM_EDIT.src ? 'selected' : ''}>${TC.esc(c.label)}</option>`).join('')}</select>
+      </div>
+      <div class="fld">
+        <label>วันที่</label>
+        <input type="date" id="fDate" value="${cur ? cur.date : todayISO}">
+      </div>
+      <div class="fld" id="fSideWrap" style="display:none">
+        <label>รูจมูก</label>
+        <select id="fSide">
+          <option value="">ไม่ระบุ</option>
+          <option value="left" ${cur && cur.side === 'left' ? 'selected' : ''}>ซ้าย</option>
+          <option value="right" ${cur && cur.side === 'right' ? 'selected' : ''}>ขวา</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>รายละเอียด</label>
+        <textarea id="fDetail" placeholder="อาการเป็นยังไง กินอะไรมา ทำอะไรไปบ้าง...">${cur ? TC.esc(cur.detail || '') : ''}</textarea>
+      </div>
+      <div class="fld">
+        <label>รูปภาพ (เลือกได้หลายรูป · ระบบย่อขนาดให้อัตโนมัติ)</label>
+        <input type="file" id="fPhotos" accept="image/*" multiple>
+        <div class="thumb-row" id="fThumbs"></div>
+      </div>
+      <div class="btns">
+        <button class="btn" id="fSave">${edit ? 'บันทึกการแก้ไข' : 'บันทึก'}</button>
+        <button class="btn-ghost" id="fCancel">ยกเลิก</button>
+      </div>
+    </div>`;
+
+  const srcSel = document.getElementById('fSrc');
+  const syncSide = () => {
+    document.getElementById('fSideWrap').style.display = srcSel.value === 'nosebleed' ? '' : 'none';
+  };
+  srcSel.onchange = syncSide;
+  syncSide();
+
+  document.getElementById('fPhotos').onchange = (e) => {
+    SYM_EDIT.files.push(...e.target.files);
+    e.target.value = '';
+    drawThumbs();
+  };
+  document.getElementById('fCancel').onclick = () => { SYM_EDIT = null; showTab('daily'); };
+  document.getElementById('fSave').onclick = saveSymptom;
+
+  drawThumbs();
+  document.getElementById('symForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/** รูปเดิม (มี path แล้ว) + รูปใหม่ที่เพิ่งเลือก (ยังไม่อัป) */
+function drawThumbs() {
+  const box = document.getElementById('fThumbs');
+  if (!box) return;
+  box.innerHTML = '';
+
+  SYM_EDIT.photos.forEach(async (p, i) => {
+    const url = await TC.signedUrl(p);
+    const div = document.createElement('div');
+    div.className = 'th';
+    div.innerHTML = `<img src="${url || ''}" alt=""><button class="rm" title="เอาออก">×</button>`;
+    div.querySelector('.rm').onclick = () => { SYM_EDIT.photos.splice(i, 1); drawThumbs(); };
+    box.appendChild(div);
+  });
+
+  SYM_EDIT.files.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'th';
+    const url = URL.createObjectURL(f);
+    div.innerHTML = `<img src="${url}" alt=""><button class="rm" title="เอาออก">×</button>`;
+    div.querySelector('.rm').onclick = () => { SYM_EDIT.files.splice(i, 1); drawThumbs(); };
+    box.appendChild(div);
+  });
+}
+
+async function saveSymptom() {
+  const btn = document.getElementById('fSave');
+  const msg = document.getElementById('symMsg');
+  const src = document.getElementById('fSrc').value;
+  const date = document.getElementById('fDate').value;
+  const detail = document.getElementById('fDetail').value.trim();
+  const side = document.getElementById('fSide') ? document.getElementById('fSide').value : '';
+
+  if (!date) { alert('กรุณาเลือกวันที่'); return; }
+  if (!detail && !SYM_EDIT.photos.length && !SYM_EDIT.files.length) {
+    alert('กรุณากรอกรายละเอียด หรือแนบรูปอย่างน้อยหนึ่งรูป'); return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'กำลังบันทึก...';
+
+  try {
+    // อัปรูปใหม่ก่อน แล้วค่อยเขียนข้อมูล — ถ้าอัปพัง จะได้ไม่บันทึก path ที่ไม่มีจริง
+    const uploaded = [];
+    for (const f of SYM_EDIT.files) {
+      msg.textContent = `กำลังอัปรูป ${uploaded.length + 1}/${SYM_EDIT.files.length}...`;
+      uploaded.push(await TC.uploadPhoto(PET.id, f, src, date));
+    }
+    msg.textContent = 'กำลังบันทึก...';
+
+    const entry = { date, detail };
+    if (src === 'nosebleed' && side) entry.side = side;
+    const photos = [...SYM_EDIT.photos, ...uploaded];
+    if (photos.length) entry.photos = photos;
+
+    const d = PET.data || {};
+    d.symptoms = d.symptoms || {};
+
+    // ถ้าเปลี่ยนหมวดตอนแก้ไข ต้องย้ายข้าม array (ลบของเดิม เพิ่มเข้าหมวดใหม่)
+    const movedCat = SYM_EDIT.idx !== null && SYM_EDIT.src !== src;
+    if (movedCat) {
+      const oldArr = [...(d.symptoms[SYM_EDIT.src] || [])];
+      oldArr.splice(SYM_EDIT.idx, 1);
+      await TC.setPetPath(PET.id, ['symptoms', SYM_EDIT.src], oldArr);
+      d.symptoms[SYM_EDIT.src] = oldArr;
+    }
+
+    const arr = [...(d.symptoms[src] || [])];
+    if (SYM_EDIT.idx !== null && !movedCat) arr[SYM_EDIT.idx] = entry;
+    else arr.unshift(entry);
+    arr.sort((a, b) => new Date(b.date) - new Date(a.date));   // ใหม่สุดอยู่บน เหมือน V1
+
+    const fresh = await TC.setPetPath(PET.id, ['symptoms', src], arr);
+    PET.data = fresh;   // ใช้ค่าที่ฐานข้อมูลตอบกลับ ไม่ใช่ค่าที่เดาเอง
+
+    SYM_EDIT = null;
+    showTab('daily');
+    document.getElementById('symMsg').textContent = '✅ บันทึกแล้ว';
+    setTimeout(() => { const m = document.getElementById('symMsg'); if (m) m.textContent = ''; }, 2500);
+  } catch (err) {
+    alert(err.message || 'บันทึกไม่สำเร็จ');
+    btn.disabled = false;
+    btn.textContent = 'บันทึก';
+    msg.textContent = '';
+  }
+}
+
+async function delSymptom(src, idx) {
+  const item = (PET.data.symptoms[src] || [])[idx];
+  if (!item) return;
+  if (!confirm(`ลบบันทึกวันที่ ${TC.thDate(item.date)} ?\n\n${(item.detail || '').slice(0, 80)}`)) return;
+
+  const arr = [...(PET.data.symptoms[src] || [])];
+  arr.splice(idx, 1);
+  try {
+    PET.data = await TC.setPetPath(PET.id, ['symptoms', src], arr);
+    showTab('daily');
+    // หมายเหตุ: ไม่ลบไฟล์รูปใน Storage — เผื่อกดพลาดจะได้กู้ได้ (ค่อยทำตัวเก็บกวาดทีหลัง)
+  } catch (err) {
+    alert(err.message || 'ลบไม่สำเร็จ');
+  }
 }
 
 /* ================= แท็บ 🏥 การรักษา ================= */
