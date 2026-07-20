@@ -156,7 +156,16 @@ function dailyCats(d) {
  *   onDetail : (iso, items, boxEl) => void  วาดรายละเอียดของวันที่เลือก
  * เปิดที่เดือนปัจจุบันเสมอ · ไฮไลต์วันนี้ · กดวันเดิมซ้ำ = ซ่อน
  */
-function buildCalendar(root, { events, dotsOf, onDetail }) {
+const CAL_VIEW = {};   // จำเดือนที่ดูอยู่ + วันที่เลือก แยกตามปฏิทินแต่ละตัว
+
+/** สั่งให้ปฏิทินไปโฟกัสวันที่นี้ตอนวาดรอบหน้า (ใช้หลังบันทึก) */
+function setCalFocus(key, iso) {
+  if (!iso) return;
+  const d = new Date(iso);
+  CAL_VIEW[key] = { ym: `${d.getFullYear()}-${d.getMonth()}`, sel: iso };
+}
+
+function buildCalendar(root, { key, events, dotsOf, onDetail }) {
   const now = new Date();
   const keys = new Set(events.map((e) => {
     const d = new Date(e.date); return `${d.getFullYear()}-${d.getMonth()}`;
@@ -168,6 +177,14 @@ function buildCalendar(root, { events, dotsOf, onDetail }) {
     idx: 0, sel: null,
   };
   st.idx = Math.max(0, st.months.findIndex(([y, m]) => y === now.getFullYear() && m === now.getMonth()));
+
+  // ถ้าเคยดูเดือนอื่นไว้ (หรือเพิ่งบันทึกรายการของเดือนอื่น) ให้กลับไปที่เดือนนั้น
+  // ไม่งั้นทุกครั้งที่บันทึกจะเด้งกลับเดือนปัจจุบัน แล้วต้องกดย้อนเองใหม่
+  const saved = key && CAL_VIEW[key];
+  if (saved) {
+    const i = st.months.findIndex(([y, m]) => `${y}-${m}` === saved.ym);
+    if (i >= 0) { st.idx = i; st.sel = saved.sel || null; }
+  }
 
   root.innerHTML = `
     <div class="card">
@@ -226,6 +243,8 @@ function buildCalendar(root, { events, dotsOf, onDetail }) {
         draw();
       };
     });
+
+    if (key) CAL_VIEW[key] = { ym: `${y}-${m}`, sel: st.sel };
 
     const box = $('.dayBoxHolder');
     box.innerHTML = '';
@@ -290,6 +309,7 @@ function renderDaily(root) {
   if (!events.length) return;
 
   buildCalendar(document.getElementById('dailyCal'), {
+    key: 'daily',
     events,
     dotsOf: (items) => [...new Set(items.map((i) => i._src))].map(symColor),
     onDetail: (iso, items, box) => {
@@ -474,6 +494,7 @@ async function saveSymptom() {
     const fresh = await TC.setPetPath(PET.id, ['symptoms', src], arr);
     PET.data = fresh;   // ใช้ค่าที่ฐานข้อมูลตอบกลับ ไม่ใช่ค่าที่เดาเอง
 
+    setCalFocus('daily', date);
     SYM_EDIT = null;
     showTab('daily');
     document.getElementById('symMsg').textContent = '✅ บันทึกแล้ว';
@@ -502,6 +523,129 @@ async function delSymptom(src, idx) {
   }
 }
 
+/* ================= ฟอร์มกลาง (ใช้ร่วมทุกหมวด) ================= */
+/*
+ * fields: [{key, label, type, options?, placeholder?, half?}]
+ *   type: text | date | textarea | select | photos
+ * onSave(values, uploadedPhotos) — โยน error ได้ ฟอร์มจะโชว์ข้อความให้เอง
+ */
+let FORM = null;   // {photos:[path], files:[File], prefix, dateKey}
+
+function openForm(holderId, { title, fields, values = {}, prefix = 'photo', onSave }) {
+  const holder = document.getElementById(holderId);
+  const photoField = fields.find((f) => f.type === 'photos');
+  FORM = { photos: [...((photoField && values[photoField.key]) || [])], files: [], prefix, fields };
+
+  const fieldHTML = (f) => {
+    const v = values[f.key] ?? '';
+    if (f.type === 'photos') {
+      return `<label>${TC.esc(f.label)}</label>
+        <input type="file" id="ff-${f.key}" accept="image/*" multiple>
+        <div class="thumb-row" id="ffThumbs"></div>`;
+    }
+    if (f.type === 'textarea') {
+      return `<label>${TC.esc(f.label)}</label>
+        <textarea id="ff-${f.key}" placeholder="${TC.esc(f.placeholder || '')}">${TC.esc(v)}</textarea>`;
+    }
+    if (f.type === 'select') {
+      return `<label>${TC.esc(f.label)}</label>
+        <select id="ff-${f.key}">${f.options.map((o) =>
+          `<option value="${TC.esc(o.value)}" ${o.value === v ? 'selected' : ''}>${TC.esc(o.label)}</option>`).join('')}</select>`;
+    }
+    return `<label>${TC.esc(f.label)}</label>
+      <input type="${f.type}" id="ff-${f.key}" value="${TC.esc(v)}" placeholder="${TC.esc(f.placeholder || '')}">`;
+  };
+
+  holder.innerHTML = `
+    <div class="edit-form">
+      <h3>${TC.esc(title)}</h3>
+      ${fields.map((f) => `<div class="fld">${fieldHTML(f)}</div>`).join('')}
+      <div class="btns">
+        <button class="btn" id="ffSave">บันทึก</button>
+        <button class="btn-ghost" id="ffCancel">ยกเลิก</button>
+      </div>
+      <div class="saving" id="ffMsg" style="margin-top:8px"></div>
+    </div>`;
+
+  if (photoField) {
+    document.getElementById(`ff-${photoField.key}`).onchange = (e) => {
+      FORM.files.push(...e.target.files); e.target.value = ''; drawFormThumbs();
+    };
+    drawFormThumbs();
+  }
+
+  document.getElementById('ffCancel').onclick = () => { FORM = null; holder.innerHTML = ''; };
+  document.getElementById('ffSave').onclick = async () => {
+    const btn = document.getElementById('ffSave');
+    const msg = document.getElementById('ffMsg');
+    const vals = {};
+    fields.forEach((f) => {
+      if (f.type === 'photos') return;
+      vals[f.key] = document.getElementById(`ff-${f.key}`).value.trim();
+    });
+
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+    try {
+      const uploaded = [];
+      for (const file of FORM.files) {
+        msg.textContent = `กำลังอัปรูป ${uploaded.length + 1}/${FORM.files.length}...`;
+        uploaded.push(await TC.uploadPhoto(PET.id, file, prefix, vals.date || ''));
+      }
+      msg.textContent = 'กำลังบันทึก...';
+      await onSave(vals, [...FORM.photos, ...uploaded]);
+      FORM = null;
+      holder.innerHTML = '';
+    } catch (err) {
+      alert(err.message || 'บันทึกไม่สำเร็จ');
+      btn.disabled = false; btn.textContent = 'บันทึก'; msg.textContent = '';
+    }
+  };
+
+  holder.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function drawFormThumbs() {
+  const box = document.getElementById('ffThumbs');
+  if (!box) return;
+  box.innerHTML = '';
+  FORM.photos.forEach(async (p, i) => {
+    const url = await TC.signedUrl(p);
+    const div = document.createElement('div');
+    div.className = 'th';
+    div.innerHTML = `<img src="${url || ''}" alt=""><button class="rm">×</button>`;
+    div.querySelector('.rm').onclick = () => { FORM.photos.splice(i, 1); drawFormThumbs(); };
+    box.appendChild(div);
+  });
+  FORM.files.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'th';
+    div.innerHTML = `<img src="${URL.createObjectURL(f)}" alt=""><button class="rm">×</button>`;
+    div.querySelector('.rm').onclick = () => { FORM.files.splice(i, 1); drawFormThumbs(); };
+    box.appendChild(div);
+  });
+}
+
+/** ลิงก์ แก้/ลบ ใต้รายการ (โผล่เฉพาะคนที่มีสิทธิ์แก้) */
+function actionsHTML(editAttr, delAttr) {
+  if (!ROLE.canEdit) return '';
+  return `<div class="inline-actions">
+    <a class="act-edit" data-edit="${editAttr}">แก้</a>
+    <a class="act-del" data-del="${delAttr}">ลบ</a>
+  </div>`;
+}
+
+function wireActions(box, onEdit, onDel) {
+  box.querySelectorAll('[data-edit]').forEach((a) => { a.onclick = () => onEdit(a.dataset.edit); });
+  box.querySelectorAll('[data-del]').forEach((a) => { a.onclick = () => onDel(a.dataset.del); });
+}
+
+/** บันทึกอาร์เรย์กลับเข้า data แล้ววาดแท็บใหม่ */
+async function saveArr(pathKey, arr, tabKey) {
+  PET.data = await TC.setPetPath(PET.id, [pathKey], arr);
+  showTab(tabKey);
+}
+
+
 /* ================= แท็บ 🏥 การรักษา ================= */
 
 let mermaidReady = false;
@@ -519,21 +663,40 @@ function initMermaid() {
   mermaidReady = true;
 }
 
+const TREAT_FIELDS = [
+  { key: 'date', label: 'วันที่', type: 'date' },
+  { key: 'doctor', label: 'หมอ', type: 'text', placeholder: 'เช่น อ.นิช' },
+  { key: 'specialty', label: 'แผนก', type: 'text', placeholder: 'เช่น ทางเดินอาหาร' },
+  { key: 'notes', label: 'บันทึก', type: 'textarea', placeholder: 'หมอบอกว่าอะไร ให้ยาอะไร ต้องทำอะไรต่อ...' },
+  { key: 'photos', label: 'รูปภาพ (เลือกได้หลายรูป)', type: 'photos' },
+  { key: 'flow', label: 'Flowchart (Mermaid) — เว้นว่างได้', type: 'textarea', placeholder: 'flowchart TD\n  A[ตรวจเลือด] --> B[ให้ยา]' },
+];
+
 function renderTreat(root) {
   const list = (PET.data || {}).treatments || [];
-  if (!list.length) { root.innerHTML = '<div class="empty">ยังไม่มีบันทึกการรักษา</div>'; return; }
-
   const total = list.reduce((n, r) => n + (r.entries || []).length, 0);
+
   root.innerHTML = `
-    <div class="section-label">🏥 การรักษา (${list.length} วัน · ${total} รายการ)</div>
-    <div class="legend"><span><i class="dot" style="background:#d99e3e"></i> วันที่ไปหาหมอ</span></div>
-    <div id="treatCal"></div>`;
+    <div class="edit-bar">
+      <span class="section-label" style="margin:0">🏥 การรักษา (${list.length} วัน · ${total} รายการ)</span>
+      ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddTx">➕ เพิ่มการรักษา</button>' : ''}
+    </div>
+    <div id="txForm"></div>
+    ${list.length ? `<div class="legend"><span><i class="dot" style="background:#d99e3e"></i> วันที่ไปหาหมอ</span></div>
+    <div id="treatCal"></div>` : '<div class="empty">ยังไม่มีบันทึกการรักษา</div>'}`;
+
+  if (ROLE.canEdit) document.getElementById('btnAddTx').onclick = () => openTreatForm(null);
+  if (!list.length) return;
 
   buildCalendar(document.getElementById('treatCal'), {
+    key: 'treat',
     events: list,
     dotsOf: () => ['#d99e3e'],
     onDetail: (iso, items, box) => {
-      const entries = items.flatMap((r) => r.entries || []);
+      // ต้องรู้ตำแหน่งจริงใน array เพื่อแก้/ลบได้ถูกตัว
+      const gi = list.findIndex((r) => r.date === iso);
+      const entries = (list[gi] || {}).entries || [];
+
       box.innerHTML = `
         <div class="day-box">
           <div class="day-head">🏥 ${TC.thDate(iso)} · ${entries.length} รายการ</div>
@@ -543,6 +706,7 @@ function renderTreat(root) {
               <div class="tx-notes">${TC.esc(e.notes || '')}</div>
               ${(e.photos || []).length ? `<div class="sym-photos" data-i="${i}"></div>` : ''}
               ${e.flow ? `<div class="tx-flow"><div class="tx-flow-label">🗺 ขั้นตอน/แผนการรักษา</div><div class="mmd" data-i="${i}"></div></div>` : ''}
+              ${actionsHTML(`${gi}:${i}`, `${gi}:${i}`)}
             </div>`).join('')}
         </div>`;
 
@@ -551,8 +715,61 @@ function renderTreat(root) {
         if (h) attachPhotos(h, e.photos);
         if (e.flow) drawFlow(box.querySelector(`.mmd[data-i="${i}"]`), e.flow, i);
       });
+
+      wireActions(box,
+        (v) => { const [g, i] = v.split(':').map(Number); openTreatForm({ g, i }); },
+        (v) => { const [g, i] = v.split(':').map(Number); delTreat(g, i); });
     },
   });
+}
+
+function openTreatForm(edit) {
+  const list = (PET.data || {}).treatments || [];
+  const cur = edit ? { ...list[edit.g].entries[edit.i], date: list[edit.g].date } : {};
+
+  openForm('txForm', {
+    title: edit ? '✏️ แก้บันทึกการรักษา' : '➕ เพิ่มการรักษา',
+    fields: TREAT_FIELDS,
+    values: cur,
+    prefix: 'treat',
+    onSave: async (v, photos) => {
+      if (!v.date) throw new Error('กรุณาเลือกวันที่');
+      if (!v.doctor && !v.notes) throw new Error('กรุณากรอกชื่อหมอหรือบันทึกอย่างน้อยหนึ่งอย่าง');
+
+      const entry = { doctor: v.doctor, specialty: v.specialty, notes: v.notes };
+      if (photos.length) entry.photos = photos;
+      if (v.flow) entry.flow = v.flow;
+
+      const arr = JSON.parse(JSON.stringify(list));
+
+      // ลบ entry เดิมออกก่อน (เผื่อมีการเปลี่ยนวันที่ ต้องย้ายข้ามกลุ่ม)
+      if (edit) {
+        arr[edit.g].entries.splice(edit.i, 1);
+        if (!arr[edit.g].entries.length) arr.splice(edit.g, 1);
+      }
+
+      const gi = arr.findIndex((r) => r.date === v.date);
+      if (gi >= 0) arr[gi].entries.push(entry);
+      else arr.push({ date: v.date, entries: [entry] });
+
+      arr.sort((a, b) => new Date(b.date) - new Date(a.date));
+      setCalFocus('treat', v.date);
+      await saveArr('treatments', arr, 'treat');
+    },
+  });
+}
+
+async function delTreat(g, i) {
+  const list = (PET.data || {}).treatments || [];
+  const e = (list[g] || {}).entries?.[i];
+  if (!e) return;
+  if (!confirm(`ลบบันทึกการรักษา ${TC.thDate(list[g].date)}\n${e.doctor || ''} ?`)) return;
+
+  const arr = JSON.parse(JSON.stringify(list));
+  arr[g].entries.splice(i, 1);
+  if (!arr[g].entries.length) arr.splice(g, 1);
+  try { await saveArr('treatments', arr, 'treat'); }
+  catch (err) { alert(err.message); }
 }
 
 /** เรนเดอร์ flowchart — ไวยากรณ์ผิดก็ไม่ทำให้หน้าพัง (แสดงข้อความแทน) */
@@ -568,65 +785,127 @@ async function drawFlow(el, code, i) {
   }
 }
 
+
 /* ================= แท็บ 💊 ยา ================= */
+
+const MED_FIELDS = [
+  { key: 'name', label: 'ชื่อยา', type: 'text', placeholder: 'เช่น Palladia' },
+  { key: 'am', label: 'โดสเช้า', type: 'text', placeholder: 'เช่น 1 หรือ 65mg (เว้นว่างได้)' },
+  { key: 'pm', label: 'โดสเย็น', type: 'text', placeholder: 'เว้นว่างได้' },
+  { key: 'note', label: 'หมายเหตุ', type: 'text', placeholder: 'เช่น ก่อนอาหาร / Mon Wed Fri' },
+];
+
 function renderMeds(root) {
   const meds = (PET.data || {}).meds || [];
-  if (!meds.length) { root.innerHTML = '<div class="empty">ยังไม่มีรายการยาประจำ</div>'; return; }
 
   root.innerHTML = `
-    <div class="section-label">💊 ยาประจำ (${meds.length} รายการ)</div>
-    <div class="card" style="padding:0;overflow:hidden">
-      <div class="tbl-scroll">
-        <table class="med-tbl">
-          <thead>
-            <tr><th>ยา</th><th class="dose">เช้า</th><th class="dose">เย็น</th><th>หมายเหตุ</th></tr>
-          </thead>
-          <tbody>
-            ${meds.map((m) => `
-              <tr>
-                <td class="med-name">${TC.esc(m.name)}</td>
-                <td class="dose">${TC.esc(m.am || '—')}</td>
-                <td class="dose">${TC.esc(m.pm || '—')}</td>
-                <td class="med-note">${TC.esc(m.note || '')}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>`;
+    <div class="edit-bar">
+      <span class="section-label" style="margin:0">💊 ยาประจำ (${meds.length} รายการ)</span>
+      ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddMed">➕ เพิ่มยา</button>' : ''}
+    </div>
+    <div id="medForm"></div>
+    ${meds.length ? `
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tbl-scroll">
+          <table class="med-tbl">
+            <thead><tr><th>ยา</th><th class="dose">เช้า</th><th class="dose">เย็น</th><th>หมายเหตุ</th></tr></thead>
+            <tbody id="medBody">
+              ${meds.map((m, i) => `
+                <tr>
+                  <td class="med-name">${TC.esc(m.name)}${actionsHTML(i, i)}</td>
+                  <td class="dose">${TC.esc(m.am || '—')}</td>
+                  <td class="dose">${TC.esc(m.pm || '—')}</td>
+                  <td class="med-note">${TC.esc(m.note || '')}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : '<div class="empty">ยังไม่มีรายการยาประจำ</div>'}`;
+
+  if (ROLE.canEdit) {
+    document.getElementById('btnAddMed').onclick = () => openMedForm(null);
+    const body = document.getElementById('medBody');
+    if (body) wireActions(body, (i) => openMedForm(Number(i)), (i) => delMed(Number(i)));
+  }
 }
 
+function openMedForm(idx) {
+  const meds = (PET.data || {}).meds || [];
+  openForm('medForm', {
+    title: idx === null ? '➕ เพิ่มยา' : '✏️ แก้ข้อมูลยา',
+    fields: MED_FIELDS,
+    values: idx === null ? {} : meds[idx],
+    onSave: async (v) => {
+      if (!v.name) throw new Error('กรุณากรอกชื่อยา');
+      const arr = [...meds];
+      const entry = { name: v.name, am: v.am, pm: v.pm, note: v.note };
+      if (idx === null) arr.push(entry); else arr[idx] = entry;
+      await saveArr('meds', arr, 'meds');
+    },
+  });
+}
+
+async function delMed(idx) {
+  const meds = (PET.data || {}).meds || [];
+  if (!meds[idx]) return;
+  if (!confirm(`ลบยา "${meds[idx].name}" ?`)) return;
+  const arr = [...meds];
+  arr.splice(idx, 1);
+  try { await saveArr('meds', arr, 'meds'); } catch (e) { alert(e.message); }
+}
+
+
 /* ================= แท็บ 📅 นัดหมาย ================= */
+
+const APPT_FIELDS = [
+  { key: 'date', label: 'วันที่นัด', type: 'date' },
+  { key: 'doctor', label: 'หมอ / การตรวจ', type: 'text', placeholder: 'เช่น หมอปลาย หรือ ตรวจเลือด' },
+  { key: 'note', label: 'หมายเหตุ', type: 'textarea', placeholder: 'เช่น เอาปัสสาวะไปด้วย' },
+];
+
 function renderAppts(root) {
-  const list = [...((PET.data || {}).appointments || [])];
-  if (!list.length) { root.innerHTML = '<div class="empty">ยังไม่มีนัดหมาย</div>'; return; }
+  const list = (PET.data || {}).appointments || [];
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const withDiff = list.map((a) => {
+  const withDiff = list.map((a, i) => {
     const d = new Date(a.date); d.setHours(0, 0, 0, 0);
-    return { ...a, d, diff: Math.round((d - today) / 86400000) };
+    return { ...a, d, _idx: i, diff: Math.round((d - today) / 86400000) };
   });
-
   const upcoming = withDiff.filter((a) => a.diff >= 0).sort((a, b) => a.d - b.d);
   const past = withDiff.filter((a) => a.diff < 0).sort((a, b) => b.d - a.d);
 
   root.innerHTML = `
-    <div class="section-label">📅 ปฏิทินนัดหมาย</div>
-    <div class="legend">
-      <span><i class="dot" style="background:#d96a6a"></i> วันนี้/พรุ่งนี้</span>
-      <span><i class="dot" style="background:#d99e3e"></i> นัดที่จะถึง</span>
-      <span><i class="dot" style="background:#b6a795"></i> ผ่านมาแล้ว</span>
+    <div class="edit-bar">
+      <span class="section-label" style="margin:0">📅 ปฏิทินนัดหมาย</span>
+      ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddAppt">➕ เพิ่มนัด</button>' : ''}
     </div>
-    <div id="apptCal"></div>
+    <div id="apptForm"></div>
+    ${list.length ? `
+      <div class="legend">
+        <span><i class="dot" style="background:#d96a6a"></i> วันนี้/พรุ่งนี้</span>
+        <span><i class="dot" style="background:#d99e3e"></i> นัดที่จะถึง</span>
+        <span><i class="dot" style="background:#b6a795"></i> ผ่านมาแล้ว</span>
+      </div>
+      <div id="apptCal"></div>
 
-    <div class="section-label" style="margin-top:26px">🔔 นัดที่จะถึง (${upcoming.length})</div>
-    <div>${upcoming.length ? upcoming.map(apptCard).join('') : '<div class="empty">ไม่มีนัดที่จะถึง</div>'}</div>
-    ${past.length ? `
-      <details class="past-appts">
-        <summary>▸ นัดที่ผ่านมาแล้ว (${past.length})</summary>
-        <div style="margin-top:10px">${past.map(apptCard).join('')}</div>
-      </details>` : ''}`;
+      <div class="section-label" style="margin-top:26px">🔔 นัดที่จะถึง (${upcoming.length})</div>
+      <div id="upcomingList">${upcoming.length ? upcoming.map(apptCard).join('') : '<div class="empty">ไม่มีนัดที่จะถึง</div>'}</div>
+      ${past.length ? `
+        <details class="past-appts">
+          <summary>▸ นัดที่ผ่านมาแล้ว (${past.length})</summary>
+          <div style="margin-top:10px" id="pastList">${past.map(apptCard).join('')}</div>
+        </details>` : ''}
+    ` : '<div class="empty">ยังไม่มีนัดหมาย</div>'}`;
+
+  if (ROLE.canEdit) document.getElementById('btnAddAppt').onclick = () => openApptForm(null);
+  if (!list.length) return;
+
+  const hook = (el) => { if (el) wireActions(el, (i) => openApptForm(Number(i)), (i) => delAppt(Number(i))); };
+  hook(document.getElementById('upcomingList'));
+  hook(document.getElementById('pastList'));
 
   buildCalendar(document.getElementById('apptCal'), {
+    key: 'appts',
     events: withDiff,
     // สีจุดบอกสถานะ: แดง = วันนี้/พรุ่งนี้ · ทอง = ยังมาไม่ถึง · เทา = ผ่านไปแล้ว
     dotsOf: (items) => [...new Set(items.map((a) =>
@@ -637,6 +916,7 @@ function renderAppts(root) {
           <div class="day-head">📅 ${TC.thDate(iso)} · ${items.length} นัด</div>
           ${items.map(apptCard).join('')}
         </div>`;
+      hook(box);
     },
   });
 }
@@ -653,8 +933,37 @@ function apptCard(a) {
         ${when ? `<span class="appt-when${a.diff <= 1 ? ' urgent' : ''}">${when}</span>` : ''}
       </div>
       ${a.note ? `<div class="appt-note">${TC.esc(a.note)}</div>` : ''}
+      ${actionsHTML(a._idx, a._idx)}
     </div>`;
 }
+
+function openApptForm(idx) {
+  const list = (PET.data || {}).appointments || [];
+  openForm('apptForm', {
+    title: idx === null ? '➕ เพิ่มนัดหมาย' : '✏️ แก้นัดหมาย',
+    fields: APPT_FIELDS,
+    values: idx === null ? {} : list[idx],
+    onSave: async (v) => {
+      if (!v.date) throw new Error('กรุณาเลือกวันที่นัด');
+      const arr = [...list];
+      const entry = { date: v.date, doctor: v.doctor, note: v.note };
+      if (idx === null) arr.push(entry); else arr[idx] = entry;
+      arr.sort((a, b) => new Date(a.date) - new Date(b.date));
+      setCalFocus('appts', v.date);
+      await saveArr('appointments', arr, 'appts');
+    },
+  });
+}
+
+async function delAppt(idx) {
+  const list = (PET.data || {}).appointments || [];
+  if (!list[idx]) return;
+  if (!confirm(`ลบนัด ${TC.thDate(list[idx].date)} ${list[idx].doctor || ''} ?`)) return;
+  const arr = [...list];
+  arr.splice(idx, 1);
+  try { await saveArr('appointments', arr, 'appts'); } catch (e) { alert(e.message); }
+}
+
 
 /* ================= แท็บสรุป ================= */
 function renderSummary(root) {
