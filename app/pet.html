@@ -6,7 +6,7 @@
 <title>Dashboard 🐾 · Tammie Care</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=6">
+<link rel="stylesheet" href="theme.css?v=8">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -125,6 +125,7 @@ function showTab(key) {
   else if (key === 'appts') renderAppts(c);
   else if (key === "daily") renderDaily(c);
   else if (key === "treat") renderTreat(c);
+  else if (key === "labs") renderLabs(c);
   else c.innerHTML = `<div class="soon"><span class="big">🚧</span>แท็บนี้กำลังพอร์ตมาระบบใหม่<br>
     <span style="font-size:13px">ระหว่างนี้ดูได้จากเว็บเดิม</span></div>`;
 }
@@ -962,6 +963,429 @@ async function delAppt(idx) {
   const arr = [...list];
   arr.splice(idx, 1);
   try { await saveArr('appointments', arr, 'appts'); } catch (e) { alert(e.message); }
+}
+
+
+/* ================= แท็บ 🧪 ผลเลือด ================= */
+/*
+ * โครงข้อมูล 3 ชั้น:
+ *   labPanels[]  = หมวด {id, name}                (เช่น cbc, chem, cardiac)
+ *   labConfig[]  = นิยามค่า {panel, key, label, unit, min, max}  (ช่วงปกติ min/max เว้นได้)
+ *   labs[]       = ผลแต่ละครั้ง {date, panel, values:{key:number}, note}
+ *
+ * ความยืดหยุ่น (โจทย์: หมาแต่ละตัวตรวจคนละที่ ค่าไม่เหมือนกัน):
+ *   - ฟอร์มเพิ่มผลโชว์ทุกค่าใน labConfig ของหมวดนั้น กรอกเท่าที่มี เว้นว่างได้
+ *   - "➕ เพิ่มค่าที่ไม่มีในรายการ" ระหว่างกรอกได้เลย → เพิ่มเข้า labConfig อัตโนมัติ
+ *   - "➕ เพิ่มหมวดใหม่" สำหรับที่ตรวจที่มีชุดตรวจต่างไป
+ */
+
+const LAB_PAGE_SIZE = 8;
+
+function labConfigFor(panel) {
+  return ((PET.data || {}).labConfig || []).filter((c) => c.panel === panel);
+}
+function isBad(cfg, v) {
+  if (v == null || v === '' || Number.isNaN(Number(v))) return false;
+  const n = Number(v);
+  if (cfg.min != null && cfg.min !== '' && n < Number(cfg.min)) return true;
+  if (cfg.max != null && cfg.max !== '' && n > Number(cfg.max)) return true;
+  return false;
+}
+function labsOf(panel) {
+  return ((PET.data || {}).labs || [])
+    .filter((l) => l.panel === panel)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));   // ใหม่สุดก่อน
+}
+
+let LAB_OPEN = null;   // จำหมวดที่กางไว้ ข้ามการ re-render
+
+function renderLabs(root) {
+  const d = PET.data || {};
+  const panels = d.labPanels || [];
+
+  root.innerHTML = `
+    <div class="edit-bar">
+      <span class="section-label" style="margin:0">🧪 ผลเลือด</span>
+      ${ROLE.canEdit ? `
+        <button class="btn-ghost" id="btnAddLab">➕ เพิ่มผลตรวจ</button>
+        <button class="btn-ghost" id="btnAddPanel">➕ เพิ่มหมวด</button>` : ''}
+    </div>
+    <div id="labForm"></div>
+    ${panels.length ? `<div id="labAccs"></div>` : '<div class="empty">ยังไม่มีผลเลือด</div>'}`;
+
+  if (ROLE.canEdit) {
+    document.getElementById('btnAddLab').onclick = () => openLabForm(null);
+    document.getElementById('btnAddPanel').onclick = openPanelForm;
+  }
+  if (!panels.length) return;
+
+  const wrap = document.getElementById('labAccs');
+  panels.forEach((p) => wrap.appendChild(labAccordion(p)));
+}
+
+function labAccordion(panel) {
+  const cfgs = labConfigFor(panel.id);
+  const rows = labsOf(panel.id);
+  const latest = rows[0];
+
+  // นับค่าผิดปกติของผลล่าสุด
+  let warn = 0;
+  if (latest) cfgs.forEach((c) => { if (isBad(c, latest.values[c.key])) warn++; });
+
+  const el = document.createElement('div');
+  el.className = 'lab-acc' + (LAB_OPEN === panel.id ? ' open' : '');
+  el.innerHTML = `
+    <div class="lab-acc-head">
+      <span class="lab-acc-title">${TC.esc(panel.name)}</span>
+      <span class="lab-acc-meta">
+        ${latest ? (warn ? `<span class="lab-flag-warn">⚠️ ${warn} ค่าผิดปกติ</span>`
+                          : '<span class="lab-flag-ok">✓ ปกติ</span>') : '<span style="color:var(--text-muted)">ยังไม่มีผล</span>'}
+        <span class="chev">›</span>
+      </span>
+    </div>
+    <div class="lab-acc-body"></div>`;
+
+  const head = el.querySelector('.lab-acc-head');
+  head.onclick = () => {
+    const open = el.classList.toggle('open');
+    LAB_OPEN = open ? panel.id : null;
+    if (open) fillLabBody(el.querySelector('.lab-acc-body'), panel);
+  };
+  if (LAB_OPEN === panel.id) fillLabBody(el.querySelector('.lab-acc-body'), panel);
+  return el;
+}
+
+function fillLabBody(body, panel) {
+  const cfgs = labConfigFor(panel.id);
+  const rows = labsOf(panel.id);
+  const latest = rows[0];
+  if (!latest) { body.innerHTML = '<div class="empty">ยังไม่มีผลตรวจในหมวดนี้</div>'; return; }
+
+  // 1) การ์ดค่าล่าสุด
+  const cards = cfgs.filter((c) => latest.values[c.key] != null && latest.values[c.key] !== '')
+    .map((c) => {
+      const v = latest.values[c.key];
+      const bad = isBad(c, v);
+      const rng = (c.min != null && c.min !== '') || (c.max != null && c.max !== '')
+        ? `${c.min ?? ''}–${c.max ?? ''}${c.unit ? ' ' + c.unit : ''}` : (c.unit || '');
+      return `<div class="lab-val ${bad ? 'bad' : ''}">
+        <div class="k">${TC.esc(c.label)}</div>
+        <div class="v">${TC.esc(String(v))}</div>
+        <div class="rng">${TC.esc(rng)}</div>
+      </div>`;
+    }).join('');
+
+  // 2) ตัวเลือกค่าไว้พล็อตกราฟแนวโน้ม (ค่าที่มีตัวเลขตั้งแต่ 2 ครั้งขึ้นไป)
+  const plottable = cfgs.filter((c) => rows.filter((r) => r.values[c.key] != null && r.values[c.key] !== '').length >= 2);
+
+  body.innerHTML = `
+    <div class="lab-latest">${cards}</div>
+    <div class="lab-latest-date">ผลล่าสุด ${TC.thDate(latest.date)}</div>
+    ${latest.note ? `<div class="lab-note">${TC.esc(latest.note)}</div>` : ''}
+    ${plottable.length ? `
+      <select class="lab-select" id="labSel-${panel.id}">
+        ${plottable.map((c) => `<option value="${c.key}">${TC.esc(c.label)}</option>`).join('')}
+      </select>
+      <div class="lab-chart-box"><canvas id="labChart-${panel.id}"></canvas></div>` : ''}
+    <details class="lab-history">
+      <summary>📋 ตารางทุกวันที่ (${rows.length} ครั้ง)</summary>
+      <div id="labTbl-${panel.id}"></div>
+    </details>
+    ${ROLE.canEdit ? `<div class="inline-actions" style="margin-top:12px">
+      <a class="act-edit" id="labEditLatest-${panel.id}">✏️ แก้ผลล่าสุด (${TC.thDateShort(latest.date)})</a>
+    </div>` : ''}`;
+
+  if (plottable.length) {
+    const sel = document.getElementById(`labSel-${panel.id}`);
+    const paint = () => drawLabChart(panel.id, sel.value);
+    sel.onchange = paint;
+    paint();
+  }
+
+  renderLabTable(panel.id, 0);
+
+  if (ROLE.canEdit) {
+    document.getElementById(`labEditLatest-${panel.id}`).onclick = () => {
+      const gi = (PET.data.labs || []).findIndex((l) => l === latest);
+      openLabForm(gi);
+    };
+  }
+}
+
+let labChartObj = {};
+function drawLabChart(panelId, key) {
+  const cfg = labConfigFor(panelId).find((c) => c.key === key);
+  const rows = labsOf(panelId).filter((r) => r.values[key] != null && r.values[key] !== '')
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const cv = document.getElementById(`labChart-${panelId}`);
+  if (!cv) return;
+  if (labChartObj[panelId]) labChartObj[panelId].destroy();
+
+  labChartObj[panelId] = new Chart(cv, {
+    type: 'line',
+    data: {
+      labels: rows.map((r) => TC.thDateShort(r.date)),
+      datasets: [{
+        data: rows.map((r) => Number(r.values[key])),
+        borderColor: '#5b86bf', backgroundColor: 'rgba(169,196,232,0.22)',
+        pointBackgroundColor: rows.map((r) => isBad(cfg, r.values[key]) ? '#d96a6a' : '#5b86bf'),
+        pointRadius: 4, tension: 0.3, fill: true,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (t) => t[0].label } } },
+      scales: {
+        y: { ticks: { color: '#8c7f6f' }, grid: { color: '#efe0cd' } },
+        x: { ticks: { color: '#8c7f6f', font: { size: 10 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+function renderLabTable(panelId, page) {
+  const holder = document.getElementById(`labTbl-${panelId}`);
+  if (!holder) return;
+  const cfgs = labConfigFor(panelId);
+  const rows = labsOf(panelId);
+  const pages = Math.ceil(rows.length / LAB_PAGE_SIZE);
+  const slice = rows.slice(page * LAB_PAGE_SIZE, (page + 1) * LAB_PAGE_SIZE);
+
+  holder.innerHTML = `
+    <div class="lab-tbl-scroll">
+      <table class="lab-tbl">
+        <thead><tr><th>ค่า</th>${slice.map((r) => `<th>${TC.thDateShort(r.date)}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${cfgs.map((c) => `<tr>
+            <td>${TC.esc(c.label)}</td>
+            ${slice.map((r) => {
+              const v = r.values[c.key];
+              const show = (v == null || v === '') ? '' : v;
+              return `<td class="${isBad(c, v) ? 'bad' : ''}">${TC.esc(String(show))}</td>`;
+            }).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${pages > 1 ? `<div class="lab-page">
+      <button ${page === 0 ? 'disabled' : ''} data-pg="${page - 1}">‹ ก่อนหน้า</button>
+      <span>${page + 1} / ${pages}</span>
+      <button ${page >= pages - 1 ? 'disabled' : ''} data-pg="${page + 1}">ถัดไป ›</button>
+    </div>` : ''}`;
+
+  holder.querySelectorAll('[data-pg]').forEach((b) => {
+    b.onclick = () => renderLabTable(panelId, Number(b.dataset.pg));
+  });
+}
+
+/* ---------- เพิ่ม/แก้ผลตรวจ ---------- */
+
+let LAB_EDIT = null;   // {panel, extraKeys:[{key,label,unit}...]}
+
+function openLabForm(idx) {
+  const d = PET.data || {};
+  const panels = d.labPanels || [];
+  if (!panels.length) { alert('ยังไม่มีหมวดผลเลือด — กด "➕ เพิ่มหมวด" ก่อน'); return; }
+
+  const cur = idx == null ? null : d.labs[idx];
+  const panel = cur ? cur.panel : (LAB_OPEN || panels[0].id);
+  LAB_EDIT = { idx, extraKeys: [] };
+
+  drawLabForm(panel, cur);
+}
+
+function drawLabForm(panelId, cur) {
+  const d = PET.data || {};
+  const panels = d.labPanels || [];
+  const cfgs = labConfigFor(panelId);
+  const today = new Date();
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const inputRow = (c) => {
+    const v = cur ? (cur.values[c.key] ?? '') : '';
+    return `<div class="lab-input">
+      <label>${TC.esc(c.label)}${c.unit ? ` <span style="color:var(--text-muted)">${TC.esc(c.unit)}</span>` : ''}</label>
+      <input type="text" inputmode="decimal" data-key="${TC.esc(c.key)}" value="${TC.esc(String(v))}">
+    </div>`;
+  };
+
+  document.getElementById('labForm').innerHTML = `
+    <div class="edit-form">
+      <h3>${cur ? '✏️ แก้ผลตรวจ' : '➕ เพิ่มผลตรวจ'}</h3>
+      <div class="fld">
+        <label>หมวด</label>
+        <select id="lfPanel" ${cur ? 'disabled' : ''}>
+          ${panels.map((p) => `<option value="${p.id}" ${p.id === panelId ? 'selected' : ''}>${TC.esc(p.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fld">
+        <label>วันที่ตรวจ</label>
+        <input type="date" id="lfDate" value="${cur ? cur.date : todayISO}">
+        <div id="lfDateHint"></div>
+        ${(() => {
+          const existing = labsOf(panelId).map((r) => r.date);   // เรียงใหม่สุดก่อนแล้ว
+          if (!existing.length) return '';
+          const SHOW = 12;
+          const head = existing.slice(0, SHOW);
+          const rest = existing.slice(SHOW);
+          return `<div style="margin-top:8px;font-size:11.5px;color:var(--text-dim)">
+            มีผลหมวดนี้แล้ว ${existing.length} วัน (กดเพื่อแก้):
+            <div class="lab-date-chips">
+              ${head.map((dt) => `<span class="lab-date-chip" data-dt="${dt}">${TC.thDateShort(dt)}</span>`).join('')}
+              ${rest.length ? `<span class="lab-date-chip" id="lfMoreChips" style="border-style:dashed">+${rest.length} เพิ่มเติม</span>` : ''}
+              <span class="lab-date-chips" id="lfRestChips" style="display:none">
+                ${rest.map((dt) => `<span class="lab-date-chip" data-dt="${dt}">${TC.thDateShort(dt)}</span>`).join('')}
+              </span>
+            </div>
+          </div>`;
+        })()}
+      </div>
+      <div class="fld">
+        <label>ค่าที่ตรวจได้ (กรอกเท่าที่มี เว้นว่างได้)</label>
+        <div class="lab-input-grid" id="lfGrid">${cfgs.map(inputRow).join('')}</div>
+        <button class="btn-ghost" id="lfAddParam" style="margin-top:10px">➕ เพิ่มค่าที่ไม่มีในรายการ</button>
+      </div>
+      <div class="fld">
+        <label>หมายเหตุ (คำอธิบายจากใบแล็บ)</label>
+        <textarea id="lfNote" placeholder="เช่น RBC: Codocyte · Blood parasite: Not Found">${cur ? TC.esc(cur.note || '') : ''}</textarea>
+      </div>
+      <div class="btns">
+        <button class="btn" id="lfSave">บันทึก</button>
+        <button class="btn-ghost" id="lfCancel">ยกเลิก</button>
+      </div>
+      <div class="saving" id="lfMsg" style="margin-top:8px"></div>
+    </div>`;
+
+  // เปลี่ยนหมวด (เฉพาะตอนเพิ่มใหม่) → วาดช่องกรอกใหม่ตาม labConfig ของหมวดนั้น
+  if (!cur) document.getElementById('lfPanel').onchange = (e) => { LAB_EDIT.extraKeys = []; drawLabForm(e.target.value, null); };
+
+  // ปุ่มกางชิปที่เหลือ (กันชิปพรืดเมื่อมีผลเยอะ)
+  const moreBtn = document.getElementById('lfMoreChips');
+  if (moreBtn) moreBtn.onclick = () => {
+    document.getElementById('lfRestChips').style.display = 'inline';
+    moreBtn.remove();
+  };
+
+  // ชิปวันที่: กดเพื่อแก้ผลของวันนั้น
+  document.querySelectorAll('.lab-date-chip').forEach((chip) => {
+    chip.onclick = () => {
+      const gi = (PET.data.labs || []).findIndex((l) => l.panel === panelId && l.date === chip.dataset.dt);
+      if (gi >= 0) { LAB_EDIT = { idx: gi, extraKeys: [] }; drawLabForm(panelId, PET.data.labs[gi]); }
+    };
+  });
+
+  // เตือนถ้าพิมพ์วันที่ตรงกับผลที่มีอยู่แล้ว (ตอนเพิ่มใหม่)
+  const dateInp = document.getElementById('lfDate');
+  const checkDup = () => {
+    const hint = document.getElementById('lfDateHint');
+    if (!hint || cur) return;   // ตอนแก้อยู่แล้วไม่ต้องเตือน
+    const dup = labsOf(panelId).find((r) => r.date === dateInp.value);
+    hint.innerHTML = dup
+      ? `<div class="msg msg-info" style="margin:8px 0 0;padding:8px 12px;font-size:12.5px">
+           วันนี้มีผลหมวดนี้อยู่แล้ว — บันทึกจะเพิ่มเป็นอีกรายการ ถ้าต้องการแก้ให้กดชิปวันด้านล่าง</div>`
+      : '';
+  };
+  dateInp.addEventListener('change', checkDup);
+  checkDup();
+
+  document.getElementById('lfAddParam').onclick = () => addLabParam(panelId);
+  document.getElementById('lfCancel').onclick = () => { LAB_EDIT = null; document.getElementById('labForm').innerHTML = ''; };
+  document.getElementById('lfSave').onclick = () => saveLab(panelId, cur);
+
+  // วาดค่าที่เพิ่งเพิ่มระหว่างกรอก (กรณีกด addLabParam แล้ว re-draw)
+  LAB_EDIT.extraKeys.forEach((ek) => appendParamInput(ek));
+
+  document.getElementById('labForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function addLabParam(panelId) {
+  const label = prompt('ชื่อค่าที่ต้องการเพิ่ม (เช่น Troponin, Cortisol)');
+  if (!label) return;
+  const unit = prompt('หน่วย (เว้นว่างได้ เช่น ng/mL)') || '';
+  const key = 'p_' + Math.random().toString(36).slice(2, 8);
+  const ek = { key, label: label.trim(), unit: unit.trim(), min: '', max: '', _new: true };
+  LAB_EDIT.extraKeys.push(ek);
+  appendParamInput(ek);
+}
+
+function appendParamInput(ek) {
+  const grid = document.getElementById('lfGrid');
+  if (!grid || grid.querySelector(`[data-key="${ek.key}"]`)) return;
+  const div = document.createElement('div');
+  div.className = 'lab-input';
+  div.innerHTML = `
+    <label>${TC.esc(ek.label)}${ek.unit ? ` <span style="color:var(--text-muted)">${TC.esc(ek.unit)}</span>` : ''}
+      <span class="rm-param" title="เอาออก">×</span></label>
+    <input type="text" inputmode="decimal" data-key="${TC.esc(ek.key)}">`;
+  div.querySelector('.rm-param').onclick = () => {
+    LAB_EDIT.extraKeys = LAB_EDIT.extraKeys.filter((x) => x.key !== ek.key);
+    div.remove();
+  };
+  grid.appendChild(div);
+}
+
+async function saveLab(panelId, cur) {
+  const btn = document.getElementById('lfSave');
+  const msg = document.getElementById('lfMsg');
+  const date = document.getElementById('lfDate').value;
+  const note = document.getElementById('lfNote').value.trim();
+  if (!date) { alert('กรุณาเลือกวันที่ตรวจ'); return; }
+
+  // เก็บค่าจากทุกช่อง (เว้นว่าง = ไม่บันทึกค่านั้น)
+  const values = {};
+  document.querySelectorAll('#lfGrid [data-key]').forEach((inp) => {
+    const v = inp.value.trim();
+    if (v === '') return;
+    const num = Number(v);
+    values[inp.dataset.key] = Number.isNaN(num) ? v : num;   // ตัวเลขเก็บเป็น number, ที่เหลือเก็บ string
+  });
+
+  if (!Object.keys(values).length) { alert('กรุณากรอกค่าอย่างน้อยหนึ่งค่า'); return; }
+
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  try {
+    const d = PET.data || {};
+
+    // ค่าใหม่ที่เพิ่งเพิ่ม → ผนวกเข้า labConfig ก่อน (ถ้ามีค่ากรอกจริง)
+    const newCfgs = LAB_EDIT.extraKeys
+      .filter((ek) => values[ek.key] != null)
+      .map((ek) => ({ panel: panelId, key: ek.key, label: ek.label, unit: ek.unit, min: '', max: '' }));
+    if (newCfgs.length) {
+      const cfg = [...(d.labConfig || []), ...newCfgs];
+      await TC.setPetPath(PET.id, ['labConfig'], cfg);
+      d.labConfig = cfg;
+    }
+
+    const entry = { date, panel: panelId, values, note };
+    const arr = [...(d.labs || [])];
+    if (LAB_EDIT.idx != null) arr[LAB_EDIT.idx] = entry;
+    else arr.push(entry);
+
+    PET.data = await TC.setPetPath(PET.id, ['labs'], arr);
+    LAB_OPEN = panelId;   // กางหมวดนี้ไว้หลังบันทึก
+    LAB_EDIT = null;
+    showTab('labs');
+  } catch (err) {
+    alert(err.message || 'บันทึกไม่สำเร็จ');
+    btn.disabled = false; btn.textContent = 'บันทึก'; msg.textContent = '';
+  }
+}
+
+function openPanelForm() {
+  openForm('labForm', {
+    title: '➕ เพิ่มหมวดผลเลือด',
+    fields: [
+      { key: 'name', label: 'ชื่อหมวด', type: 'text', placeholder: 'เช่น Urinalysis, Thyroid Panel' },
+    ],
+    onSave: async (v) => {
+      if (!v.name) throw new Error('กรุณากรอกชื่อหมวด');
+      const id = 'panel_' + Math.random().toString(36).slice(2, 7);
+      const panels = [...((PET.data || {}).labPanels || []), { id, name: v.name }];
+      PET.data = await TC.setPetPath(PET.id, ['labPanels'], panels);
+      LAB_OPEN = id;
+      showTab('labs');
+    },
+  });
 }
 
 

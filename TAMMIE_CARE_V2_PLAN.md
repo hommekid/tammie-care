@@ -26,7 +26,7 @@
 | 1 · สมัครบริการ | ✅ เสร็จ 19 ก.ค. 2026 | โปรเจกต์ Supabase `Tammie Care's Project` (free, region South Asia) · เก็บ Project URL + publishable key แล้ว |
 | 2 · Database + RLS | ✅ **ผ่าน checkpoint 19 ก.ค. 2026** | รัน `supabase/01_schema.sql` + `02_rls.sql` · ทดสอบ `03_test_checkpoint.sql` ผ่านครบ 4 ข้อ (parent admin เขียนได้ · vet อ่านอย่างเดียว · คนนอกไม่เห็นอะไร · view≠edit) |
 | 3 · Migrate ข้อมูล | ✅ **ผ่าน checkpoint 19 ก.ค. 2026** | ครอบครัว "บ้านแทมมี่" + บัญชีจริงเป็น admin · bucket `pet-photos` (private) + policy · รัน `supabase/migrate.py` ผ่านการตรวจครบ 5 ข้อ ทั้งเฟ่และเฟ่อ |
-| 4 · Frontend ใหม่ | 🔄 เกือบเสร็จ | `app/`: login + รายชื่อสัตว์ + dashboard · พอร์ตแล้ว **5 จาก 6 แท็บ** (สรุป · อาการประจำวัน · การรักษา · ยา · นัดหมาย) · **เหลือ 🧪 ผลเลือด** |
+| 4 · Frontend ใหม่ | ✅ ครบ 6 แท็บ 19 ก.ค. 2026 | `app/`: login + รายชื่อสัตว์ + dashboard · พอร์ตครบทุกแท็บ (สรุป · อาการประจำวัน · การรักษา · **ผลเลือด** · ยา · นัดหมาย) |
 | 5 · Inline edit ตามสิทธิ์ | 🔄 4 หมวดเสร็จ 19 ก.ค. 2026 | เพิ่ม/แก้/ลบได้แล้ว: **อาการประจำวัน** (+แนบรูป) · **การรักษา** (+รูป +flowchart) · **ยา** · **นัดหมาย** · ทดสอบผ่านทั้งสิทธิ์ admin และ view · **เหลือ:** หมวดในแท็บสรุป (watchList/dangerSigns/vitals) · หน้าจัดการครอบครัว |
 | 6 · Deploy | 🔄 ขึ้นแล้ว 19 ก.ค. 2026 | **https://tammie-care.hommekidgo.workers.dev** (Cloudflare Workers static assets, branch `v2-multiuser`) · เหลือ checkpoint: ใช้จริงต่อเนื่องหลายวัน + ชวนคนในครอบครัวลอง |
 | 7 · Cutover | ⬜ ยังไม่เริ่ม | รวมถึงเปลี่ยน repo เป็น private |

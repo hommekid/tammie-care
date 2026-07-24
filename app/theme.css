@@ -229,6 +229,58 @@ details.past-appts > summary { cursor: pointer; font-size: 13px; color: var(--go
 .tx-flow-label { font-family: var(--mono); font-size: 11px; color: var(--gold); margin-bottom: 8px; }
 .tx-flow svg { max-width: 100%; height: auto; }
 
+/* ---------- ผลเลือด ---------- */
+.lab-acc { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px; overflow: hidden; background: var(--surface); }
+.lab-acc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; cursor: pointer; user-select: none; }
+.lab-acc-head:hover { background: var(--surface2); }
+.lab-acc-title { font-weight: 600; font-size: 14px; }
+.lab-acc-meta { font-size: 12px; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.lab-acc-meta .chev { transition: transform .2s; font-size: 18px; color: var(--text-muted); }
+.lab-acc.open .lab-acc-meta .chev { transform: rotate(90deg); }
+.lab-flag-warn { color: #b83d3d; font-weight: 600; }
+.lab-flag-ok { color: #34795a; font-weight: 600; }
+.lab-acc-body { display: none; padding: 0 16px 16px; }
+.lab-acc.open .lab-acc-body { display: block; }
+
+.lab-latest { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin: 10px 0 4px; }
+.lab-val { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: var(--surface2); }
+.lab-val .k { font-size: 11px; color: var(--text-dim); font-family: var(--mono); }
+.lab-val .v { font-size: 17px; font-weight: 700; font-family: var(--mono); }
+.lab-val .rng { font-size: 10.5px; color: var(--text-muted); }
+.lab-val.bad { background: var(--red-dim); border-color: var(--red); }
+.lab-val.bad .v { color: #b83d3d; }
+.lab-latest-date { font-size: 12px; color: var(--gold); font-family: var(--mono); margin-top: 8px; }
+.lab-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.6; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; white-space: pre-line; }
+
+.lab-chart-box { width: 100%; max-width: 560px; height: 240px; margin-top: 14px; }
+.lab-chart-box canvas { width: 100% !important; height: 240px !important; }
+.lab-select { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 10px; font-family: 'Sarabun', sans-serif; font-size: 13px; outline: none; margin-top: 10px; }
+
+details.lab-history { margin-top: 14px; }
+details.lab-history > summary { cursor: pointer; font-size: 12.5px; color: var(--gold); font-family: var(--mono); user-select: none; }
+.lab-tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; }
+.lab-tbl { border-collapse: collapse; font-size: 12px; }
+.lab-tbl th, .lab-tbl td { border: 1px solid var(--border); padding: 6px 11px; text-align: center; white-space: nowrap; }
+.lab-tbl th { color: var(--text-dim); font-weight: 500; background: var(--surface); }
+.lab-tbl td.bad { background: var(--red-dim); color: #b83d3d; font-weight: 600; }
+.lab-tbl td:first-child, .lab-tbl th:first-child { position: sticky; left: 0; background: var(--surface2); font-weight: 600; }
+.lab-page { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 10px; font-size: 12px; color: var(--text-dim); }
+.lab-page button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-family: 'Sarabun', sans-serif; font-size: 12px; }
+.lab-page button:disabled { opacity: .3; cursor: default; }
+
+/* ตารางกรอกค่าในฟอร์มเพิ่มผลเลือด */
+.lab-input-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.lab-input { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--surface2); }
+.lab-input label { font-size: 11.5px; color: var(--text-dim); font-family: var(--mono); margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center; }
+.lab-input label .rm-param { color: var(--red); cursor: pointer; font-size: 13px; }
+.lab-input input { width: 100%; padding: 7px 9px; font-size: 16px; font-family: var(--mono); border: 1px solid var(--border); border-radius: 6px; background: var(--surface); outline: none; }
+.lab-input input:focus { border-color: var(--sky); }
+
+.lab-date-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.lab-date-chip { font-family: var(--mono); font-size: 11.5px; padding: 4px 10px; border-radius: 20px;
+  background: var(--surface2); border: 1px solid var(--gold-dim); color: var(--gold); cursor: pointer; }
+.lab-date-chip:hover { background: rgba(217,158,62,0.14); }
+
 /* ---------- โหมดแก้ไข ---------- */
 .edit-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .inline-actions { display: flex; gap: 12px; margin-top: 6px; }
