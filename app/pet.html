@@ -6,7 +6,7 @@
 <title>Dashboard 🐾 · Tammie Care</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=8">
+<link rel="stylesheet" href="theme.css?v=15">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -1390,23 +1390,131 @@ function openPanelForm() {
 
 
 /* ================= แท็บสรุป ================= */
+
+// section ทั้งหมดในหน้าสรุป + ตัวสร้างกล่อง (parent เลือกแสดง/ซ่อน/จัดลำดับได้)
+const SUMMARY_SECTIONS = {
+  leuco:  { label: '💉 เกณฑ์ฉีด Leuco Plus',      build: (d) => (d.leucoPlus ? leucoBox(d) : null) },
+  danger: { label: '🚨 สัญญาณต้องไปหาหมอทันที',   build: (d) => dangerBox(d.dangerSigns || {}) },
+  watch:  { label: '📋 สิ่งที่ต้องติดตาม',         build: (d) => watchBox(d.watchList || []) },
+  tumor:  { label: '📈 ขนาดก้อนในตับ',            build: (d) => tumorChart((d.vitals && d.vitals.liverTumor) || []) },
+};
+const SUMMARY_DEFAULT_ORDER = ['leuco', 'danger', 'watch', 'tumor'];
+
+function summaryOrder(d) {
+  const saved = (d.display && d.display.order) || [];
+  // ยึด order ที่บันทึกไว้ก่อน แล้วต่อด้วย section ที่ยังไม่เคยจัด
+  const known = saved.filter((k) => SUMMARY_SECTIONS[k]);
+  const rest = SUMMARY_DEFAULT_ORDER.filter((k) => !known.includes(k));
+  return [...known, ...rest];
+}
+
 function renderSummary(root) {
   const d = PET.data || {};
+  const hidden = (d.display && d.display.hidden) || [];
+
+  const bar = document.createElement('div');
+  bar.className = 'edit-bar';
+  bar.style.justifyContent = 'flex-end';
+  if (ROLE.canEdit) {
+    bar.innerHTML = '<a class="sum-edit-toggle" id="tgSummaryCfg" style="margin:0">⚙️ ปรับหน้าสรุป</a>';
+  }
+  root.appendChild(bar);
+
+  const cfgHolder = document.createElement('div');
+  cfgHolder.id = 'summaryCfg';
+  root.appendChild(cfgHolder);
+
   const wrap = document.createElement('div');
   wrap.className = 'stack';
 
-  const hidden = (d.display && d.display.hidden) || [];
-  const show = (k) => !hidden.includes(k);
-
-  if (show('leuco') && d.leucoPlus) wrap.appendChild(leucoBox(d));
-  if (show('danger') && d.dangerSigns) { const el = dangerBox(d.dangerSigns); if (el) wrap.appendChild(el); }
-  if (show('watch') && (d.watchList || []).length) wrap.appendChild(watchBox(d.watchList));
-
-  const tumor = (d.vitals && d.vitals.liverTumor) || [];
-  if (show('tumor') && tumor.length) wrap.appendChild(tumorChart(tumor));
+  summaryOrder(d).forEach((key) => {
+    if (hidden.includes(key)) return;
+    const el = SUMMARY_SECTIONS[key].build(d);
+    // ดูอย่างเดียว: ซ่อนกล่องที่ว่างเปล่า · แก้ได้: โชว์เพื่อกดเพิ่ม (ยกเว้น section ที่โปรไฟล์ไม่มีเลย)
+    if (el) wrap.appendChild(el);
+  });
 
   if (!wrap.children.length) wrap.innerHTML = '<div class="empty">ยังไม่มีข้อมูลสรุปสำหรับน้องตัวนี้</div>';
   root.appendChild(wrap);
+
+  if (ROLE.canEdit) {
+    document.getElementById('tgSummaryCfg').onclick = () => toggleSummaryCfg(d);
+  }
+}
+
+let SUMMARY_CFG_OPEN = false;
+function toggleSummaryCfg(d) {
+  SUMMARY_CFG_OPEN = !SUMMARY_CFG_OPEN;
+  const holder = document.getElementById('summaryCfg');
+  if (!SUMMARY_CFG_OPEN) { holder.innerHTML = ''; return; }
+
+  const hidden = (d.display && d.display.hidden) || [];
+  const order = summaryOrder(d);
+
+  holder.innerHTML = `
+    <div class="edit-form">
+      <h3>⚙️ ปรับหน้าสรุป</h3>
+      <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">เลือกว่าจะแสดง section ไหน และจัดลำดับ — น้องแต่ละตัวเน้นไม่เหมือนกัน</p>
+      <div id="cfgRows">
+        ${order.map((key, i) => `
+          <div class="cfg-row" data-key="${key}">
+            <label style="display:flex;align-items:center;gap:10px;flex:1;margin:0;cursor:pointer">
+              <input type="checkbox" ${hidden.includes(key) ? '' : 'checked'} data-vis="${key}">
+              <span>${SUMMARY_SECTIONS[key].label}</span>
+            </label>
+            <span style="display:flex;gap:4px">
+              <button class="btn-ghost cfg-up" data-i="${i}" ${i === 0 ? 'disabled' : ''} style="padding:4px 10px">↑</button>
+              <button class="btn-ghost cfg-dn" data-i="${i}" ${i === order.length - 1 ? 'disabled' : ''} style="padding:4px 10px">↓</button>
+            </span>
+          </div>`).join('')}
+      </div>
+      <div class="btns"><button class="btn" id="cfgSave">บันทึก</button>
+        <button class="btn-ghost" id="cfgCancel">ปิด</button></div>
+      <div class="saving" id="cfgMsg" style="margin-top:8px"></div>
+    </div>`;
+
+  let curOrder = [...order];
+
+  const rerenderRows = () => {
+    // จำสถานะ checkbox ปัจจุบันไว้ก่อนวาดใหม่
+    const checked = {};
+    holder.querySelectorAll('[data-vis]').forEach((c) => { checked[c.dataset.vis] = c.checked; });
+    const rows = holder.querySelector('#cfgRows');
+    rows.innerHTML = curOrder.map((key, i) => `
+      <div class="cfg-row" data-key="${key}">
+        <label style="display:flex;align-items:center;gap:10px;flex:1;margin:0;cursor:pointer">
+          <input type="checkbox" ${checked[key] ? 'checked' : ''} data-vis="${key}">
+          <span>${SUMMARY_SECTIONS[key].label}</span>
+        </label>
+        <span style="display:flex;gap:4px">
+          <button class="btn-ghost cfg-up" data-i="${i}" ${i === 0 ? 'disabled' : ''} style="padding:4px 10px">↑</button>
+          <button class="btn-ghost cfg-dn" data-i="${i}" ${i === curOrder.length - 1 ? 'disabled' : ''} style="padding:4px 10px">↓</button>
+        </span>
+      </div>`).join('');
+    wireCfgBtns();
+  };
+  const wireCfgBtns = () => {
+    holder.querySelectorAll('.cfg-up').forEach((b) => b.onclick = () => {
+      const i = Number(b.dataset.i); [curOrder[i - 1], curOrder[i]] = [curOrder[i], curOrder[i - 1]]; rerenderRows();
+    });
+    holder.querySelectorAll('.cfg-dn').forEach((b) => b.onclick = () => {
+      const i = Number(b.dataset.i); [curOrder[i + 1], curOrder[i]] = [curOrder[i], curOrder[i + 1]]; rerenderRows();
+    });
+  };
+  wireCfgBtns();
+
+  document.getElementById('cfgCancel').onclick = () => { SUMMARY_CFG_OPEN = false; holder.innerHTML = ''; };
+  document.getElementById('cfgSave').onclick = async () => {
+    const newHidden = [...holder.querySelectorAll('[data-vis]')].filter((c) => !c.checked).map((c) => c.dataset.vis);
+    const display = JSON.parse(JSON.stringify(d.display || {}));
+    display.hidden = newHidden;
+    display.order = curOrder;
+    try {
+      PET.data = await TC.setPetPath(PET.id, ['display'], display);
+      SUMMARY_CFG_OPEN = false;
+      showTab('summary');
+    } catch (e) { document.getElementById('cfgMsg').textContent = e.message; }
+  };
 }
 
 /* ---- ไฟเตือน Leuco Plus (เทียบ WBC ดิบ 🔴<4000 / 🟡4000-4499 / 🟢≥4500) ---- */
@@ -1434,48 +1542,219 @@ function leucoBox(d) {
   const el = document.createElement('div');
   el.className = `leuco-box ${cls}`;
   el.innerHTML = `
-    <div class="lp-head">💉 ${TC.esc(lp.title || 'เกณฑ์ฉีด Leuco Plus')}</div>
+    <div class="edit-bar" style="margin-bottom:8px">
+      <div class="lp-head" style="margin:0">💉 ${TC.esc(lp.title || 'เกณฑ์ฉีด Leuco Plus')}</div>
+      ${ROLE.canEdit ? '<a class="sum-edit-toggle" id="editLeuco" style="color:var(--gold)">✏️ แก้เกณฑ์</a>' : ''}
+    </div>
     <div class="lp-verdict">${TC.esc(verdict)}</div>
     ${detail ? `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-family:var(--mono)">${TC.esc(detail)}</div>` : ''}
     ${(lp.rules || []).length ? `<ul class="lp-rules">${lp.rules.map((r) => `<li>${TC.esc(r)}</li>`).join('')}</ul>` : ''}
+    <div id="leucoForm"></div>
   `;
+  if (ROLE.canEdit) setTimeout(() => {
+    el.querySelector('#editLeuco').onclick = () => editLeuco();
+  }, 0);
   return el;
 }
 
+function editLeuco() {
+  const lp = PET.data.leucoPlus || {};
+  openForm('leucoForm', {
+    title: '✏️ แก้เกณฑ์ฉีด Leuco Plus',
+    fields: [
+      { key: 'title', label: 'ชื่อหัวข้อ', type: 'text', placeholder: 'เกณฑ์ฉีด Leuco Plus' },
+      { key: 'alwaysBelow', label: 'WBC ต่ำกว่าเท่าไร → ฉีดแม้อาการปกติ (🔴)', type: 'text', placeholder: '4000' },
+      { key: 'withSymptomsBelow', label: 'WBC ต่ำกว่าเท่าไร + มีอาการ → ฉีด (🟡)', type: 'text', placeholder: '4500' },
+      { key: 'rules', label: 'กฎ/หมายเหตุ (บรรทัดละข้อ)', type: 'textarea', placeholder: 'WBC ต่ำกว่า 4,500 + มีอาการอื่น → ฉีด\nWBC ต่ำกว่า 4,000 แม้อาการปกติ → ฉีด' },
+    ],
+    values: {
+      title: lp.title || '', alwaysBelow: lp.alwaysBelow ?? '', withSymptomsBelow: lp.withSymptomsBelow ?? '',
+      rules: (lp.rules || []).join('\n'),
+    },
+    onSave: async (v) => {
+      const a = Number(v.alwaysBelow), w = Number(v.withSymptomsBelow);
+      if (v.alwaysBelow && Number.isNaN(a)) throw new Error('ค่า 🔴 ต้องเป็นตัวเลข');
+      if (v.withSymptomsBelow && Number.isNaN(w)) throw new Error('ค่า 🟡 ต้องเป็นตัวเลข');
+      const lpNew = JSON.parse(JSON.stringify(lp));
+      lpNew.title = v.title || 'เกณฑ์ฉีด Leuco Plus';
+      if (v.alwaysBelow !== '') lpNew.alwaysBelow = a;
+      if (v.withSymptomsBelow !== '') lpNew.withSymptomsBelow = w;
+      lpNew.rules = v.rules.split('\n').map((s) => s.trim()).filter(Boolean);
+      PET.data = await TC.setPetPath(PET.id, ['leucoPlus'], lpNew);
+      showTab('summary');
+    },
+  });
+}
+
+// สถานะโหมดจัดการของแต่ละกล่องในแท็บสรุป (สลับด้วยปุ่ม ✏️ จัดการ)
+let SUM_EDIT = { danger: false, watch: false, tumor: false };
+
 /* ---- กล่องแดง: สัญญาณต้องไปหาหมอทันที (liverFailure + wbc) ---- */
 function dangerBox(ds) {
-  const items = [...(ds.liverFailure || []), ...(ds.wbc || [])];
-  if (!items.length) return null;
+  const editing = SUM_EDIT.danger;
   const el = document.createElement('div');
-  el.className = 'alert-box';
+  el.className = 'alert-box';   // ไม่ใส่ form เป็น flex child แล้ว → ไม่บีบเนื้อหา
+  const rows = [
+    ...(ds.liverFailure || []).map((t, i) => ({ t, src: 'liverFailure', i })),
+    ...(ds.wbc || []).map((t, i) => ({ t, src: 'wbc', i })),
+  ];
   el.innerHTML = `
     <div class="icon">🚨</div>
-    <div style="flex:1">
-      <div class="title">สัญญาณต้องไปหาหมอทันที</div>
-      <ul>${items.map((t) => `<li>${TC.esc(t)}</li>`).join('')}</ul>
-      ${ds.nosebleed ? `<div style="margin-top:10px;font-size:12.5px;color:#8a2b2b" class="pre-line"><b>เลือดกำเดา — ปฐมพยาบาล:</b>\n${TC.esc(ds.nosebleed)}</div>` : ''}
+    <div style="flex:1;min-width:0">
+      <div class="edit-bar" style="margin-bottom:6px">
+        <span class="title" style="margin:0">สัญญาณต้องไปหาหมอทันที</span>
+        ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgDanger">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+      </div>
+      ${rows.length ? `<ul>${rows.map((r) => `<li>${TC.esc(r.t)}${editing ? `
+        <span class="inline-actions"><a class="act-edit" data-e="${r.src}:${r.i}">แก้</a><a class="act-del" data-d="${r.src}:${r.i}">ลบ</a></span>` : ''}</li>`).join('')}</ul>`
+        : '<div class="empty">ยังไม่มีรายการ</div>'}
+      ${(ds.nosebleed || editing) ? `<div style="margin-top:10px;font-size:12.5px;color:#8a2b2b" class="pre-line"><b>เลือดกำเดา — ปฐมพยาบาล:</b>${editing ? ' <a class="act-edit" id="editNosebleed">แก้</a>' : ''}${ds.nosebleed ? '\n' + TC.esc(ds.nosebleed) : (editing ? '\n(ยังไม่มีข้อความ)' : '')}</div>
+      <div id="nosebleedForm"></div>` : ''}
+      ${editing ? '<button class="btn-ghost" id="btnAddDanger" style="margin-top:12px">➕ เพิ่มรายการ</button>' : ''}
+      <div id="dangerForm"></div>
     </div>`;
+
+  if (ROLE.canEdit) setTimeout(() => {
+    el.querySelector('#tgDanger').onclick = () => { SUM_EDIT.danger = !SUM_EDIT.danger; showTab('summary'); };
+    const add = el.querySelector('#btnAddDanger');
+    if (add) add.onclick = () => editDanger(null, null);
+    const nb = el.querySelector('#editNosebleed');
+    if (nb) nb.onclick = () => editNosebleed();
+    el.querySelectorAll('[data-e]').forEach((a) => a.onclick = () => { const [s, i] = a.dataset.e.split(':'); editDanger(s, Number(i)); });
+    el.querySelectorAll('[data-d]').forEach((a) => a.onclick = () => { const [s, i] = a.dataset.d.split(':'); delDanger(s, Number(i)); });
+  }, 0);
   return el;
+}
+
+function editNosebleed() {
+  openForm('nosebleedForm', {
+    title: '✏️ แก้ข้อความปฐมพยาบาลเลือดกำเดา',
+    fields: [{ key: 'text', label: 'ขั้นตอนปฐมพยาบาล (ขึ้นหลายบรรทัดได้)', type: 'textarea',
+      placeholder: 'เช่น เลือดกำเดาไม่หยุดใน 30 นาที: หักหลอดยา ดูดยา 1cc + น้ำ 2cc...' }],
+    values: { text: (PET.data.dangerSigns || {}).nosebleed || '' },
+    onSave: async (v) => {
+      const dsNew = JSON.parse(JSON.stringify(PET.data.dangerSigns || {}));
+      dsNew.nosebleed = v.text;
+      PET.data = await TC.setPetPath(PET.id, ['dangerSigns'], dsNew);
+      showTab('summary');
+    },
+  });
+}
+
+function editDanger(src, idx) {
+  const ds = PET.data.dangerSigns || {};
+  const cur = src ? (ds[src] || [])[idx] : '';
+  openForm('dangerForm', {
+    title: src ? '✏️ แก้สัญญาณอันตราย' : '➕ เพิ่มสัญญาณอันตราย',
+    fields: [
+      { key: 'group', label: 'กลุ่ม', type: 'select', options: [
+        { value: 'liverFailure', label: 'ตับวาย' }, { value: 'wbc', label: 'เม็ดเลือดขาว (WBC)' }] },
+      { key: 'text', label: 'ข้อความ', type: 'textarea', placeholder: 'เช่น BUN ต่ำมาก (ห้ามแตะ 10)' },
+    ],
+    values: { group: src || 'liverFailure', text: cur },
+    onSave: async (v) => {
+      if (!v.text) throw new Error('กรุณากรอกข้อความ');
+      const data = PET.data;
+      const dsNew = JSON.parse(JSON.stringify(data.dangerSigns || {}));
+      dsNew.liverFailure = dsNew.liverFailure || []; dsNew.wbc = dsNew.wbc || [];
+      if (src) dsNew[src].splice(idx, 1);            // ลบของเดิม (เผื่อย้ายกลุ่ม)
+      dsNew[v.group] = dsNew[v.group] || [];
+      dsNew[v.group].push(v.text);
+      PET.data = await TC.setPetPath(PET.id, ['dangerSigns'], dsNew);
+      showTab('summary');
+    },
+  });
+}
+
+async function delDanger(src, idx) {
+  const ds = PET.data.dangerSigns || {};
+  if (!confirm(`ลบ "${(ds[src] || [])[idx]}" ?`)) return;
+  const dsNew = JSON.parse(JSON.stringify(ds));
+  dsNew[src].splice(idx, 1);
+  try { PET.data = await TC.setPetPath(PET.id, ['dangerSigns'], dsNew); showTab('summary'); }
+  catch (e) { alert(e.message); }
 }
 
 /* ---- สิ่งที่ต้องติดตาม ---- */
 function watchBox(list) {
+  const editing = SUM_EDIT.watch;
   const el = document.createElement('div');
   el.className = 'watch-box';
   el.innerHTML = `
-    <div class="title">📋 สิ่งที่ต้องติดตาม</div>
-    <ul>${list.map((t) => `<li>${TC.esc(t)}</li>`).join('')}</ul>`;
+    <div class="edit-bar" style="margin-bottom:6px">
+      <span class="title" style="margin:0">📋 สิ่งที่ต้องติดตาม</span>
+      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgWatch">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+    </div>
+    ${list.length ? `<ul>${list.map((t, i) => `<li>${TC.esc(t)}${editing ? `
+      <span class="inline-actions"><a class="act-edit" data-e="${i}">แก้</a><a class="act-del" data-d="${i}">ลบ</a></span>` : ''}</li>`).join('')}</ul>`
+      : '<div class="empty">ยังไม่มีรายการ</div>'}
+    ${editing ? '<button class="btn-ghost" id="btnAddWatch" style="margin-top:8px">➕ เพิ่มรายการ</button>' : ''}
+    <div id="watchForm"></div>`;
+
+  if (ROLE.canEdit) setTimeout(() => {
+    el.querySelector('#tgWatch').onclick = () => { SUM_EDIT.watch = !SUM_EDIT.watch; showTab('summary'); };
+    const add = el.querySelector('#btnAddWatch');
+    if (add) add.onclick = () => editWatch(null);
+    el.querySelectorAll('[data-e]').forEach((a) => a.onclick = () => editWatch(Number(a.dataset.e)));
+    el.querySelectorAll('[data-d]').forEach((a) => a.onclick = () => delWatch(Number(a.dataset.d)));
+  }, 0);
   return el;
 }
 
-/* ---- กราฟขนาดก้อนในตับ ---- */
+function editWatch(idx) {
+  const list = PET.data.watchList || [];
+  openForm('watchForm', {
+    title: idx === null ? '➕ เพิ่มสิ่งที่ต้องติดตาม' : '✏️ แก้',
+    fields: [{ key: 'text', label: 'ข้อความ', type: 'textarea', placeholder: 'เช่น ก้อนในตับ — ซาวด์ทุก 1-2 เดือน' }],
+    values: { text: idx === null ? '' : list[idx] },
+    onSave: async (v) => {
+      if (!v.text) throw new Error('กรุณากรอกข้อความ');
+      const arr = [...list];
+      if (idx === null) arr.push(v.text); else arr[idx] = v.text;
+      PET.data = await TC.setPetPath(PET.id, ['watchList'], arr);
+      showTab('summary');
+    },
+  });
+}
+
+async function delWatch(idx) {
+  const list = PET.data.watchList || [];
+  if (!confirm(`ลบ "${list[idx]}" ?`)) return;
+  const arr = [...list]; arr.splice(idx, 1);
+  try { PET.data = await TC.setPetPath(PET.id, ['watchList'], arr); showTab('summary'); }
+  catch (e) { alert(e.message); }
+}
+
+/* ---- กราฟขนาดก้อนในตับ (+ แก้ไข) ---- */
 function tumorChart(rows) {
   const el = document.createElement('div');
   el.className = 'chart-wrap';
+  const editing = SUM_EDIT.tumor;
   el.innerHTML = `
-    <div class="section-label">📈 ขนาดก้อนในตับ (cm)</div>
+    <div class="edit-bar">
+      <span class="section-label" style="margin:0">📈 ขนาดก้อนในตับ (cm)</span>
+      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgTumor">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+    </div>
+    <div id="tumorForm"></div>
     <div class="tumor-box"><canvas></canvas></div>
-    <div class="tumor-note" id="tumorNotes"></div>`;
+    <div class="tumor-note" id="tumorNotes"></div>
+    ${editing ? '<button class="btn-ghost" id="btnAddTumor" style="margin-top:12px">➕ เพิ่มบันทึก</button><div id="tumorList" style="margin-top:10px"></div>' : ''}`;
+
+  if (ROLE.canEdit) setTimeout(() => {
+    el.querySelector('#tgTumor').onclick = () => { SUM_EDIT.tumor = !SUM_EDIT.tumor; showTab('summary'); };
+    if (!editing) return;
+    el.querySelector('#btnAddTumor').onclick = () => editTumor(null);
+    // ลิสต์รายการทั้งหมด (เรียงใหม่สุดก่อน) พร้อมแก้/ลบ
+    const sorted = rows.map((r, i) => ({ ...r, _i: i })).sort((a, b) => new Date(b.date) - new Date(a.date));
+    el.querySelector('#tumorList').innerHTML = sorted.map((r) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;background:var(--surface2)">
+        <span style="font-size:12.5px">${r.alert ? '⚠️ ' : ''}<b>${TC.thDateShort(r.date)}</b> · ${r.size != null ? r.size + ' cm' : '—'}${r.note ? ' · ' + TC.esc(r.note) : ''}</span>
+        <span class="inline-actions" style="margin:0;white-space:nowrap">
+          <a class="act-edit" data-e="${r._i}">แก้</a><a class="act-del" data-d="${r._i}">ลบ</a></span>
+      </div>`).join('');
+    el.querySelectorAll('#tumorList [data-e]').forEach((a) => a.onclick = () => editTumor(Number(a.dataset.e)));
+    el.querySelectorAll('#tumorList [data-d]').forEach((a) => a.onclick = () => delTumor(Number(a.dataset.d)));
+  }, 0);
 
   const pts = rows.filter((r) => r.size != null)
                   .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1512,6 +1791,47 @@ function tumorChart(rows) {
   }, 0);
 
   return el;
+}
+
+function editTumor(idx) {
+  const rows = (PET.data.vitals && PET.data.vitals.liverTumor) || [];
+  const cur = idx === null ? {} : rows[idx];
+  openForm('tumorForm', {
+    title: idx === null ? '➕ เพิ่มบันทึกก้อนในตับ' : '✏️ แก้บันทึก',
+    fields: [
+      { key: 'date', label: 'วันที่', type: 'date' },
+      { key: 'size', label: 'ขนาด (cm) — เว้นว่างได้ถ้าไม่ได้วัด', type: 'text', placeholder: 'เช่น 1.4' },
+      { key: 'note', label: 'หมายเหตุ', type: 'textarea', placeholder: 'เช่น มีก้อนเพิ่ม รวม 4 ก้อน' },
+      { key: 'alert', label: 'ทำเครื่องหมายเตือน (⚠️)', type: 'select', options: [
+        { value: '', label: 'ไม่' }, { value: '1', label: 'ใช่ — เน้นเป็นจุดเตือน' }] },
+    ],
+    values: { date: cur.date || '', size: cur.size ?? '', note: cur.note || '', alert: cur.alert ? '1' : '' },
+    onSave: async (v) => {
+      if (!v.date) throw new Error('กรุณาเลือกวันที่');
+      const entry = { date: v.date };
+      if (v.size !== '') entry.size = Number(v.size);
+      else entry.size = null;
+      if (v.note) entry.note = v.note;
+      if (v.alert) entry.alert = true;
+
+      const vitals = JSON.parse(JSON.stringify(PET.data.vitals || {}));
+      vitals.liverTumor = vitals.liverTumor || [];
+      if (idx === null) vitals.liverTumor.push(entry); else vitals.liverTumor[idx] = entry;
+      vitals.liverTumor.sort((a, b) => new Date(a.date) - new Date(b.date));
+      PET.data = await TC.setPetPath(PET.id, ['vitals'], vitals);
+      showTab('summary');
+    },
+  });
+}
+
+async function delTumor(idx) {
+  const rows = (PET.data.vitals && PET.data.vitals.liverTumor) || [];
+  const r = rows[idx];
+  if (!confirm(`ลบบันทึก ${TC.thDateShort(r.date)} ?`)) return;
+  const vitals = JSON.parse(JSON.stringify(PET.data.vitals || {}));
+  vitals.liverTumor.splice(idx, 1);
+  try { PET.data = await TC.setPetPath(PET.id, ['vitals'], vitals); showTab('summary'); }
+  catch (e) { alert(e.message); }
 }
 </script>
 </body>
