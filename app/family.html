@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>จัดการครอบครัว 🐾 · Tammie Care</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<meta name="theme-color" content="#fdf4eb">
+<link rel="stylesheet" href="theme.css?v=15">
+<style>
+  .mrow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px;
+          padding: 11px 14px; background: var(--surface); margin-bottom: 8px; flex-wrap: wrap; }
+  .mrow .who { flex: 1; min-width: 0; }
+  .mrow .who .nm { font-weight: 600; }
+  .mrow .who .em { font-size: 12px; color: var(--text-dim); font-family: var(--mono); word-break: break-all; }
+  .mrow select { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-family: 'Sarabun', sans-serif; font-size: 13px; }
+  .mrow .rm { color: var(--red); cursor: pointer; font-size: 12.5px; font-family: var(--mono); }
+  .you-tag { font-size: 10.5px; color: var(--sky); border: 1px solid var(--sky-soft); border-radius: 20px; padding: 2px 8px; }
+  .pet-row { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px;
+             padding: 10px 14px; background: var(--surface); margin-bottom: 8px; }
+  .pet-row.arch { opacity: .55; }
+  .pet-row .nm { flex: 1; font-weight: 600; }
+  .add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
+  .add-row .field { margin: 0; flex: 1; min-width: 160px; }
+  .card + .card { margin-top: 18px; }
+  h2.sec { font-family: var(--cute); font-size: 17px; color: var(--blue); margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<header class="tc-header">
+  <a class="back" href="index.html">←</a>
+  <div><h1>จัดการครอบครัว</h1><div class="sub" id="famName"></div></div>
+  <div class="spacer"></div>
+  <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
+</header>
+
+<div class="container" id="content"><div class="loading">กำลังโหลด...</div></div>
+
+<footer>🐾 Tammie Care · <a href="index.html">หน้าแรก</a></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="lib.js"></script>
+<script>
+let FID = null, ME = null, ROLE = null;
+
+(async function main() {
+  ME = await TC.requireAuth();
+  if (!ME) return;
+
+  ROLE = await TC.getMyRole();
+  const c = document.getElementById('content');
+
+  if (ROLE.role !== 'parent' || !ROLE.isAdmin) {
+    c.innerHTML = '<div class="empty">หน้านี้สำหรับผู้ดูแลครอบครัว (admin) เท่านั้น<br>' +
+      '<a href="index.html">← กลับหน้าแรก</a></div>';
+    return;
+  }
+
+  // Phase 1: รองรับครอบครัวเดียว (ใช้ครอบครัวแรกที่เป็น admin)
+  const fams = await TC.myFamilies();
+  if (!fams.length) { c.innerHTML = '<div class="empty">ไม่พบครอบครัว</div>'; return; }
+  FID = fams[0].id;
+  document.getElementById('famName').textContent = fams[0].name;
+
+  render();
+})();
+
+async function render() {
+  const c = document.getElementById('content');
+  c.innerHTML = '<div class="loading">กำลังโหลด...</div>';
+
+  let ov, pets;
+  try {
+    [ov, pets] = await Promise.all([
+      TC.familyOverview(FID),
+      TC.sb.from('pets').select('id,name,archived').order('sort_order').then((r) => r.data || []),
+    ]);
+  } catch (e) { c.innerHTML = `<div class="msg msg-err">${TC.esc(e.message)}</div>`; return; }
+
+  const permLabel = { view: 'ดูอย่างเดียว', edit: 'แก้ไขได้', admin: 'ผู้ดูแล (admin)' };
+
+  c.innerHTML = `
+    <div class="card">
+      <h2 class="sec">👪 สมาชิกครอบครัว (${ov.members.length})</h2>
+      <div id="members"></div>
+      <div class="add-row">
+        <div class="field"><label>เพิ่มด้วยอีเมล (ต้องสมัครไว้ก่อน)</label>
+          <input type="email" id="addMemEmail" placeholder="name@email.com" inputmode="email"></div>
+        <div class="field" style="flex:0 0 150px"><label>สิทธิ์</label>
+          <select id="addMemPerm">
+            <option value="view">ดูอย่างเดียว</option>
+            <option value="edit" selected>แก้ไขได้</option>
+            <option value="admin">ผู้ดูแล</option>
+          </select></div>
+        <button class="btn" id="btnAddMem">เพิ่ม</button>
+      </div>
+      <div id="memMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="sec">🩺 สัตวแพทย์ที่เข้าถึงได้ (${ov.vets.length})</h2>
+      <div id="vets"></div>
+      <div class="add-row">
+        <div class="field"><label>ให้สิทธิ์หมอด้วยอีเมล (ดูอย่างเดียว)</label>
+          <input type="email" id="addVetEmail" placeholder="vet@email.com" inputmode="email"></div>
+        <button class="btn" id="btnAddVet">เพิ่ม</button>
+      </div>
+      <div id="vetMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="sec">🐾 สัตว์เลี้ยง (${pets.filter((p) => !p.archived).length})</h2>
+      <div id="pets"></div>
+      <div class="add-row">
+        <div class="field"><label>เพิ่มสัตว์ใหม่</label>
+          <input type="text" id="addPetName" placeholder="ชื่อน้อง"></div>
+        <button class="btn" id="btnAddPet">เพิ่ม</button>
+      </div>
+      <div id="petMsg"></div>
+    </div>`;
+
+  // ----- สมาชิก -----
+  document.getElementById('members').innerHTML = ov.members.map((m) => {
+    const isMe = m.user_id === ME.id;
+    return `<div class="mrow">
+      <div class="who"><div class="nm">${TC.esc(m.name || '—')} ${isMe ? '<span class="you-tag">คุณ</span>' : ''}</div>
+        <div class="em">${TC.esc(m.email || '')}</div></div>
+      <select data-perm="${m.user_id}">
+        ${['view', 'edit', 'admin'].map((p) => `<option value="${p}" ${m.permission === p ? 'selected' : ''}>${permLabel[p]}</option>`).join('')}
+      </select>
+      <a class="rm" data-rmmem="${m.user_id}">ถอด</a>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('[data-perm]').forEach((sel) => {
+    sel.onchange = () => guard('memMsg', () => TC.setMemberPermission(FID, sel.dataset.perm, sel.value));
+  });
+  document.querySelectorAll('[data-rmmem]').forEach((a) => {
+    a.onclick = () => { if (confirm('ถอดสมาชิกคนนี้ออกจากครอบครัว?')) guard('memMsg', () => TC.removeMember(FID, a.dataset.rmmem)); };
+  });
+  document.getElementById('btnAddMem').onclick = () => {
+    const email = document.getElementById('addMemEmail').value.trim();
+    if (!email) return;
+    guard('memMsg', () => TC.addMember(FID, email, document.getElementById('addMemPerm').value));
+  };
+
+  // ----- หมอ -----
+  document.getElementById('vets').innerHTML = ov.vets.length
+    ? ov.vets.map((v) => `<div class="mrow">
+        <div class="who"><div class="nm">${TC.esc(v.name || '—')}</div><div class="em">${TC.esc(v.email || '')}</div></div>
+        <a class="rm" data-rmvet="${v.user_id}">ถอนสิทธิ์</a></div>`).join('')
+    : '<div class="empty">ยังไม่มีสัตวแพทย์</div>';
+  document.querySelectorAll('[data-rmvet]').forEach((a) => {
+    a.onclick = () => { if (confirm('ถอนสิทธิ์หมอคนนี้?')) guard('vetMsg', () => TC.removeVet(FID, a.dataset.rmvet)); };
+  });
+  document.getElementById('btnAddVet').onclick = () => {
+    const email = document.getElementById('addVetEmail').value.trim();
+    if (!email) return;
+    guard('vetMsg', () => TC.addVet(FID, email));
+  };
+
+  // ----- สัตว์ -----
+  document.getElementById('pets').innerHTML = pets.map((p) => `
+    <div class="pet-row ${p.archived ? 'arch' : ''}">
+      <span class="nm">${TC.esc(p.name)}${p.archived ? ' <span style="font-size:11px;color:var(--text-muted)">(ซ่อนอยู่)</span>' : ''}</span>
+      ${p.archived
+        ? `<a class="rm" style="color:var(--sky)" data-unarch="${p.id}">แสดง</a>`
+        : `<a class="rm" data-arch="${p.id}">ซ่อน</a>`}
+      <a class="rm" data-del="${p.id}" data-nm="${TC.esc(p.name)}">ลบถาวร</a>
+    </div>`).join('') || '<div class="empty">ยังไม่มีสัตว์</div>';
+  document.querySelectorAll('[data-arch]').forEach((a) => {
+    a.onclick = () => { if (confirm('ซ่อนสัตว์ตัวนี้จากรายการ? (ข้อมูลไม่หาย กดแสดงกลับมาได้)')) guard('petMsg', () => TC.setPetArchived(a.dataset.arch, true)); };
+  });
+  document.querySelectorAll('[data-unarch]').forEach((a) => {
+    a.onclick = () => guard('petMsg', () => TC.setPetArchived(a.dataset.unarch, false));
+  });
+  document.querySelectorAll('[data-del]').forEach((a) => {
+    a.onclick = () => {
+      const name = a.dataset.nm;
+      // ต้องพิมพ์ชื่อให้ตรง กันลบผิดตัว — ลบแล้วข้อมูลหายถาวร กู้ไม่ได้
+      const typed = prompt(`⚠️ ลบ "${name}" ถาวร — ข้อมูลสุขภาพทั้งหมดจะหายและกู้คืนไม่ได้\n\nถ้าแน่ใจ พิมพ์ชื่อสัตว์ให้ตรงเพื่อยืนยัน:`);
+      if (typed === null) return;
+      if (typed.trim() !== name) { alert('ชื่อไม่ตรง — ยกเลิกการลบ'); return; }
+      guard('petMsg', () => TC.deletePet(a.dataset.del));
+    };
+  });
+  document.getElementById('btnAddPet').onclick = () => {
+    const name = document.getElementById('addPetName').value.trim();
+    if (!name) return;
+    guard('petMsg', () => TC.createPet(FID, name));
+  };
+}
+
+// เรียก action แล้วโชว์ผล/แจ้ง error ในกล่องที่ระบุ · สำเร็จ → โหลดใหม่
+async function guard(msgId, fn) {
+  const box = document.getElementById(msgId);
+  box.innerHTML = '<div class="saving">กำลังบันทึก...</div>';
+  try { await fn(); render(); }
+  catch (e) { box.innerHTML = `<div class="msg msg-err">${TC.esc(e.message)}</div>`; }
+}
+</script>
+</body>
+</html>

@@ -33,6 +33,10 @@
     <div id="msg"></div>
 
     <form id="loginForm">
+      <div class="field" id="nameField" style="display:none">
+        <label for="name">ชื่อที่ให้คนอื่นเห็น</label>
+        <input type="text" id="name" autocomplete="name">
+      </div>
       <div class="field">
         <label for="email">อีเมล</label>
         <input type="email" id="email" autocomplete="username" inputmode="email" required>
@@ -44,7 +48,7 @@
       <button type="submit" class="btn" id="btn">เข้าสู่ระบบ</button>
     </form>
 
-    <div class="hint">ยังไม่มีบัญชี? ให้คนในครอบครัวที่เป็นผู้ดูแลเพิ่มให้</div>
+    <div class="hint" id="switchHint"></div>
   </div>
 </div>
 
@@ -71,23 +75,49 @@ function nextPage() {
   return (n && /^[\w.-]+\.html(\?.*)?$/.test(n)) ? n : 'index.html';
 }
 
+// ---------- สลับโหมด เข้าสู่ระบบ / สมัคร ----------
+let mode = 'login';
+function setMode(m) {
+  mode = m;
+  document.getElementById('nameField').style.display = m === 'register' ? '' : 'none';
+  document.getElementById('btn').textContent = m === 'register' ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ';
+  document.getElementById('pw').autocomplete = m === 'register' ? 'new-password' : 'current-password';
+  document.getElementById('switchHint').innerHTML = m === 'register'
+    ? 'มีบัญชีอยู่แล้ว? <a id="toLogin" style="cursor:pointer">เข้าสู่ระบบ</a>'
+    : 'ยังไม่มีบัญชี? <a id="toReg" style="cursor:pointer">สมัครสมาชิก</a>';
+  const a = document.getElementById(m === 'register' ? 'toLogin' : 'toReg');
+  a.onclick = () => { msg.innerHTML = ''; setMode(m === 'register' ? 'login' : 'register'); };
+}
+setMode('login');
+
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   msg.innerHTML = '';
+  const email = document.getElementById('email').value.trim();
+  const pw = document.getElementById('pw').value;
   btn.disabled = true;
-  btn.textContent = 'กำลังเข้าสู่ระบบ...';
 
-  const { error } = await TC.sb.auth.signInWithPassword({
-    email: document.getElementById('email').value.trim(),
-    password: document.getElementById('pw').value,
-  });
+  if (mode === 'register') {
+    btn.textContent = 'กำลังสมัคร...';
+    const name = document.getElementById('name').value.trim();
+    const { data, error } = await TC.sb.auth.signUp({
+      email, password: pw, options: { data: { name: name || email.split('@')[0] } },
+    });
+    if (error) { showErr(TC.authErrorTH(error)); btn.disabled = false; btn.textContent = 'สมัครสมาชิก'; return; }
 
-  if (error) {
-    showErr(TC.authErrorTH(error));
-    btn.disabled = false;
-    btn.textContent = 'เข้าสู่ระบบ';
+    // ถ้าโปรเจกต์เปิด confirm email ไว้ จะยังไม่มี session ทันที
+    if (!data.session) {
+      msg.innerHTML = '<div class="msg msg-ok">สมัครเรียบร้อย! ' +
+        'บอกผู้ดูแลครอบครัวให้เพิ่มอีเมลนี้เข้าระบบ แล้วเข้าสู่ระบบได้เลย</div>';
+      setMode('login'); btn.disabled = false; return;
+    }
+    location.replace(nextPage());
     return;
   }
+
+  btn.textContent = 'กำลังเข้าสู่ระบบ...';
+  const { error } = await TC.sb.auth.signInWithPassword({ email, password: pw });
+  if (error) { showErr(TC.authErrorTH(error)); btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ'; return; }
   location.replace(nextPage());
 });
 </script>

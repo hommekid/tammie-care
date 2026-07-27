@@ -52,6 +52,7 @@
   </div>
   <div class="spacer"></div>
   <span id="rolePill"></span>
+  <a class="btn-ghost" id="manageLink" href="family.html" style="display:none">👪 จัดการ</a>
   <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
 </header>
 
@@ -79,6 +80,7 @@ const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ป�
     document.getElementById('rolePill').innerHTML =
       '<span class="pill pill-vet">🩺 โหมดสัตวแพทย์ — ดูอย่างเดียว</span>';
   }
+  if (role.isAdmin) document.getElementById('manageLink').style.display = '';
 
   const grid = document.getElementById('petGrid');
   let pets;

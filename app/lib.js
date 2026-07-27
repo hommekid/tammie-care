@@ -103,6 +103,41 @@ const TC = (() => {
     return 'บันทึกไม่สำเร็จ: ' + m;
   }
 
+  // ---------- จัดการครอบครัว (เรียก RPC — สิทธิ์จริงเช็กใน DB) ----------
+
+  async function rpc(name, args) {
+    const { data, error } = await sb.rpc(name, args);
+    if (error) throw new Error(saveErrorTH(error));
+    return data;
+  }
+
+  const familyOverview = (fid) => rpc('family_overview', { fid });
+  const addMember = (fid, email, permission) => rpc('add_member_by_email', { fid, p_email: email, p_permission: permission });
+  const addVet = (fid, email) => rpc('add_vet_by_email', { fid, p_email: email });
+  const setMemberPermission = (fid, userId, permission) => rpc('set_member_permission', { fid, p_user: userId, p_permission: permission });
+  const removeMember = (fid, userId) => rpc('remove_member', { fid, p_user: userId });
+  const removeVet = (fid, userId) => rpc('remove_vet', { fid, p_user: userId });
+  const createPet = (fid, name) => rpc('create_pet', { fid, p_name: name });
+
+  /** archive/unarchive สัตว์ (soft delete) — ผ่าน pets policy เดิม */
+  async function setPetArchived(petId, archived) {
+    const { error } = await sb.from('pets').update({ archived }).eq('id', petId);
+    if (error) throw new Error(saveErrorTH(error));
+  }
+
+  /** ลบสัตว์ถาวร (admin เท่านั้น ตาม RLS) — ลบแล้วกู้คืนไม่ได้ */
+  async function deletePet(petId) {
+    const { error } = await sb.from('pets').delete().eq('id', petId);
+    if (error) throw new Error(saveErrorTH(error));
+  }
+
+  /** รายชื่อครอบครัวของฉัน (ไว้โชว์ในหน้าจัดการ) */
+  async function myFamilies() {
+    const { data, error } = await sb.from('families').select('id,name');
+    if (error) throw error;
+    return data;
+  }
+
   // ---------- รูปใน Storage (bucket เป็น private ต้องใช้ signed URL) ----------
 
   /** ย่อรูปก่อนอัป — กันไฟล์จากกล้องมือถือขนาด 5–10MB กินโควตา free tier */
@@ -213,5 +248,7 @@ const TC = (() => {
 
   return { sb, requireAuth, signOut, getMyRole, listPets, getPet, signedUrl, fillImg,
            setPetPath, uploadPhoto, resizeImage,
+           familyOverview, addMember, addVet, setMemberPermission, removeMember, removeVet,
+           createPet, setPetArchived, deletePet, myFamilies,
            calcAge, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS };
 })();
