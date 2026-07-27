@@ -1021,6 +1021,13 @@ function renderLabs(root) {
 
   const wrap = document.getElementById('labAccs');
   panels.forEach((p) => wrap.appendChild(labAccordion(p)));
+
+  // fill หมวดที่กางไว้ "หลัง" append เข้าหน้าแล้ว (element อยู่ใน document → getElementById เจอ)
+  if (LAB_OPEN) {
+    const openPanel = panels.find((p) => p.id === LAB_OPEN);
+    const openAcc = [...wrap.children].find((el) => el.classList.contains('open'));
+    if (openPanel && openAcc) fillLabBody(openAcc.querySelector('.lab-acc-body'), openPanel);
+  }
 }
 
 function labAccordion(panel) {
@@ -1051,7 +1058,9 @@ function labAccordion(panel) {
     LAB_OPEN = open ? panel.id : null;
     if (open) fillLabBody(el.querySelector('.lab-acc-body'), panel);
   };
-  if (LAB_OPEN === panel.id) fillLabBody(el.querySelector('.lab-acc-body'), panel);
+  // ⚠️ ไม่ fill ตรงนี้ เพราะ el ยังไม่ถูกใส่เข้าหน้า (detached) — fillLabBody ใช้
+  //    document.getElementById ข้างใน จะหา element ไม่เจอ → error null
+  //    ให้ renderLabs เรียก fillLabBody หลัง append เข้าหน้าแล้ว
   return el;
 }
 
@@ -1252,12 +1261,14 @@ function drawLabForm(panelId, cur) {
       <div class="btns">
         <button class="btn" id="lfSave">บันทึก</button>
         <button class="btn-ghost" id="lfCancel">ยกเลิก</button>
+        ${cur ? '<button class="btn-ghost" id="lfDelete" style="margin-left:auto;border-color:var(--red);color:var(--red)">🗑 ลบผลนี้</button>' : ''}
       </div>
       <div class="saving" id="lfMsg" style="margin-top:8px"></div>
     </div>`;
 
   // เปลี่ยนหมวด (เฉพาะตอนเพิ่มใหม่) → วาดช่องกรอกใหม่ตาม labConfig ของหมวดนั้น
   if (!cur) document.getElementById('lfPanel').onchange = (e) => { LAB_EDIT.extraKeys = []; drawLabForm(e.target.value, null); };
+  if (cur) document.getElementById('lfDelete').onclick = () => delLab(panelId, cur);
 
   // ปุ่มกางชิปที่เหลือ (กันชิปพรืดเมื่อมีผลเยอะ)
   const moreBtn = document.getElementById('lfMoreChips');
@@ -1369,6 +1380,17 @@ async function saveLab(panelId, cur) {
     alert(err.message || 'บันทึกไม่สำเร็จ');
     btn.disabled = false; btn.textContent = 'บันทึก'; msg.textContent = '';
   }
+}
+
+async function delLab(panelId, cur) {
+  if (!confirm(`ลบผลตรวจวันที่ ${TC.thDate(cur.date)} ?\n\nลบแล้วกู้คืนไม่ได้`)) return;
+  const arr = (PET.data.labs || []).filter((l) => l !== cur);
+  try {
+    PET.data = await TC.setPetPath(PET.id, ['labs'], arr);
+    LAB_OPEN = panelId;
+    LAB_EDIT = null;
+    showTab('labs');
+  } catch (err) { alert(err.message || 'ลบไม่สำเร็จ'); }
 }
 
 function openPanelForm() {
