@@ -974,9 +974,6 @@ function renderAppts(root) {
     const d = new Date(a.date); d.setHours(0, 0, 0, 0);
     return { ...a, d, _idx: i, diff: Math.round((d - today) / 86400000) };
   });
-  const upcoming = withDiff.filter((a) => a.diff >= 0).sort((a, b) => a.d - b.d);
-  const past = withDiff.filter((a) => a.diff < 0).sort((a, b) => b.d - a.d);
-
   root.innerHTML = `
     <div class="edit-bar">
       <span class="section-label" style="margin:0">📅 ปฏิทินนัดหมาย</span>
@@ -990,22 +987,12 @@ function renderAppts(root) {
         <span><i class="dot" style="background:#b6a795"></i> ผ่านมาแล้ว</span>
       </div>
       <div id="apptCal"></div>
-
-      <div class="section-label" style="margin-top:26px">🔔 นัดที่จะถึง (${upcoming.length})</div>
-      <div id="upcomingList">${upcoming.length ? upcoming.map(apptCard).join('') : '<div class="empty">ไม่มีนัดที่จะถึง</div>'}</div>
-      ${past.length ? `
-        <details class="past-appts">
-          <summary>▸ นัดที่ผ่านมาแล้ว (${past.length})</summary>
-          <div style="margin-top:10px" id="pastList">${past.map(apptCard).join('')}</div>
-        </details>` : ''}
     ` : '<div class="empty">ยังไม่มีนัดหมาย</div>'}`;
 
   if (ROLE.canEdit) document.getElementById('btnAddAppt').onclick = () => openApptForm(null);
   if (!list.length) return;
 
   const hook = (el) => { if (el) wireActions(el, (i) => openApptForm(Number(i)), (i) => delAppt(Number(i))); };
-  hook(document.getElementById('upcomingList'));
-  hook(document.getElementById('pastList'));
 
   buildCalendar(document.getElementById('apptCal'), {
     key: 'appts',
