@@ -1170,19 +1170,28 @@ function openParamEditor(panelId) {
       <a class="rm-param2" title="ลบค่านี้">×</a>
     </div>`;
 
+  const panel = ((PET.data || {}).labPanels || []).find((p) => p.id === panelId) || { name: '' };
+
   holder.innerHTML = `
     <div class="edit-form">
-      <h3>⚙️ ค่าที่ตรวจ + เกณฑ์ปกติ</h3>
-      <p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">เว้นช่องเกณฑ์ว่างได้ถ้าไม่มีค่าปกติ · ค่าที่อยู่นอกช่วงจะขึ้นสีแดง</p>
+      <h3>⚙️ ตั้งค่าหมวดผลเลือด</h3>
+      <div class="fld">
+        <label>ชื่อหมวด</label>
+        <input type="text" id="pName-${panelId}" value="${TC.esc(panel.name || '')}" placeholder="เช่น CBC (Hematology)">
+      </div>
+      <label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:4px">ค่าที่ตรวจ + เกณฑ์ปกติ (เว้นเกณฑ์ว่างได้ · นอกช่วง = แดง)</label>
       <div class="param-head">
         <span>ชื่อค่า</span><span>หน่วย</span><span>ปกติต่ำสุด</span><span>ปกติสูงสุด</span><span></span>
       </div>
       <div id="paramRows-${panelId}">${cfgs.map(rowHTML).join('')}</div>
       <button class="btn-ghost" id="pAdd-${panelId}" style="margin-top:8px">➕ เพิ่มค่าตรวจ</button>
       <div class="btns"><button class="btn" id="pSave-${panelId}">บันทึก</button>
-        <button class="btn-ghost" id="pCancel-${panelId}">ยกเลิก</button></div>
+        <button class="btn-ghost" id="pCancel-${panelId}">ยกเลิก</button>
+        <button class="btn-ghost" id="pDel-${panelId}" style="margin-left:auto;border-color:var(--red);color:var(--red)">🗑 ลบทั้งหมวด</button></div>
       <div class="saving" id="pMsg-${panelId}"></div>
     </div>`;
+
+  document.getElementById(`pDel-${panelId}`).onclick = () => delPanel(panelId, panel.name);
 
   // เก็บ key เดิมไว้จับคู่ตอนบันทึก (ค่าใหม่ยังไม่มี key)
   const keys = cfgs.map((c) => c.key);
@@ -1201,7 +1210,7 @@ function openParamEditor(panelId) {
     rows.insertAdjacentHTML('beforeend', rowHTML({ label: '', unit: '', min: '', max: '' }, i));
     // ผูก key ใหม่ให้แถวล่าสุด
     rows.lastElementChild.dataset.newkey = nk;
-    wireRм();
+    wireRm();
   };
 
   document.getElementById(`pCancel-${panelId}`).onclick = () => { holder.innerHTML = ''; };
@@ -1229,7 +1238,16 @@ function openParamEditor(panelId) {
 
       // รวมกับ labConfig ของหมวดอื่น (แทนที่เฉพาะของหมวดนี้)
       const others = (PET.data.labConfig || []).filter((c) => c.panel !== panelId);
-      PET.data = await TC.setPetPath(PET.id, ['labConfig'], [...others, ...newCfgForPanel]);
+      let d = await TC.setPetPath(PET.id, ['labConfig'], [...others, ...newCfgForPanel]);
+
+      // บันทึกชื่อหมวด (ถ้าเปลี่ยน)
+      const newName = document.getElementById(`pName-${panelId}`).value.trim();
+      if (newName && newName !== panel.name) {
+        const panels = (d.labPanels || []).map((p) => p.id === panelId ? { ...p, name: newName } : p);
+        d = await TC.setPetPath(PET.id, ['labPanels'], panels);
+      }
+
+      PET.data = d;
       LAB_OPEN = panelId;
       showTab('labs');
     } catch (e) {
@@ -1239,6 +1257,20 @@ function openParamEditor(panelId) {
   };
 
   holder.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function delPanel(panelId, name) {
+  const n = ((PET.data || {}).labs || []).filter((l) => l.panel === panelId).length;
+  if (!confirm(`ลบหมวด "${name}" ทั้งหมด?\n\nผลตรวจในหมวดนี้ ${n} ครั้ง จะถูกลบไปด้วย · กู้คืนไม่ได้`)) return;
+  try {
+    const d = PET.data;
+    // ลบทั้ง panel + labConfig + labs ของหมวดนี้ (เขียนทีละ path)
+    await TC.setPetPath(PET.id, ['labPanels'], (d.labPanels || []).filter((p) => p.id !== panelId));
+    await TC.setPetPath(PET.id, ['labConfig'], (d.labConfig || []).filter((c) => c.panel !== panelId));
+    PET.data = await TC.setPetPath(PET.id, ['labs'], (d.labs || []).filter((l) => l.panel !== panelId));
+    LAB_OPEN = null;
+    showTab('labs');
+  } catch (e) { alert(e.message || 'ลบไม่สำเร็จ'); }
 }
 
 let labChartObj = {};
