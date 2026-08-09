@@ -984,11 +984,27 @@ const LAB_PAGE_SIZE = 8;
 function labConfigFor(panel) {
   return ((PET.data || {}).labConfig || []).filter((c) => c.panel === panel);
 }
+// แยกค่าผลเลือดที่อาจมีเครื่องหมาย < > (เครื่องนับไม่ได้) ออกเป็น {op, n}
+//   ">2000" = ค่าจริงสูงกว่า 2000 · "<200" = ค่าจริงต่ำกว่า 200
+function parseLabVal(v) {
+  if (typeof v === 'number') return { op: '', n: v };
+  const s = String(v ?? '').trim();
+  const m = s.match(/^([<>]=?)\s*(-?\d+\.?\d*)/);
+  if (m) return { op: m[1][0], n: Number(m[2]) };
+  const num = Number(s);
+  return { op: '', n: Number.isNaN(num) ? null : num };
+}
+
 function isBad(cfg, v) {
-  if (v == null || v === '' || Number.isNaN(Number(v))) return false;
-  const n = Number(v);
-  if (cfg.min != null && cfg.min !== '' && n < Number(cfg.min)) return true;
-  if (cfg.max != null && cfg.max !== '' && n > Number(cfg.max)) return true;
+  const p = parseLabVal(v);
+  if (p.n == null) return false;
+  const min = (cfg.min != null && cfg.min !== '') ? Number(cfg.min) : null;
+  const max = (cfg.max != null && cfg.max !== '') ? Number(cfg.max) : null;
+
+  if (p.op === '>') return max != null && p.n >= max;   // ">2000" เกิน max = อันตราย
+  if (p.op === '<') return min != null && p.n <= min;    // "<200" ต่ำกว่า min = อันตราย
+  if (min != null && p.n < min) return true;
+  if (max != null && p.n > max) return true;
   return false;
 }
 function labsOf(panel) {
@@ -1092,7 +1108,7 @@ function fillLabBody(body, panel) {
     }).join('');
 
   // 2) ตัวเลือกค่าไว้พล็อตกราฟแนวโน้ม (ค่าที่มีตัวเลขตั้งแต่ 2 ครั้งขึ้นไป)
-  const plottable = cfgs.filter((c) => rows.filter((r) => r.values[c.key] != null && r.values[c.key] !== '').length >= 2);
+  const plottable = cfgs.filter((c) => rows.filter((r) => parseLabVal(r.values[c.key]).n != null).length >= 2);
 
   body.innerHTML = `
     <div class="lab-latest">${cards}</div>
@@ -1230,7 +1246,7 @@ function drawLabChart(panelId, key) {
     data: {
       labels: rows.map((r) => TC.thDateShort(r.date)),
       datasets: [{
-        data: rows.map((r) => Number(r.values[key])),
+        data: rows.map((r) => parseLabVal(r.values[key]).n),   // ">2000" พล็อตที่ 2000
         borderColor: '#5b86bf', backgroundColor: 'rgba(169,196,232,0.22)',
         pointBackgroundColor: rows.map((r) => isBad(cfg, r.values[key]) ? '#d96a6a' : '#5b86bf'),
         pointRadius: 4, tension: 0.3, fill: true,
@@ -1309,7 +1325,7 @@ function drawLabForm(panelId, cur) {
     const v = cur ? (cur.values[c.key] ?? '') : '';
     return `<div class="lab-input">
       <label>${TC.esc(c.label)}${c.unit ? ` <span style="color:var(--text-muted)">${TC.esc(c.unit)}</span>` : ''}</label>
-      <input type="text" inputmode="decimal" data-key="${TC.esc(c.key)}" value="${TC.esc(String(v))}">
+      <input type="text" data-key="${TC.esc(c.key)}" value="${TC.esc(String(v))}" placeholder="เช่น 4030 หรือ >2000">
     </div>`;
   };
 
@@ -1422,7 +1438,7 @@ function appendParamInput(ek) {
   div.innerHTML = `
     <label>${TC.esc(ek.label)}${ek.unit ? ` <span style="color:var(--text-muted)">${TC.esc(ek.unit)}</span>` : ''}
       <span class="rm-param" title="เอาออก">×</span></label>
-    <input type="text" inputmode="decimal" data-key="${TC.esc(ek.key)}">`;
+    <input type="text" data-key="${TC.esc(ek.key)}" placeholder="เช่น 4030 หรือ >2000">`;
   div.querySelector('.rm-param').onclick = () => {
     LAB_EDIT.extraKeys = LAB_EDIT.extraKeys.filter((x) => x.key !== ek.key);
     div.remove();
