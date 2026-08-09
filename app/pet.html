@@ -6,7 +6,7 @@
 <title>Dashboard 🐾 · Tammie Care</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=19">
+<link rel="stylesheet" href="theme.css?v=20">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -164,9 +164,100 @@ function openProfileEdit() {
   };
   drawPhoto();
 
-  document.getElementById('pfPhoto').onchange = (e) => { PROFILE_PHOTO = e.target.files[0] || null; drawPhoto(); };
+  document.getElementById('pfPhoto').onchange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      PROFILE_PHOTO = await openCropper(file);   // ครอปเป็นสี่เหลี่ยมจัตุรัสก่อน
+      drawPhoto();
+    } catch (_) { /* ยกเลิกการครอป */ }
+  };
   document.getElementById('pfCancel').onclick = () => { renderTabs(); showTab('summary'); };
   document.getElementById('pfSave').onclick = saveProfile;
+}
+
+/* ---------- ครอปรูปเป็นสี่เหลี่ยมจัตุรัส (สำหรับรูปโปรไฟล์วงกลม) ---------- */
+// คืน Promise<Blob> · reject ถ้ายกเลิก · ไม่ใช้ไลบรารีนอก
+function openCropper(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objURL = URL.createObjectURL(file);
+    img.onload = () => {
+      const V = Math.min(300, window.innerWidth - 80);   // ขนาดกรอบครอป
+      const OUT = 600;                                    // ขนาดไฟล์ผลลัพธ์
+      const minScale = V / Math.min(img.naturalWidth, img.naturalHeight);
+      let scale = minScale, maxScale = minScale * 4;
+      let left = (V - img.naturalWidth * scale) / 2;
+      let top = (V - img.naturalHeight * scale) / 2;
+
+      const ov = document.createElement('div');
+      ov.className = 'cropper';
+      ov.innerHTML = `
+        <div class="crop-panel">
+          <div class="crop-title">เลื่อน/ซูมให้พอดีกรอบ</div>
+          <div class="crop-view" style="width:${V}px;height:${V}px">
+            <img class="crop-img" draggable="false">
+            <div class="crop-ring"></div>
+          </div>
+          <input type="range" class="crop-zoom" min="1" max="4" step="0.01" value="1">
+          <div class="crop-btns">
+            <button class="btn crop-ok">ใช้รูปนี้</button>
+            <button class="btn-ghost crop-cancel">ยกเลิก</button>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+
+      const imgEl = ov.querySelector('.crop-img');
+      imgEl.src = objURL;
+
+      const clamp = () => {
+        const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+        left = Math.min(0, Math.max(V - w, left));   // ต้องคลุมกรอบเสมอ
+        top = Math.min(0, Math.max(V - h, top));
+      };
+      const apply = () => {
+        clamp();
+        imgEl.style.width = img.naturalWidth * scale + 'px';
+        imgEl.style.height = img.naturalHeight * scale + 'px';
+        imgEl.style.left = left + 'px';
+        imgEl.style.top = top + 'px';
+      };
+      apply();
+
+      // ลาก (mouse + touch ผ่าน pointer events)
+      let dragging = false, px = 0, py = 0;
+      const view = ov.querySelector('.crop-view');
+      view.addEventListener('pointerdown', (e) => { dragging = true; px = e.clientX; py = e.clientY; view.setPointerCapture(e.pointerId); });
+      view.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        left += e.clientX - px; top += e.clientY - py; px = e.clientX; py = e.clientY; apply();
+      });
+      view.addEventListener('pointerup', () => { dragging = false; });
+
+      // ซูม (คงจุดกึ่งกลางกรอบไว้)
+      ov.querySelector('.crop-zoom').oninput = (e) => {
+        const z = Number(e.target.value);
+        const newScale = minScale * z;
+        const cx = (V / 2 - left) / scale, cy = (V / 2 - top) / scale;   // จุดกลางในพิกัดรูป
+        scale = Math.min(maxScale, Math.max(minScale, newScale));
+        left = V / 2 - cx * scale; top = V / 2 - cy * scale; apply();
+      };
+
+      const cleanup = () => { URL.revokeObjectURL(objURL); ov.remove(); };
+      ov.querySelector('.crop-cancel').onclick = () => { cleanup(); reject(new Error('cancel')); };
+      ov.querySelector('.crop-ok').onclick = () => {
+        // แปลงพื้นที่ในกรอบ → พิกัดรูปจริง แล้ววาดลง canvas
+        const sx = -left / scale, sy = -top / scale, sSize = V / scale;
+        const cv = document.createElement('canvas');
+        cv.width = OUT; cv.height = OUT;
+        cv.getContext('2d').drawImage(img, sx, sy, sSize, sSize, 0, 0, OUT, OUT);
+        cv.toBlob((b) => { cleanup(); b ? resolve(b) : reject(new Error('crop fail')); }, 'image/jpeg', 0.9);
+      };
+    };
+    img.onerror = () => { URL.revokeObjectURL(objURL); reject(new Error('เปิดรูปไม่ได้')); };
+    img.src = objURL;
+  });
 }
 
 async function saveProfile() {
