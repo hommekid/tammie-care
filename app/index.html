@@ -6,7 +6,7 @@
 <title>Tammie Care 🐾</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=17">
+<link rel="stylesheet" href="theme.css?v=18">
 <style>
   .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
   .pet-card {
@@ -39,22 +39,38 @@
   .appt-alert.urgent { background: rgba(224,122,122,0.14); color: #c44d4d; border-color: #f0c3c3; }
   .appt-bell { position: absolute; top: 14px; right: 14px; font-size: 20px; animation: bell-wiggle 2s ease-in-out infinite; }
   @keyframes bell-wiggle { 0%,92%,100%{transform:rotate(0)} 94%{transform:rotate(12deg)} 96%{transform:rotate(-12deg)} 98%{transform:rotate(8deg)} }
-  .whoami { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+  .hero-wrap {
+    position: relative; max-width: 1000px; margin: 18px auto 0; border-radius: 24px; overflow: hidden;
+    box-shadow: 0 12px 34px rgba(91,134,191,0.18), 0 3px 10px rgba(217,158,62,0.10);
+    border: 1px solid var(--border-blue); line-height: 0;
+  }
+  .hero-wrap .hero { display: block; width: 100%; height: auto; }
+  .hero-fb { display: none; align-items: center; justify-content: center; gap: 10px; height: 160px;
+    background: linear-gradient(135deg, var(--surface2), var(--bg2)); font-family: var(--cute);
+    font-size: 30px; color: var(--blue); line-height: 1; }
+  .hero-fb .paw { font-size: 40px; }
+  .hero-bar {
+    position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.82); backdrop-filter: blur(4px);
+    border: 1px solid var(--border); border-radius: 20px; padding: 6px 10px; line-height: normal;
+    box-shadow: 0 4px 14px rgba(74,64,53,0.16); flex-wrap: wrap; max-width: calc(100% - 24px); justify-content: flex-end;
+  }
+  .hero-email { font-size: 12px; color: var(--text-dim); font-family: var(--mono); word-break: break-all; }
 </style>
 </head>
 <body>
 
-<header class="tc-header">
-  <span style="font-size:24px">🐾</span>
-  <div>
-    <h1>Tammie Care</h1>
-    <div class="sub" id="whoami"></div>
+<div class="hero-wrap">
+  <img class="hero" src="header.jpg" alt="Tammie Care"
+       onerror="this.style.display='none';document.getElementById('heroFb').style.display='flex'">
+  <div id="heroFb" class="hero-fb"><span class="paw">🐾</span><span>Tammie Care</span></div>
+  <div class="hero-bar">
+    <span class="hero-email" id="whoami"></span>
+    <span id="rolePill"></span>
+    <a class="btn-ghost" id="manageLink" href="family.html" style="display:none">👪 จัดการ</a>
+    <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
   </div>
-  <div class="spacer"></div>
-  <span id="rolePill"></span>
-  <a class="btn-ghost" id="manageLink" href="family.html" style="display:none">👪 จัดการ</a>
-  <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
-</header>
+</div>
 
 <div class="container">
   <div class="section-label">🐾 สมาชิกครอบครัว</div>
