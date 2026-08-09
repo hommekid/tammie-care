@@ -152,7 +152,7 @@ const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ป�
       ${photo ? '<img class="photo" alt="">' : `<span class="emoji">${TC.esc(card.emoji || prof.emoji || '🐾')}</span>`}
       <div class="name">${TC.esc(p.name)} <span class="nick">${TC.esc(card.nickname || prof.nickname || '')}</span></div>
       <div class="breed">${TC.esc(card.breed || prof.breed || '')}</div>
-      ${(card.birthDate || prof.birthDate) ? `<div class="age">อายุ ${TC.calcAge(card.birthDate || prof.birthDate)} ปี</div>` : ''}
+      ${(card.birthDate || prof.birthDate) ? `<div class="age">อายุ ${TC.ageText(card.birthDate || prof.birthDate)}</div>` : ''}
       <div class="pill pill-${status === 'watch' ? 'watch' : status === 'alert' ? 'alert' : 'ok'}">${TC.esc(statusLabel[status] || status)}</div>
       ${card.statusNote ? `<div class="status-note">${TC.esc(card.statusNote)}</div>` : ''}
       ${ap ? `<div class="appt-alert${ap.diff <= 1 ? ' urgent' : ''}">🔔 นัด${when} · ${ap.d.getDate()} ${TC.TH_MONTHS[ap.d.getMonth()]}${ap.doctor ? ' · ' + TC.esc(ap.doctor) : ''}</div>` : ''}

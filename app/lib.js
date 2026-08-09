@@ -225,6 +225,19 @@ const TC = (() => {
     return y;
   }
 
+  /** อายุแบบข้อความ "X ปี Y เดือน" (เดือนน้อยกว่า 1 ปีก็บอกเป็นเดือน) */
+  function ageText(birthDate) {
+    if (!birthDate) return '';
+    const b = new Date(birthDate), now = new Date();
+    let months = (now.getFullYear() - b.getFullYear()) * 12 + (now.getMonth() - b.getMonth());
+    if (now.getDate() < b.getDate()) months--;   // ยังไม่ถึงวันเกิดในเดือนนี้
+    if (months < 0) months = 0;
+    const y = Math.floor(months / 12), m = months % 12;
+    if (y === 0) return `${m} เดือน`;
+    if (m === 0) return `${y} ปี`;
+    return `${y} ปี ${m} เดือน`;
+  }
+
   function thDate(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -266,5 +279,5 @@ const TC = (() => {
            setPetPath, uploadPhoto, resizeImage,
            familyOverview, addMember, addVet, setMemberPermission, removeMember, removeVet,
            createPet, setPetProfile, setPetArchived, deletePet, myFamilies, myProfile, updateMyName,
-           calcAge, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS };
+           calcAge, ageText, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS };
 })();
