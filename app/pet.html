@@ -101,6 +101,109 @@ function renderHeader() {
     img.style.display = '';
     TC.fillImg(img, photo);
   }
+
+  // ปุ่มแก้โปรไฟล์ (เฉพาะคนที่แก้ได้) — ใส่ครั้งเดียว
+  if (ROLE.canEdit && !document.getElementById('editProfileBtn')) {
+    const b = document.createElement('a');
+    b.id = 'editProfileBtn';
+    b.className = 'sum-edit-toggle';
+    b.style.cursor = 'pointer';
+    b.textContent = '✏️ โปรไฟล์';
+    b.onclick = openProfileEdit;
+    document.getElementById('rolePill').after(b);
+  }
+}
+
+/* ---------- แก้โปรไฟล์/การ์ดสัตว์ ---------- */
+let PROFILE_PHOTO = null;   // File ใหม่ที่เลือก (ยังไม่อัป)
+
+function openProfileEdit() {
+  const d = PET.data || {}, prof = d.profile || {}, card = d.card || {};
+  const val = (k) => card[k] ?? prof[k] ?? '';
+  PROFILE_PHOTO = null;
+
+  const c = document.getElementById('content');
+  document.querySelectorAll('.dtab').forEach((b) => b.classList.remove('active'));
+  c.innerHTML = `
+    <div class="edit-form" style="max-width:520px">
+      <h3>✏️ แก้โปรไฟล์น้อง</h3>
+      <div class="fld"><label>ชื่อ</label><input type="text" id="pfName" value="${TC.esc(PET.name || val('name'))}"></div>
+      <div class="fld"><label>ชื่อเล่น</label><input type="text" id="pfNick" value="${TC.esc(val('nickname'))}"></div>
+      <div class="fld"><label>อีโมจิ (ใช้ตอนไม่มีรูป)</label><input type="text" id="pfEmoji" value="${TC.esc(val('emoji') || '🐾')}" maxlength="4"></div>
+      <div class="fld"><label>พันธุ์</label><input type="text" id="pfBreed" value="${TC.esc(val('breed'))}"></div>
+      <div class="fld"><label>วันเกิด</label><input type="date" id="pfBirth" value="${TC.esc(val('birthDate'))}"></div>
+      <div class="fld"><label>สถานะ</label>
+        <select id="pfStatus">
+          <option value="ok" ${(card.status||'ok')==='ok'?'selected':''}>✓ ปกติ</option>
+          <option value="watch" ${card.status==='watch'?'selected':''}>⚠️ เฝ้าระวัง</option>
+          <option value="alert" ${card.status==='alert'?'selected':''}>🚨 ต้องดูแล</option>
+        </select></div>
+      <div class="fld"><label>ข้อความสถานะ (โชว์ใต้การ์ดหน้าแรก)</label>
+        <input type="text" id="pfStatusNote" value="${TC.esc(card.statusNote || '')}"></div>
+      <div class="fld"><label>รูปโปรไฟล์</label>
+        <div class="thumb-row" id="pfPhotoRow"></div>
+        <input type="file" id="pfPhoto" accept="image/*" style="margin-top:6px"></div>
+      <div class="btns">
+        <button class="btn" id="pfSave">บันทึก</button>
+        <button class="btn-ghost" id="pfCancel">ยกเลิก</button>
+      </div>
+      <div class="saving" id="pfMsg" style="margin-top:8px"></div>
+    </div>`;
+
+  // แสดงรูปปัจจุบัน
+  const curPhoto = card.photo || prof.photo;
+  const drawPhoto = async () => {
+    const row = document.getElementById('pfPhotoRow');
+    row.innerHTML = '';
+    if (PROFILE_PHOTO) {
+      row.innerHTML = `<div class="th"><img src="${URL.createObjectURL(PROFILE_PHOTO)}" alt=""></div>`;
+    } else if (curPhoto) {
+      const url = await TC.signedUrl(curPhoto);
+      if (url) row.innerHTML = `<div class="th"><img src="${url}" alt=""></div>`;
+    }
+  };
+  drawPhoto();
+
+  document.getElementById('pfPhoto').onchange = (e) => { PROFILE_PHOTO = e.target.files[0] || null; drawPhoto(); };
+  document.getElementById('pfCancel').onclick = () => { renderTabs(); showTab('summary'); };
+  document.getElementById('pfSave').onclick = saveProfile;
+}
+
+async function saveProfile() {
+  const btn = document.getElementById('pfSave');
+  const msg = document.getElementById('pfMsg');
+  const name = document.getElementById('pfName').value.trim();
+  if (!name) { alert('กรุณากรอกชื่อน้อง'); return; }
+
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  try {
+    const card = { ...((PET.data || {}).card || {}) };
+    card.name = name;
+    card.nickname = document.getElementById('pfNick').value.trim();
+    card.emoji = document.getElementById('pfEmoji').value.trim() || '🐾';
+    card.breed = document.getElementById('pfBreed').value.trim();
+    card.birthDate = document.getElementById('pfBirth').value;
+    card.status = document.getElementById('pfStatus').value;
+    card.statusNote = document.getElementById('pfStatusNote').value.trim();
+
+    if (PROFILE_PHOTO) {
+      msg.textContent = 'กำลังอัปรูป...';
+      card.photo = await TC.uploadPhoto(PET.id, PROFILE_PHOTO, 'profile');
+    }
+
+    msg.textContent = 'กำลังบันทึก...';
+    // เขียน card ลง data + sync ชื่อที่คอลัมน์ pets.name (ใช้ในหน้ารายชื่อ/จัดการ)
+    PET.data = await TC.setPetPath(PET.id, ['card'], card);
+    await TC.sb.from('pets').update({ name }).eq('id', PET.id);
+    PET.name = name;
+
+    renderHeader();
+    renderTabs();
+    showTab('summary');
+  } catch (e) {
+    alert(e.message || 'บันทึกไม่สำเร็จ');
+    btn.disabled = false; btn.textContent = 'บันทึก'; msg.textContent = '';
+  }
 }
 
 function renderTabs() {
