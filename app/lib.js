@@ -44,10 +44,15 @@ const TC = (() => {
    * หมายเหตุ: ใช้ควบคุมการ "แสดงปุ่ม" เท่านั้น — ความปลอดภัยจริงอยู่ที่ RLS
    */
   async function getMyRole() {
-    const [{ data: members }, { data: vets }] = await Promise.all([
-      sb.from('family_members').select('family_id,permission'),
-      sb.from('vet_access').select('family_id'),
-    ]);
+    let members, vets;
+    try {
+      [{ data: members }, { data: vets }] = await Promise.all([
+        sb.from('family_members').select('family_id,permission'),
+        sb.from('vet_access').select('family_id'),
+      ]);
+    } catch (_) {
+      return { role: null, permission: null, canEdit: false, isAdmin: false, familyIds: [] };
+    }
     if (members && members.length) {
       const best = members.reduce((a, m) =>
         ({ view: 0, edit: 1, admin: 2 }[m.permission] > { view: 0, edit: 1, admin: 2 }[a.permission] ? m : a));

@@ -100,26 +100,11 @@ const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ป�
   const user = await TC.requireAuth();
   if (!user) return;
 
-  const prof = await TC.myProfile();
-  const nameEl = document.getElementById('whoami');
-  const showName = () => { nameEl.textContent = (prof && prof.name) ? prof.name : user.email; };
-  showName();
-  // กดชื่อเพื่อแก้ชื่อเล่นของตัวเอง
-  nameEl.onclick = async () => {
-    const n = prompt('ชื่อที่ให้คนอื่นเห็น (เช่น แม่ / พ่อ / หมอปลาย)', (prof && prof.name) || '');
-    if (n === null || !n.trim()) return;
-    try { await TC.updateMyName(n); prof.name = n.trim(); showName(); }
-    catch (e) { alert(e.message); }
-  };
-
-  const role = await TC.getMyRole();
-  if (role.role === 'vet') {
-    document.getElementById('rolePill').innerHTML =
-      '<span class="pill pill-vet">🩺 โหมดสัตวแพทย์ — ดูอย่างเดียว</span>';
-  }
-  if (role.isAdmin) document.getElementById('manageLink').style.display = '';
-
   const grid = document.getElementById('petGrid');
+  const nameEl = document.getElementById('whoami');
+  nameEl.textContent = user.email;   // fallback ก่อน (เผื่อ myProfile ช้า/พลาด)
+
+  // โหลดรายชื่อสัตว์ให้ได้ก่อนเสมอ — ไม่ให้พังเพราะ profile/role สะดุด
   let pets;
   try {
     pets = await TC.listPets();
@@ -127,6 +112,30 @@ const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ป�
     grid.innerHTML = '<div class="loading">โหลดข้อมูลไม่สำเร็จ — ลองรีเฟรชอีกครั้ง</div>';
     return;
   }
+
+  // ชื่อเล่น + บทบาท — พลาดก็ไม่กระทบการแสดงสัตว์ (หุ้ม error แยก)
+  (async () => {
+    try {
+      const prof = await TC.myProfile();
+      const showName = () => { nameEl.textContent = (prof && prof.name) ? prof.name : user.email; };
+      showName();
+      nameEl.onclick = async () => {
+        const n = prompt('ชื่อที่ให้คนอื่นเห็น (เช่น แม่ / พ่อ / หมอปลาย)', (prof && prof.name) || '');
+        if (n === null || !n.trim()) return;
+        try { await TC.updateMyName(n); prof.name = n.trim(); showName(); }
+        catch (e) { alert(e.message); }
+      };
+    } catch (_) { /* คงไว้ที่อีเมล */ }
+
+    try {
+      const role = await TC.getMyRole();
+      if (role.role === 'vet') {
+        document.getElementById('rolePill').innerHTML =
+          '<span class="pill pill-vet">🩺 โหมดสัตวแพทย์ — ดูอย่างเดียว</span>';
+      }
+      if (role.isAdmin) document.getElementById('manageLink').style.display = '';
+    } catch (_) { /* ปุ่มจัดการซ่อนไว้ */ }
+  })();
 
   if (!pets.length) {
     grid.innerHTML = '<div class="loading">ยังไม่มีสัตว์เลี้ยงที่คุณเข้าถึงได้<br>' +
