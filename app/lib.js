@@ -132,6 +132,21 @@ const TC = (() => {
     if (error) throw new Error(saveErrorTH(error));
   }
 
+  /** โปรไฟล์ของฉัน (ชื่อเล่นที่ให้คนอื่นเห็น + อีเมล) */
+  async function myProfile() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return null;
+    const { data } = await sb.from('profiles').select('name,email').eq('id', user.id).single();
+    return data || { name: null, email: user.email };
+  }
+
+  /** แก้ชื่อเล่นของตัวเอง (RLS อนุญาตให้แก้ profile ตัวเองได้) */
+  async function updateMyName(name) {
+    const { data: { user } } = await sb.auth.getUser();
+    const { error } = await sb.from('profiles').update({ name: name.trim() }).eq('id', user.id);
+    if (error) throw new Error(saveErrorTH(error));
+  }
+
   /** รายชื่อครอบครัวของฉัน (ไว้โชว์ในหน้าจัดการ) */
   async function myFamilies() {
     const { data, error } = await sb.from('families').select('id,name');
@@ -250,6 +265,6 @@ const TC = (() => {
   return { sb, requireAuth, signOut, getMyRole, listPets, getPet, signedUrl, fillImg,
            setPetPath, uploadPhoto, resizeImage,
            familyOverview, addMember, addVet, setMemberPermission, removeMember, removeVet,
-           createPet, setPetProfile, setPetArchived, deletePet, myFamilies,
+           createPet, setPetProfile, setPetArchived, deletePet, myFamilies, myProfile, updateMyName,
            calcAge, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS };
 })();

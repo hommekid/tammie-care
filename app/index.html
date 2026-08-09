@@ -65,7 +65,7 @@
        onerror="this.style.display='none';document.getElementById('heroFb').style.display='flex'">
   <div id="heroFb" class="hero-fb"><span class="paw">🐾</span><span>Tammie Care</span></div>
   <div class="hero-bar">
-    <span class="hero-email" id="whoami"></span>
+    <span class="hero-email" id="whoami" title="กดเพื่อแก้ชื่อ" style="cursor:pointer"></span>
     <span id="rolePill"></span>
     <a class="btn-ghost" id="manageLink" href="family.html" style="display:none">👪 จัดการ</a>
     <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
@@ -89,7 +89,17 @@ const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ป�
   const user = await TC.requireAuth();
   if (!user) return;
 
-  document.getElementById('whoami').textContent = user.email;
+  const prof = await TC.myProfile();
+  const nameEl = document.getElementById('whoami');
+  const showName = () => { nameEl.textContent = (prof && prof.name) ? prof.name : user.email; };
+  showName();
+  // กดชื่อเพื่อแก้ชื่อเล่นของตัวเอง
+  nameEl.onclick = async () => {
+    const n = prompt('ชื่อที่ให้คนอื่นเห็น (เช่น แม่ / พ่อ / หมอปลาย)', (prof && prof.name) || '');
+    if (n === null || !n.trim()) return;
+    try { await TC.updateMyName(n); prof.name = n.trim(); showName(); }
+    catch (e) { alert(e.message); }
+  };
 
   const role = await TC.getMyRole();
   if (role.role === 'vet') {
