@@ -260,6 +260,11 @@ details.past-appts > summary { cursor: pointer; font-size: 13px; color: var(--go
 .lab-val .rng { font-size: 10.5px; color: var(--text-muted); }
 .lab-val.bad { background: var(--red-dim); border-color: var(--red); }
 .lab-val.bad .v { color: #b83d3d; }
+.lab-val.clickable { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.lab-val.clickable:hover { border-color: var(--sky); }
+.lab-val.clickable .graph-hint { font-size: 10px; opacity: .5; }
+.lab-val.sel { border-color: var(--sky); box-shadow: 0 0 0 2px rgba(91,134,191,0.25); }
+.lab-graph-head { font-size: 13px; color: var(--sky); font-family: var(--cute); font-weight: 600; margin: 14px 0 4px; }
 .lab-latest-date { font-size: 12px; color: var(--gold); font-family: var(--mono); margin-top: 8px; }
 .lab-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.6; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; white-space: pre-line; }
 

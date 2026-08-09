@@ -6,7 +6,7 @@
 <title>Dashboard 🐾 · Tammie Care</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=16">
+<link rel="stylesheet" href="theme.css?v=17">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -1093,31 +1093,31 @@ function fillLabBody(body, panel) {
     return;
   }
 
-  // 1) การ์ดค่าล่าสุด
+  // ค่าที่พล็อตกราฟได้ (มีตัวเลขตั้งแต่ 2 ครั้งขึ้นไป) — การ์ดพวกนี้กดดูกราฟได้
+  const plottableKeys = new Set(cfgs.filter((c) =>
+    rows.filter((r) => parseLabVal(r.values[c.key]).n != null).length >= 2).map((c) => c.key));
+
+  // 1) การ์ดค่าล่าสุด — กดการ์ดที่กราฟได้เพื่อดูแนวโน้ม
   const cards = cfgs.filter((c) => latest.values[c.key] != null && latest.values[c.key] !== '')
     .map((c) => {
       const v = latest.values[c.key];
       const bad = isBad(c, v);
+      const canGraph = plottableKeys.has(c.key);
       const rng = (c.min != null && c.min !== '') || (c.max != null && c.max !== '')
         ? `${c.min ?? ''}–${c.max ?? ''}${c.unit ? ' ' + c.unit : ''}` : (c.unit || '');
-      return `<div class="lab-val ${bad ? 'bad' : ''}">
-        <div class="k">${TC.esc(c.label)}</div>
+      return `<div class="lab-val ${bad ? 'bad' : ''} ${canGraph ? 'clickable' : ''}" ${canGraph ? `data-gk="${TC.esc(c.key)}"` : ''}>
+        <div class="k">${TC.esc(c.label)}${canGraph ? ' <span class="graph-hint">📈</span>' : ''}</div>
         <div class="v">${TC.esc(String(v))}</div>
         <div class="rng">${TC.esc(rng)}</div>
       </div>`;
     }).join('');
 
-  // 2) ตัวเลือกค่าไว้พล็อตกราฟแนวโน้ม (ค่าที่มีตัวเลขตั้งแต่ 2 ครั้งขึ้นไป)
-  const plottable = cfgs.filter((c) => rows.filter((r) => parseLabVal(r.values[c.key]).n != null).length >= 2);
-
   body.innerHTML = `
     <div class="lab-latest">${cards}</div>
     <div class="lab-latest-date">ผลล่าสุด ${TC.thDate(latest.date)}</div>
     ${latest.note ? `<div class="lab-note">${TC.esc(latest.note)}</div>` : ''}
-    ${plottable.length ? `
-      <select class="lab-select" id="labSel-${panel.id}">
-        ${plottable.map((c) => `<option value="${c.key}">${TC.esc(c.label)}</option>`).join('')}
-      </select>
+    ${plottableKeys.size ? `
+      <div class="lab-graph-head" id="labGraphHead-${panel.id}"></div>
       <div class="lab-chart-box"><canvas id="labChart-${panel.id}"></canvas></div>` : ''}
     <details class="lab-history">
       <summary>📋 ตารางทุกวันที่ (${rows.length} ครั้ง)</summary>
@@ -1129,11 +1129,20 @@ function fillLabBody(body, panel) {
     </div>
     <div id="paramForm-${panel.id}"></div>` : ''}`;
 
-  if (plottable.length) {
-    const sel = document.getElementById(`labSel-${panel.id}`);
-    const paint = () => drawLabChart(panel.id, sel.value);
-    sel.onchange = paint;
-    paint();
+  if (plottableKeys.size) {
+    const head = document.getElementById(`labGraphHead-${panel.id}`);
+    const paint = (key) => {
+      const cfg = cfgs.find((c) => c.key === key);
+      head.textContent = `📈 แนวโน้ม ${cfg ? cfg.label : ''}`;
+      body.querySelectorAll('.lab-val.clickable').forEach((el) =>
+        el.classList.toggle('sel', el.dataset.gk === key));
+      drawLabChart(panel.id, key);
+    };
+    body.querySelectorAll('.lab-val[data-gk]').forEach((el) => {
+      el.onclick = () => paint(el.dataset.gk);
+    });
+    // เปิดมาโชว์กราฟของค่าแรกที่กราฟได้ ให้ไม่ว่าง
+    paint([...plottableKeys][0]);
   }
 
   renderLabTable(panel.id, 0);
