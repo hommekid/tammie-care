@@ -1748,20 +1748,42 @@ function openPanelForm() {
 /* ================= แท็บสรุป ================= */
 
 // section ทั้งหมดในหน้าสรุป + ตัวสร้างกล่อง (parent เลือกแสดง/ซ่อน/จัดลำดับได้)
-const SUMMARY_SECTIONS = {
+const SUMMARY_BUILTIN = {
   leuco:  { label: '💉 เกณฑ์ฉีด Leuco Plus',      build: (d) => (d.leucoPlus ? leucoBox(d) : null) },
   danger: { label: '🚨 สัญญาณต้องไปหาหมอทันที',   build: (d) => dangerBox(d.dangerSigns || {}) },
   watch:  { label: '📋 สิ่งที่ต้องติดตาม',         build: (d) => watchBox(d.watchList || []) },
-  tumor:  { label: '📈 ขนาดก้อนในตับ',            build: (d) => tumorChart((d.vitals && d.vitals.liverTumor) || []) },
+  tumor:  { label: '📈 ขนาดก้อนในตับ', build: (d) => {
+    const rows = (d.vitals && d.vitals.liverTumor) || [];
+    // โชว์เมื่อมีข้อมูล หรือ (แก้ได้ + โปรไฟล์มี vitals อยู่แล้ว) · สัตว์ใหม่/เฟ่อ = ไม่โผล่เปล่า
+    return (rows.length || (ROLE.canEdit && d.vitals)) ? tumorChart(rows) : null;
+  } },
 };
-const SUMMARY_DEFAULT_ORDER = ['leuco', 'danger', 'watch', 'tumor'];
+// default: สัตว์ใหม่โชว์ 2 อย่าง — สัญญาณอันตราย + สิ่งที่ต้องติดตาม (leuco/tumor โผล่เมื่อมีข้อมูล)
+const SUMMARY_DEFAULT_ORDER = ['danger', 'watch', 'leuco', 'tumor'];
+
+// รวม section ทั้งหมด (built-in + ที่ผู้ใช้เพิ่มเอง) → map key→{label, build}
+function getSections(d) {
+  const map = { ...SUMMARY_BUILTIN };
+  const custom = (d.custom || {});
+  for (const [id, sec] of Object.entries(custom)) {
+    const icon = sec.type === 'graph' ? '📈' : '📋';
+    map[id] = {
+      label: `${icon} ${sec.title || 'หัวข้อ'}`,
+      custom: true, type: sec.type,
+      build: () => (sec.type === 'graph' ? customGraphBox(id, sec) : customListBox(id, sec)),
+    };
+  }
+  return map;
+}
 
 function summaryOrder(d) {
+  const sections = getSections(d);
   const saved = (d.display && d.display.order) || [];
-  // ยึด order ที่บันทึกไว้ก่อน แล้วต่อด้วย section ที่ยังไม่เคยจัด
-  const known = saved.filter((k) => SUMMARY_SECTIONS[k]);
-  const rest = SUMMARY_DEFAULT_ORDER.filter((k) => !known.includes(k));
-  return [...known, ...rest];
+  const known = saved.filter((k) => sections[k]);
+  // ต่อด้วย section ที่ยังไม่เคยจัด (built-in defaults + custom ที่เพิ่งเพิ่ม)
+  const rest = [...SUMMARY_DEFAULT_ORDER, ...Object.keys(sections)]
+    .filter((k) => sections[k] && !known.includes(k));
+  return [...new Set([...known, ...rest])];
 }
 
 function renderSummary(root) {
@@ -1783,9 +1805,10 @@ function renderSummary(root) {
   const wrap = document.createElement('div');
   wrap.className = 'stack';
 
+  const sections = getSections(d);
   summaryOrder(d).forEach((key) => {
-    if (hidden.includes(key)) return;
-    const el = SUMMARY_SECTIONS[key].build(d);
+    if (hidden.includes(key) || !sections[key]) return;
+    const el = sections[key].build(d);
     // ดูอย่างเดียว: ซ่อนกล่องที่ว่างเปล่า · แก้ได้: โชว์เพื่อกดเพิ่ม (ยกเว้น section ที่โปรไฟล์ไม่มีเลย)
     if (el) wrap.appendChild(el);
   });
@@ -1804,49 +1827,47 @@ function toggleSummaryCfg(d) {
   const holder = document.getElementById('summaryCfg');
   if (!SUMMARY_CFG_OPEN) { holder.innerHTML = ''; return; }
 
-  const hidden = (d.display && d.display.hidden) || [];
-  const order = summaryOrder(d);
+  const sections = getSections(d);
+  const hidden = new Set((d.display && d.display.hidden) || []);
+  let curOrder = summaryOrder(d);
+  const delCustom = new Set();   // custom id ที่จะลบตอนบันทึก
+
+  const rowHTML = (key, i) => {
+    const sec = sections[key]; if (!sec) return '';
+    return `<div class="cfg-row" data-key="${key}">
+      <label style="display:flex;align-items:center;gap:10px;flex:1;margin:0;cursor:pointer;min-width:0">
+        <input type="checkbox" ${hidden.has(key) ? '' : 'checked'} data-vis="${key}">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sec.label}${sec.custom ? '' : ''}</span>
+      </label>
+      <span style="display:flex;gap:4px">
+        <button class="btn-ghost cfg-up" data-i="${i}" ${i === 0 ? 'disabled' : ''} style="padding:4px 9px">↑</button>
+        <button class="btn-ghost cfg-dn" data-i="${i}" ${i === curOrder.length - 1 ? 'disabled' : ''} style="padding:4px 9px">↓</button>
+        ${sec.custom ? `<button class="btn-ghost cfg-del" data-key="${key}" style="padding:4px 9px;border-color:var(--red);color:var(--red)">🗑</button>` : ''}
+      </span>
+    </div>`;
+  };
 
   holder.innerHTML = `
     <div class="edit-form">
       <h3>⚙️ ปรับหน้าสรุป</h3>
-      <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">เลือกว่าจะแสดง section ไหน และจัดลำดับ — น้องแต่ละตัวเน้นไม่เหมือนกัน</p>
-      <div id="cfgRows">
-        ${order.map((key, i) => `
-          <div class="cfg-row" data-key="${key}">
-            <label style="display:flex;align-items:center;gap:10px;flex:1;margin:0;cursor:pointer">
-              <input type="checkbox" ${hidden.includes(key) ? '' : 'checked'} data-vis="${key}">
-              <span>${SUMMARY_SECTIONS[key].label}</span>
-            </label>
-            <span style="display:flex;gap:4px">
-              <button class="btn-ghost cfg-up" data-i="${i}" ${i === 0 ? 'disabled' : ''} style="padding:4px 10px">↑</button>
-              <button class="btn-ghost cfg-dn" data-i="${i}" ${i === order.length - 1 ? 'disabled' : ''} style="padding:4px 10px">↓</button>
-            </span>
-          </div>`).join('')}
+      <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">ติ๊กเพื่อแสดง/ซ่อน · ลูกศรจัดลำดับ · 🗑 ลบหัวข้อที่เพิ่มเอง</p>
+      <div id="cfgRows"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn-ghost" id="cfgAddList">➕ เพิ่มหัวข้อแบบลิสต์</button>
+        <button class="btn-ghost" id="cfgAddGraph">➕ เพิ่มหัวข้อแบบกราฟ</button>
       </div>
       <div class="btns"><button class="btn" id="cfgSave">บันทึก</button>
         <button class="btn-ghost" id="cfgCancel">ปิด</button></div>
       <div class="saving" id="cfgMsg" style="margin-top:8px"></div>
     </div>`;
 
-  let curOrder = [...order];
-
+  const rowsEl = holder.querySelector('#cfgRows');
   const rerenderRows = () => {
-    // จำสถานะ checkbox ปัจจุบันไว้ก่อนวาดใหม่
     const checked = {};
     holder.querySelectorAll('[data-vis]').forEach((c) => { checked[c.dataset.vis] = c.checked; });
-    const rows = holder.querySelector('#cfgRows');
-    rows.innerHTML = curOrder.map((key, i) => `
-      <div class="cfg-row" data-key="${key}">
-        <label style="display:flex;align-items:center;gap:10px;flex:1;margin:0;cursor:pointer">
-          <input type="checkbox" ${checked[key] ? 'checked' : ''} data-vis="${key}">
-          <span>${SUMMARY_SECTIONS[key].label}</span>
-        </label>
-        <span style="display:flex;gap:4px">
-          <button class="btn-ghost cfg-up" data-i="${i}" ${i === 0 ? 'disabled' : ''} style="padding:4px 10px">↑</button>
-          <button class="btn-ghost cfg-dn" data-i="${i}" ${i === curOrder.length - 1 ? 'disabled' : ''} style="padding:4px 10px">↓</button>
-        </span>
-      </div>`).join('');
+    rowsEl.innerHTML = curOrder.map(rowHTML).join('');
+    // คืนค่า checkbox
+    holder.querySelectorAll('[data-vis]').forEach((c) => { if (c.dataset.vis in checked) c.checked = checked[c.dataset.vis]; });
     wireCfgBtns();
   };
   const wireCfgBtns = () => {
@@ -1856,8 +1877,32 @@ function toggleSummaryCfg(d) {
     holder.querySelectorAll('.cfg-dn').forEach((b) => b.onclick = () => {
       const i = Number(b.dataset.i); [curOrder[i + 1], curOrder[i]] = [curOrder[i], curOrder[i + 1]]; rerenderRows();
     });
+    holder.querySelectorAll('.cfg-del').forEach((b) => b.onclick = () => {
+      const key = b.dataset.key;
+      if (!confirm(`ลบหัวข้อ "${(sections[key] || {}).label || ''}" ทิ้ง? (ข้อมูลในหัวข้อนี้จะหายด้วย)`)) return;
+      delCustom.add(key);
+      curOrder = curOrder.filter((k) => k !== key);
+      rerenderRows();
+    });
   };
-  wireCfgBtns();
+  rerenderRows();
+
+  // เพิ่มหัวข้อใหม่ (custom) — บันทึกทันทีแล้วเปิด cfg ใหม่
+  const addCustom = async (type) => {
+    const title = prompt(type === 'graph' ? 'ชื่อหัวข้อกราฟ (เช่น น้ำหนัก, ขนาดก้อน)' : 'ชื่อหัวข้อลิสต์ (เช่น สิ่งที่หมอสั่ง)');
+    if (!title || !title.trim()) return;
+    const id = 'c_' + Math.random().toString(36).slice(2, 8);
+    const custom = JSON.parse(JSON.stringify(d.custom || {}));
+    custom[id] = { type, title: title.trim(), unit: '', items: [] };
+    try {
+      PET.data = await TC.setPetPath(PET.id, ['custom'], custom);
+      SUMMARY_CFG_OPEN = false;
+      showTab('summary');
+      setTimeout(() => document.getElementById('tgSummaryCfg')?.click(), 30);
+    } catch (e) { document.getElementById('cfgMsg').textContent = e.message; }
+  };
+  document.getElementById('cfgAddList').onclick = () => addCustom('list');
+  document.getElementById('cfgAddGraph').onclick = () => addCustom('graph');
 
   document.getElementById('cfgCancel').onclick = () => { SUMMARY_CFG_OPEN = false; holder.innerHTML = ''; };
   document.getElementById('cfgSave').onclick = async () => {
@@ -1866,11 +1911,76 @@ function toggleSummaryCfg(d) {
     display.hidden = newHidden;
     display.order = curOrder;
     try {
+      // ลบ custom section ที่กด 🗑
+      if (delCustom.size) {
+        const custom = JSON.parse(JSON.stringify(d.custom || {}));
+        delCustom.forEach((k) => delete custom[k]);
+        PET.data = await TC.setPetPath(PET.id, ['custom'], custom);
+      }
       PET.data = await TC.setPetPath(PET.id, ['display'], display);
       SUMMARY_CFG_OPEN = false;
       showTab('summary');
     } catch (e) { document.getElementById('cfgMsg').textContent = e.message; }
   };
+}
+
+/* ---- กล่อง custom แบบลิสต์ (เพิ่มเอง) ---- */
+function customListBox(id, sec) {
+  const editing = SUM_EDIT['cust_' + id];
+  const items = sec.items || [];
+  const el = document.createElement('div');
+  el.className = 'watch-box';
+  el.innerHTML = `
+    <div class="edit-bar" style="margin-bottom:6px">
+      <span class="title" style="margin:0">📋 ${TC.esc(sec.title)}</span>
+      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgc-${id}">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+    </div>
+    ${items.length ? `<ul>${items.map((t, i) => `<li>${TC.esc(t)}${editing ? `
+      <span class="inline-actions"><a class="act-edit" data-e="${i}">แก้</a><a class="act-del" data-d="${i}">ลบ</a></span>` : ''}</li>`).join('')}</ul>`
+      : '<div class="empty">ยังไม่มีรายการ</div>'}
+    ${editing ? `<button class="btn-ghost" id="addc-${id}" style="margin-top:8px">➕ เพิ่มรายการ</button>` : ''}
+    <div id="formc-${id}"></div>`;
+
+  if (ROLE.canEdit) setTimeout(() => {
+    el.querySelector(`#tgc-${id}`).onclick = () => { SUM_EDIT['cust_' + id] = !editing; showTab('summary'); };
+    const add = el.querySelector(`#addc-${id}`);
+    if (add) add.onclick = () => editCustomList(id, null);
+    el.querySelectorAll('[data-e]').forEach((a) => a.onclick = () => editCustomList(id, Number(a.dataset.e)));
+    el.querySelectorAll('[data-d]').forEach((a) => a.onclick = () => delCustomList(id, Number(a.dataset.d)));
+  }, 0);
+  return el;
+}
+
+function editCustomList(id, idx) {
+  const items = ((PET.data.custom || {})[id] || {}).items || [];
+  openForm(`formc-${id}`, {
+    title: idx === null ? '➕ เพิ่มรายการ' : '✏️ แก้',
+    fields: [{ key: 'text', label: 'ข้อความ', type: 'textarea' }],
+    values: { text: idx === null ? '' : items[idx] },
+    onSave: async (v) => {
+      if (!v.text) throw new Error('กรุณากรอกข้อความ');
+      const arr = [...items];
+      if (idx === null) arr.push(v.text); else arr[idx] = v.text;
+      PET.data = await TC.setPetPath(PET.id, ['custom', id, 'items'], arr);
+      showTab('summary');
+    },
+  });
+}
+async function delCustomList(id, idx) {
+  const items = ((PET.data.custom || {})[id] || {}).items || [];
+  if (!confirm(`ลบ "${items[idx]}" ?`)) return;
+  const arr = [...items]; arr.splice(idx, 1);
+  try { PET.data = await TC.setPetPath(PET.id, ['custom', id, 'items'], arr); showTab('summary'); }
+  catch (e) { alert(e.message); }
+}
+
+/* ---- กล่อง custom แบบกราฟ (เพิ่มเอง) — โครงเดียวกับก้อนในตับ ---- */
+function customGraphBox(id, sec) {
+  return genericGraphBox({
+    title: sec.title, unit: sec.unit || '', rows: sec.items || [],
+    editKey: 'cust_' + id,
+    savePath: ['custom', id, 'items'],
+  });
 }
 
 /* ---- ไฟเตือน Leuco Plus (เทียบ WBC ดิบ 🔴<4000 / 🟡4000-4499 / 🟢≥4500) ---- */
@@ -2081,112 +2191,111 @@ async function delWatch(idx) {
   catch (e) { alert(e.message); }
 }
 
-/* ---- กราฟขนาดก้อนในตับ (+ แก้ไข) ---- */
+/* ---- กราฟก้อนในตับ = กราฟทั่วไป (savePath = vitals.liverTumor) ---- */
 function tumorChart(rows) {
+  return genericGraphBox({
+    title: 'ขนาดก้อนในตับ', unit: 'cm', rows: rows || [],
+    editKey: 'tumor', savePath: ['vitals', 'liverTumor'],
+  });
+}
+
+/* ---- กล่องกราฟทั่วไป (ก้อนในตับ + custom graph ใช้ร่วมกัน) ----
+ * opts: { title, unit, rows:[{date,size,note,alert}], editKey, savePath }
+ */
+function genericGraphBox(opts) {
+  const { title, unit, rows, editKey, savePath } = opts;
+  const editing = SUM_EDIT[editKey];
   const el = document.createElement('div');
   el.className = 'chart-wrap';
-  const editing = SUM_EDIT.tumor;
+  const uid = editKey.replace(/[^a-z0-9]/gi, '');
   el.innerHTML = `
     <div class="edit-bar">
-      <span class="section-label" style="margin:0">📈 ขนาดก้อนในตับ (cm)</span>
-      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgTumor">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+      <span class="section-label" style="margin:0">📈 ${TC.esc(title)}${unit ? ` (${TC.esc(unit)})` : ''}</span>
+      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tg-${uid}">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
     </div>
-    <div id="tumorForm"></div>
+    <div id="form-${uid}"></div>
     <div class="tumor-box"><canvas></canvas></div>
-    <div class="tumor-note" id="tumorNotes"></div>
-    ${editing ? '<button class="btn-ghost" id="btnAddTumor" style="margin-top:12px">➕ เพิ่มบันทึก</button><div id="tumorList" style="margin-top:10px"></div>' : ''}`;
+    <div class="tumor-note" id="notes-${uid}"></div>
+    ${editing ? `<button class="btn-ghost" id="add-${uid}" style="margin-top:12px">➕ เพิ่มบันทึก</button><div id="list-${uid}" style="margin-top:10px"></div>` : ''}`;
 
   if (ROLE.canEdit) setTimeout(() => {
-    el.querySelector('#tgTumor').onclick = () => { SUM_EDIT.tumor = !SUM_EDIT.tumor; showTab('summary'); };
+    el.querySelector(`#tg-${uid}`).onclick = () => { SUM_EDIT[editKey] = !editing; showTab('summary'); };
     if (!editing) return;
-    el.querySelector('#btnAddTumor').onclick = () => editTumor(null);
-    // ลิสต์รายการทั้งหมด (เรียงใหม่สุดก่อน) พร้อมแก้/ลบ
+    el.querySelector(`#add-${uid}`).onclick = () => editGraphEntry(savePath, uid, null);
     const sorted = rows.map((r, i) => ({ ...r, _i: i })).sort((a, b) => new Date(b.date) - new Date(a.date));
-    el.querySelector('#tumorList').innerHTML = sorted.map((r) => `
+    el.querySelector(`#list-${uid}`).innerHTML = sorted.map((r) => `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;background:var(--surface2)">
-        <span style="font-size:12.5px">${r.alert ? '⚠️ ' : ''}<b>${TC.thDateShort(r.date)}</b> · ${r.size != null ? r.size + ' cm' : '—'}${r.note ? ' · ' + TC.esc(r.note) : ''}</span>
+        <span style="font-size:12.5px">${r.alert ? '⚠️ ' : ''}<b>${TC.thDateShort(r.date)}</b> · ${r.size != null ? r.size + (unit ? ' ' + unit : '') : '—'}${r.note ? ' · ' + TC.esc(r.note) : ''}</span>
         <span class="inline-actions" style="margin:0;white-space:nowrap">
           <a class="act-edit" data-e="${r._i}">แก้</a><a class="act-del" data-d="${r._i}">ลบ</a></span>
       </div>`).join('');
-    el.querySelectorAll('#tumorList [data-e]').forEach((a) => a.onclick = () => editTumor(Number(a.dataset.e)));
-    el.querySelectorAll('#tumorList [data-d]').forEach((a) => a.onclick = () => delTumor(Number(a.dataset.d)));
+    el.querySelectorAll(`#list-${uid} [data-e]`).forEach((a) => a.onclick = () => editGraphEntry(savePath, uid, Number(a.dataset.e)));
+    el.querySelectorAll(`#list-${uid} [data-d]`).forEach((a) => a.onclick = () => delGraphEntry(savePath, Number(a.dataset.d)));
   }, 0);
 
-  const pts = rows.filter((r) => r.size != null)
-                  .sort((a, b) => new Date(a.date) - new Date(b.date));
-
+  const pts = rows.filter((r) => r.size != null).sort((a, b) => new Date(a.date) - new Date(b.date));
   setTimeout(() => {
     if (!pts.length) { el.querySelector('.tumor-box').innerHTML = '<div class="empty">ยังไม่มีค่าที่วัดได้</div>'; }
     else {
       new Chart(el.querySelector('canvas'), {
         type: 'line',
-        data: {
-          labels: pts.map((p) => TC.thDateShort(p.date)),
-          datasets: [{
-            data: pts.map((p) => p.size),
+        data: { labels: pts.map((p) => TC.thDateShort(p.date)),
+          datasets: [{ data: pts.map((p) => p.size),
             borderColor: '#5b86bf', backgroundColor: 'rgba(169,196,232,0.25)',
             pointBackgroundColor: pts.map((p) => (p.alert ? '#d96a6a' : '#5b86bf')),
-            pointRadius: 4, tension: 0.3, fill: true,
-          }],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, ticks: { color: '#8c7f6f' }, grid: { color: '#efe0cd' } },
-            x: { ticks: { color: '#8c7f6f', font: { size: 10 } }, grid: { display: false } },
-          },
-        },
+            pointRadius: 4, tension: 0.3, fill: true }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { color: '#8c7f6f' }, grid: { color: '#efe0cd' } },
+            x: { ticks: { color: '#8c7f6f', font: { size: 10 } }, grid: { display: false } } } },
       });
     }
-    // บันทึกล่าสุด 3 รายการ (รวมรายการที่ไม่มีตัวเลข เช่น "มีก้อนเพิ่ม")
     const notes = rows.filter((r) => r.note).slice(-3).reverse();
-    el.querySelector('#tumorNotes').innerHTML = notes
-      .map((n) => `<div>${n.alert ? '⚠️ ' : '· '}<b>${TC.thDateShort(n.date)}</b> — ${TC.esc(n.note)}</div>`)
-      .join('');
+    el.querySelector(`#notes-${uid}`).innerHTML = notes
+      .map((n) => `<div>${n.alert ? '⚠️ ' : '· '}<b>${TC.thDateShort(n.date)}</b> — ${TC.esc(n.note)}</div>`).join('');
   }, 0);
 
   return el;
 }
 
-function editTumor(idx) {
-  const rows = (PET.data.vitals && PET.data.vitals.liverTumor) || [];
+// อ่าน/เขียนอาร์เรย์ที่ savePath (เช่น ['vitals','liverTumor'] หรือ ['custom','c_x','items'])
+function readPath(path) {
+  let cur = PET.data;
+  for (const k of path) { cur = (cur || {})[k]; }
+  return Array.isArray(cur) ? cur : [];
+}
+
+function editGraphEntry(savePath, uid, idx) {
+  const rows = readPath(savePath);
   const cur = idx === null ? {} : rows[idx];
-  openForm('tumorForm', {
-    title: idx === null ? '➕ เพิ่มบันทึกก้อนในตับ' : '✏️ แก้บันทึก',
+  openForm(`form-${uid}`, {
+    title: idx === null ? '➕ เพิ่มบันทึก' : '✏️ แก้บันทึก',
     fields: [
       { key: 'date', label: 'วันที่', type: 'date' },
-      { key: 'size', label: 'ขนาด (cm) — เว้นว่างได้ถ้าไม่ได้วัด', type: 'text', placeholder: 'เช่น 1.4' },
-      { key: 'note', label: 'หมายเหตุ', type: 'textarea', placeholder: 'เช่น มีก้อนเพิ่ม รวม 4 ก้อน' },
+      { key: 'size', label: 'ค่า/ตัวเลข — เว้นว่างได้ถ้าไม่ได้วัด', type: 'text', placeholder: 'เช่น 1.4' },
+      { key: 'note', label: 'หมายเหตุ', type: 'textarea' },
       { key: 'alert', label: 'ทำเครื่องหมายเตือน (⚠️)', type: 'select', options: [
         { value: '', label: 'ไม่' }, { value: '1', label: 'ใช่ — เน้นเป็นจุดเตือน' }] },
     ],
     values: { date: cur.date || '', size: cur.size ?? '', note: cur.note || '', alert: cur.alert ? '1' : '' },
     onSave: async (v) => {
       if (!v.date) throw new Error('กรุณาเลือกวันที่');
-      const entry = { date: v.date };
-      if (v.size !== '') entry.size = Number(v.size);
-      else entry.size = null;
+      const entry = { date: v.date, size: v.size === '' ? null : Number(v.size) };
       if (v.note) entry.note = v.note;
       if (v.alert) entry.alert = true;
-
-      const vitals = JSON.parse(JSON.stringify(PET.data.vitals || {}));
-      vitals.liverTumor = vitals.liverTumor || [];
-      if (idx === null) vitals.liverTumor.push(entry); else vitals.liverTumor[idx] = entry;
-      vitals.liverTumor.sort((a, b) => new Date(a.date) - new Date(b.date));
-      PET.data = await TC.setPetPath(PET.id, ['vitals'], vitals);
+      const arr = [...rows];
+      if (idx === null) arr.push(entry); else arr[idx] = entry;
+      arr.sort((a, b) => new Date(a.date) - new Date(b.date));
+      PET.data = await TC.setPetPath(PET.id, savePath, arr);
       showTab('summary');
     },
   });
 }
 
-async function delTumor(idx) {
-  const rows = (PET.data.vitals && PET.data.vitals.liverTumor) || [];
-  const r = rows[idx];
-  if (!confirm(`ลบบันทึก ${TC.thDateShort(r.date)} ?`)) return;
-  const vitals = JSON.parse(JSON.stringify(PET.data.vitals || {}));
-  vitals.liverTumor.splice(idx, 1);
-  try { PET.data = await TC.setPetPath(PET.id, ['vitals'], vitals); showTab('summary'); }
+async function delGraphEntry(savePath, idx) {
+  const rows = readPath(savePath);
+  if (!confirm(`ลบบันทึก ${TC.thDateShort(rows[idx].date)} ?`)) return;
+  const arr = [...rows]; arr.splice(idx, 1);
+  try { PET.data = await TC.setPetPath(PET.id, savePath, arr); showTab('summary'); }
   catch (e) { alert(e.message); }
 }
 </script>
