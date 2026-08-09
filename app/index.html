@@ -6,7 +6,7 @@
 <title>Tammie Care 🐾</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=18">
+<link rel="stylesheet" href="theme.css?v=19">
 <style>
   .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
   .pet-card {
@@ -50,12 +50,23 @@
     font-size: 30px; color: var(--blue); line-height: 1; }
   .hero-fb .paw { font-size: 40px; }
   .hero-bar {
-    position: absolute; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px;
-    background: rgba(255,255,255,0.82); backdrop-filter: blur(4px);
-    border: 1px solid var(--border); border-radius: 20px; padding: 6px 10px; line-height: normal;
-    box-shadow: 0 4px 14px rgba(74,64,53,0.16); flex-wrap: wrap; max-width: calc(100% - 24px); justify-content: flex-end;
+    position: absolute; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(4px);
+    border: 1px solid var(--border); border-radius: 18px; padding: 5px 8px; line-height: normal;
+    box-shadow: 0 4px 14px rgba(74,64,53,0.16);
   }
-  .hero-email { font-size: 12px; color: var(--text-dim); font-family: var(--mono); word-break: break-all; }
+  .hero-bar .btn-ghost { padding: 5px 10px; font-size: 12.5px; }
+  .hero-email {
+    font-size: 12px; color: var(--text-dim); font-family: var(--mono);
+    max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* มือถือ: ปุ่มเหลือไอคอน + ชื่อสั้นลง กัน banner ถูกบัง */
+  @media (max-width: 560px) {
+    .hero-bar { right: 8px; bottom: 8px; gap: 5px; padding: 4px 7px; }
+    .hero-bar .btn-ghost .lbl { display: none; }
+    .hero-bar .btn-ghost { padding: 6px 9px; font-size: 15px; }
+    .hero-email { max-width: 72px; font-size: 11px; }
+  }
 </style>
 </head>
 <body>
@@ -67,8 +78,8 @@
   <div class="hero-bar">
     <span class="hero-email" id="whoami" title="กดเพื่อแก้ชื่อ" style="cursor:pointer"></span>
     <span id="rolePill"></span>
-    <a class="btn-ghost" id="manageLink" href="family.html" style="display:none">👪 จัดการ</a>
-    <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
+    <a class="btn-ghost" id="manageLink" href="family.html" style="display:none">👪<span class="lbl"> จัดการ</span></a>
+    <button class="btn-ghost" onclick="TC.signOut()">🚪<span class="lbl"> ออก</span></button>
   </div>
 </div>
 
