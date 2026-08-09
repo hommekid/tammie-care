@@ -6,7 +6,7 @@
 <title>Dashboard 🐾 · Tammie Care</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=15">
+<link rel="stylesheet" href="theme.css?v=16">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -1068,7 +1068,14 @@ function fillLabBody(body, panel) {
   const cfgs = labConfigFor(panel.id);
   const rows = labsOf(panel.id);
   const latest = rows[0];
-  if (!latest) { body.innerHTML = '<div class="empty">ยังไม่มีผลตรวจในหมวดนี้</div>'; return; }
+  if (!latest) {
+    body.innerHTML = `<div class="empty">ยังไม่มีผลตรวจในหมวดนี้</div>
+      ${ROLE.canEdit ? `<div class="inline-actions" style="margin-top:10px">
+        <a class="act-edit" id="labParams-${panel.id}">⚙️ ตั้งค่าที่ตรวจ + เกณฑ์ปกติ</a></div>
+      <div id="paramForm-${panel.id}"></div>` : ''}`;
+    if (ROLE.canEdit) document.getElementById(`labParams-${panel.id}`).onclick = () => openParamEditor(panel.id);
+    return;
+  }
 
   // 1) การ์ดค่าล่าสุด
   const cards = cfgs.filter((c) => latest.values[c.key] != null && latest.values[c.key] !== '')
@@ -1100,9 +1107,11 @@ function fillLabBody(body, panel) {
       <summary>📋 ตารางทุกวันที่ (${rows.length} ครั้ง)</summary>
       <div id="labTbl-${panel.id}"></div>
     </details>
-    ${ROLE.canEdit ? `<div class="inline-actions" style="margin-top:12px">
+    ${ROLE.canEdit ? `<div class="inline-actions" style="margin-top:12px;gap:14px">
       <a class="act-edit" id="labEditLatest-${panel.id}">✏️ แก้ผลล่าสุด (${TC.thDateShort(latest.date)})</a>
-    </div>` : ''}`;
+      <a class="act-edit" id="labParams-${panel.id}">⚙️ ค่าตรวจ + เกณฑ์ปกติ</a>
+    </div>
+    <div id="paramForm-${panel.id}"></div>` : ''}`;
 
   if (plottable.length) {
     const sel = document.getElementById(`labSel-${panel.id}`);
@@ -1118,7 +1127,93 @@ function fillLabBody(body, panel) {
       const gi = (PET.data.labs || []).findIndex((l) => l === latest);
       openLabForm(gi);
     };
+    document.getElementById(`labParams-${panel.id}`).onclick = () => openParamEditor(panel.id);
   }
+}
+
+/* ---------- จัดการค่าตรวจ + เกณฑ์ปกติ (labConfig) ของหมวด ---------- */
+function openParamEditor(panelId) {
+  const holder = document.getElementById(`paramForm-${panelId}`);
+  const cfgs = labConfigFor(panelId);
+
+  const rowHTML = (c, i) => `
+    <div class="param-row" data-i="${i}">
+      <input type="text" class="p-label" value="${TC.esc(c.label || '')}" placeholder="ชื่อค่า เช่น WBC">
+      <input type="text" class="p-unit" value="${TC.esc(c.unit || '')}" placeholder="หน่วย">
+      <input type="text" class="p-min" inputmode="decimal" value="${c.min ?? ''}" placeholder="ต่ำสุด">
+      <input type="text" class="p-max" inputmode="decimal" value="${c.max ?? ''}" placeholder="สูงสุด">
+      <a class="rm-param2" title="ลบค่านี้">×</a>
+    </div>`;
+
+  holder.innerHTML = `
+    <div class="edit-form">
+      <h3>⚙️ ค่าที่ตรวจ + เกณฑ์ปกติ</h3>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">เว้นช่องเกณฑ์ว่างได้ถ้าไม่มีค่าปกติ · ค่าที่อยู่นอกช่วงจะขึ้นสีแดง</p>
+      <div class="param-head">
+        <span>ชื่อค่า</span><span>หน่วย</span><span>ปกติต่ำสุด</span><span>ปกติสูงสุด</span><span></span>
+      </div>
+      <div id="paramRows-${panelId}">${cfgs.map(rowHTML).join('')}</div>
+      <button class="btn-ghost" id="pAdd-${panelId}" style="margin-top:8px">➕ เพิ่มค่าตรวจ</button>
+      <div class="btns"><button class="btn" id="pSave-${panelId}">บันทึก</button>
+        <button class="btn-ghost" id="pCancel-${panelId}">ยกเลิก</button></div>
+      <div class="saving" id="pMsg-${panelId}"></div>
+    </div>`;
+
+  // เก็บ key เดิมไว้จับคู่ตอนบันทึก (ค่าใหม่ยังไม่มี key)
+  const keys = cfgs.map((c) => c.key);
+  const newKeys = [];
+
+  const wireRm = () => holder.querySelectorAll('.rm-param2').forEach((x) => x.onclick = () => {
+    x.closest('.param-row').remove();
+  });
+  wireRm();
+
+  document.getElementById(`pAdd-${panelId}`).onclick = () => {
+    const rows = document.getElementById(`paramRows-${panelId}`);
+    const i = keys.length + newKeys.length;
+    const nk = 'p_' + Math.random().toString(36).slice(2, 8);
+    newKeys.push(nk);
+    rows.insertAdjacentHTML('beforeend', rowHTML({ label: '', unit: '', min: '', max: '' }, i));
+    // ผูก key ใหม่ให้แถวล่าสุด
+    rows.lastElementChild.dataset.newkey = nk;
+    wireRм();
+  };
+
+  document.getElementById(`pCancel-${panelId}`).onclick = () => { holder.innerHTML = ''; };
+
+  document.getElementById(`pSave-${panelId}`).onclick = async () => {
+    const btn = document.getElementById(`pSave-${panelId}`);
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+    try {
+      // อ่านทุกแถวที่เหลือ (ที่ไม่ถูกลบ) เป็น labConfig ใหม่ของหมวดนี้
+      const newCfgForPanel = [];
+      holder.querySelectorAll('.param-row').forEach((row) => {
+        const label = row.querySelector('.p-label').value.trim();
+        if (!label) return;   // ไม่มีชื่อ = ข้าม
+        const i = Number(row.dataset.i);
+        const key = row.dataset.newkey || keys[i] || ('p_' + Math.random().toString(36).slice(2, 8));
+        const min = row.querySelector('.p-min').value.trim();
+        const max = row.querySelector('.p-max').value.trim();
+        newCfgForPanel.push({
+          panel: panelId, key, label,
+          unit: row.querySelector('.p-unit').value.trim(),
+          min: min === '' ? '' : Number(min),
+          max: max === '' ? '' : Number(max),
+        });
+      });
+
+      // รวมกับ labConfig ของหมวดอื่น (แทนที่เฉพาะของหมวดนี้)
+      const others = (PET.data.labConfig || []).filter((c) => c.panel !== panelId);
+      PET.data = await TC.setPetPath(PET.id, ['labConfig'], [...others, ...newCfgForPanel]);
+      LAB_OPEN = panelId;
+      showTab('labs');
+    } catch (e) {
+      alert(e.message || 'บันทึกไม่สำเร็จ');
+      btn.disabled = false; btn.textContent = 'บันทึก';
+    }
+  };
+
+  holder.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 let labChartObj = {};
@@ -1406,6 +1501,8 @@ function openPanelForm() {
       PET.data = await TC.setPetPath(PET.id, ['labPanels'], panels);
       LAB_OPEN = id;
       showTab('labs');
+      // เปิดตัวตั้งค่าที่ตรวจ + เกณฑ์ปกติ ให้เลย (หมวดใหม่ยังไม่มีค่าตรวจ)
+      setTimeout(() => { const b = document.getElementById(`labParams-${id}`); if (b) openParamEditor(id); }, 60);
     },
   });
 }
