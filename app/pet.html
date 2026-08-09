@@ -102,8 +102,8 @@ function renderHeader() {
     TC.fillImg(img, photo);
   }
 
-  // ปุ่มแก้โปรไฟล์ (เฉพาะคนที่แก้ได้) — ใส่ครั้งเดียว
-  if (ROLE.canEdit && !document.getElementById('editProfileBtn')) {
+  // ปุ่มแก้โปรไฟล์ (เฉพาะ admin) — ใส่ครั้งเดียว
+  if (ROLE.isAdmin && !document.getElementById('editProfileBtn')) {
     const b = document.createElement('a');
     b.id = 'editProfileBtn';
     b.className = 'sum-edit-toggle';
@@ -192,9 +192,8 @@ async function saveProfile() {
     }
 
     msg.textContent = 'กำลังบันทึก...';
-    // เขียน card ลง data + sync ชื่อที่คอลัมน์ pets.name (ใช้ในหน้ารายชื่อ/จัดการ)
-    PET.data = await TC.setPetPath(PET.id, ['card'], card);
-    await TC.sb.from('pets').update({ name }).eq('id', PET.id);
+    // RPC เดียวเขียน card + sync ชื่อ pets.name (admin เท่านั้น — เช็กใน DB)
+    PET.data = await TC.setPetProfile(PET.id, card, name);
     PET.name = name;
 
     renderHeader();
