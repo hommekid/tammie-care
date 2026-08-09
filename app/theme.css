@@ -285,12 +285,15 @@ details.lab-history > summary { cursor: pointer; font-size: 12.5px; color: var(-
 .lab-page button:disabled { opacity: .3; cursor: default; }
 
 /* ตัวจัดการค่าตรวจ + เกณฑ์ปกติ */
-.param-head { display: grid; grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 24px; gap: 6px; font-size: 10.5px; color: var(--text-muted); font-family: var(--mono); padding: 0 2px 4px; }
-.param-row { display: grid; grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 24px; gap: 6px; margin-bottom: 6px; align-items: center; }
+.param-head { display: grid; grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 78px; gap: 6px; font-size: 10.5px; color: var(--text-muted); font-family: var(--mono); padding: 0 2px 4px; }
+.param-row { display: grid; grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 78px; gap: 6px; margin-bottom: 6px; align-items: center; }
 .param-row input { width: 100%; padding: 7px 8px; font-size: 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); outline: none; font-family: 'Sarabun', sans-serif; }
 .param-row input.p-min, .param-row input.p-max { font-family: var(--mono); }
 .param-row input:focus { border-color: var(--sky); }
-.param-row .rm-param2 { color: var(--red); cursor: pointer; font-size: 18px; text-align: center; }
+.param-btns { display: flex; align-items: center; gap: 3px; justify-content: flex-end; }
+.param-btns .p-up, .param-btns .p-dn { border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); border-radius: 5px; width: 22px; height: 26px; cursor: pointer; font-size: 12px; line-height: 1; padding: 0; }
+.param-btns .p-up:hover, .param-btns .p-dn:hover { border-color: var(--sky); color: var(--sky); }
+.param-btns .rm-param2 { color: var(--red); cursor: pointer; font-size: 18px; }
 
 /* ตารางกรอกค่าในฟอร์มเพิ่มผลเลือด */
 .lab-input-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
