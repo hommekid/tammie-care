@@ -131,8 +131,18 @@ const TC = (() => {
     if (error) throw new Error(saveErrorTH(error));
   }
 
-  /** ลบสัตว์ถาวร (admin เท่านั้น ตาม RLS) — ลบแล้วกู้คืนไม่ได้ */
+  /** ลบสัตว์ถาวร (admin เท่านั้น) — ลบรูปทั้งหมดใน Storage แล้วลบแถวข้อมูล */
   async function deletePet(petId) {
+    // 1) ลบรูปทุกใบในโฟลเดอร์ <petId>/ ออกจาก bucket
+    try {
+      const { data: files } = await sb.storage.from(cfg.BUCKET).list(petId, { limit: 1000 });
+      if (files && files.length) {
+        const paths = files.map((f) => `${petId}/${f.name}`);
+        await sb.storage.from(cfg.BUCKET).remove(paths);
+      }
+    } catch (_) { /* ลบรูปพลาดก็ยังลบแถวต่อ (รูปกลายเป็นกำพร้าอย่างมากสุด) */ }
+
+    // 2) ลบแถวข้อมูลสัตว์ (RLS ตรวจ admin)
     const { error } = await sb.from('pets').delete().eq('id', petId);
     if (error) throw new Error(saveErrorTH(error));
   }
