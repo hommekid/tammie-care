@@ -1325,7 +1325,7 @@ function drawLabForm(panelId, cur) {
     const v = cur ? (cur.values[c.key] ?? '') : '';
     return `<div class="lab-input">
       <label>${TC.esc(c.label)}${c.unit ? ` <span style="color:var(--text-muted)">${TC.esc(c.unit)}</span>` : ''}</label>
-      <input type="text" data-key="${TC.esc(c.key)}" value="${TC.esc(String(v))}" placeholder="เช่น 4030 หรือ >2000">
+      <input type="text" data-key="${TC.esc(c.key)}" value="${TC.esc(String(v))}">
     </div>`;
   };
 
@@ -1438,7 +1438,7 @@ function appendParamInput(ek) {
   div.innerHTML = `
     <label>${TC.esc(ek.label)}${ek.unit ? ` <span style="color:var(--text-muted)">${TC.esc(ek.unit)}</span>` : ''}
       <span class="rm-param" title="เอาออก">×</span></label>
-    <input type="text" data-key="${TC.esc(ek.key)}" placeholder="เช่น 4030 หรือ >2000">`;
+    <input type="text" data-key="${TC.esc(ek.key)}">`;
   div.querySelector('.rm-param').onclick = () => {
     LAB_EDIT.extraKeys = LAB_EDIT.extraKeys.filter((x) => x.key !== ek.key);
     div.remove();
