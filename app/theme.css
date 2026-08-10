@@ -284,6 +284,9 @@ details.lab-history > summary { cursor: pointer; font-size: 12.5px; color: var(-
 .lab-page button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 12px; cursor: pointer; font-family: 'Sarabun', sans-serif; font-size: 12px; }
 .lab-page button:disabled { opacity: .3; cursor: default; }
 
+.tpl-row { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); margin-bottom: 6px; font-size: 13.5px; cursor: pointer; }
+.tpl-row input { width: auto; }
+
 /* ตัวจัดการค่าตรวจ + เกณฑ์ปกติ */
 .param-head { display: grid; grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 78px; gap: 6px; font-size: 10.5px; color: var(--text-muted); font-family: var(--mono); padding: 0 2px 4px; }
 .param-row { display: grid; grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 78px; gap: 6px; margin-bottom: 6px; align-items: center; }

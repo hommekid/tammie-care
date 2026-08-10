@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=21">
+<link rel="stylesheet" href="theme.css?v=22">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -1199,21 +1199,29 @@ let LAB_OPEN = null;   // จำหมวดที่กางไว้ ข้�
 
 function renderLabs(root) {
   const d = PET.data || {};
-  const panels = d.labPanels || [];
+  const allPanels = d.labPanels || [];
+  const hidden = (d.display && d.display.hiddenPanels) || [];
+  const panels = allPanels.filter((p) => !hidden.includes(p.id));   // ซ่อนแล้วไม่โผล่ (ข้อมูลยังอยู่)
 
   root.innerHTML = `
     <div class="edit-bar">
       <span class="section-label" style="margin:0">🧪 ผลเลือด</span>
       ${ROLE.canEdit ? `
         <button class="btn-ghost" id="btnAddLab">➕ เพิ่มผลตรวจ</button>
-        <button class="btn-ghost" id="btnAddPanel">➕ เพิ่มหมวด</button>` : ''}
+        <button class="btn-ghost" id="btnAddPanel">➕ เพิ่มหมวด</button>
+        ${allPanels.length ? '<a class="sum-edit-toggle" id="btnMngPanel" style="margin:0">⚙️ จัดการหมวด</a>' : ''}` : ''}
     </div>
     <div id="labForm"></div>
-    ${panels.length ? `<div id="labAccs"></div>` : '<div class="empty">ยังไม่มีผลเลือด</div>'}`;
+    <div id="labPanelCfg"></div>
+    ${panels.length ? `<div id="labAccs"></div>` :
+      (allPanels.length ? '<div class="empty">หมวดทั้งหมดถูกซ่อนอยู่ — กด ⚙️ จัดการหมวด เพื่อแสดง</div>'
+                        : '<div class="empty">ยังไม่มีผลเลือด</div>')}`;
 
   if (ROLE.canEdit) {
     document.getElementById('btnAddLab').onclick = () => openLabForm(null);
     document.getElementById('btnAddPanel').onclick = openPanelForm;
+    const mng = document.getElementById('btnMngPanel');
+    if (mng) mng.onclick = () => toggleLabPanelCfg(d, allPanels, hidden);
   }
   if (!panels.length) return;
 
@@ -1226,6 +1234,37 @@ function renderLabs(root) {
     const openAcc = [...wrap.children].find((el) => el.classList.contains('open'));
     if (openPanel && openAcc) fillLabBody(openAcc.querySelector('.lab-acc-body'), openPanel);
   }
+}
+
+let LAB_PANEL_CFG_OPEN = false;
+function toggleLabPanelCfg(d, allPanels, hidden) {
+  LAB_PANEL_CFG_OPEN = !LAB_PANEL_CFG_OPEN;
+  const holder = document.getElementById('labPanelCfg');
+  if (!LAB_PANEL_CFG_OPEN) { holder.innerHTML = ''; return; }
+
+  holder.innerHTML = `
+    <div class="edit-form">
+      <h3>⚙️ จัดการหมวดที่แสดง</h3>
+      <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">ติ๊กหมวดที่อยากให้แสดง — เอาติ๊กออกเพื่อซ่อน (ข้อมูลไม่หาย กลับมาแสดงได้)</p>
+      ${allPanels.map((p) => `
+        <label class="tpl-row"><input type="checkbox" data-pan="${p.id}" ${hidden.includes(p.id) ? '' : 'checked'}> ${TC.esc(p.name)}</label>
+      `).join('')}
+      <div class="btns"><button class="btn" id="panCfgSave">บันทึก</button>
+        <button class="btn-ghost" id="panCfgCancel">ปิด</button></div>
+      <div class="saving" id="panCfgMsg" style="margin-top:8px"></div>
+    </div>`;
+
+  document.getElementById('panCfgCancel').onclick = () => { LAB_PANEL_CFG_OPEN = false; holder.innerHTML = ''; };
+  document.getElementById('panCfgSave').onclick = async () => {
+    const newHidden = [...holder.querySelectorAll('[data-pan]')].filter((c) => !c.checked).map((c) => c.dataset.pan);
+    try {
+      const display = JSON.parse(JSON.stringify(d.display || {}));
+      display.hiddenPanels = newHidden;
+      PET.data = await TC.setPetPath(PET.id, ['display'], display);
+      LAB_PANEL_CFG_OPEN = false;
+      showTab('labs');
+    } catch (e) { document.getElementById('panCfgMsg').textContent = e.message; }
+  };
 }
 
 function labAccordion(panel) {
@@ -1740,23 +1779,112 @@ async function delLab(panelId, cur) {
   } catch (err) { alert(err.message || 'ลบไม่สำเร็จ'); }
 }
 
-function openPanelForm() {
-  openForm('labForm', {
-    title: '➕ เพิ่มหมวดผลเลือด',
-    fields: [
-      { key: 'name', label: 'ชื่อหมวด', type: 'text', placeholder: 'เช่น Urinalysis, Thyroid Panel' },
+// เทมเพลตหมวดผลเลือดสำเร็จรูป (ค่า + เกณฑ์ปกติอ้างอิง — ผู้ใช้ควรเช็กกับใบแล็บของตัวเองอีกที)
+const LAB_TEMPLATES = {
+  cbc: {
+    name: 'CBC (Hematology)',
+    params: [
+      { label: 'RBC', unit: '×10⁶/µL', min: 5, max: 9 }, { label: 'HGB', unit: 'g/dL', min: 10, max: 18 },
+      { label: 'HCT', unit: '%', min: 35, max: 55 }, { label: 'MCV', unit: 'fL', min: 60, max: 77 },
+      { label: 'MCH', unit: 'pg', min: 19.5, max: 24.5 }, { label: 'MCHC', unit: 'g/dL', min: 32, max: 36 },
+      { label: 'RDW', unit: '%', min: '', max: '' }, { label: 'nRBC', unit: '/100 WBC', min: '', max: '' },
+      { label: 'WBC', unit: '/µL', min: 6000, max: 17000 }, { label: 'BAND', unit: '%', min: 0, max: 300 },
+      { label: 'NEU', unit: '/µL', min: 3000, max: 11400 }, { label: 'LYM', unit: '/µL', min: 1000, max: 4800 },
+      { label: 'MONO', unit: '/µL', min: 150, max: 1350 }, { label: 'EOSI', unit: '/µL', min: 100, max: 750 },
+      { label: 'BASO', unit: '/µL', min: '', max: '' }, { label: 'PLT', unit: '×10³/µL', min: 200, max: 500 },
+      { label: 'MPV', unit: 'fL', min: '', max: '' }, { label: 'Plasma Protein', unit: 'g/dL', min: 6, max: 7.5 },
     ],
-    onSave: async (v) => {
-      if (!v.name) throw new Error('กรุณากรอกชื่อหมวด');
-      const id = 'panel_' + Math.random().toString(36).slice(2, 7);
-      const panels = [...((PET.data || {}).labPanels || []), { id, name: v.name }];
+  },
+  chem: {
+    name: 'ค่าชีวเคมี (Blood Chemistry)',
+    params: [
+      { label: 'BUN', unit: 'mg/dL', min: 10, max: 26 }, { label: 'Creatinine', unit: 'mg/dL', min: 0.5, max: 1.3 },
+      { label: 'ALT (SGPT)', unit: 'µ/L', min: 6, max: 70 }, { label: 'ALP', unit: 'µ/L', min: 8, max: 76 },
+      { label: 'AST (SGOT)', unit: 'µ/L', min: 10, max: 43 }, { label: 'GGT', unit: 'µ/L', min: 0, max: 6 },
+      { label: 'Total Protein', unit: 'g/dL', min: 5.3, max: 7.8 }, { label: 'Albumin', unit: 'g/dL', min: 2.3, max: 3.2 },
+      { label: 'Globulin', unit: 'g/dL', min: 1.5, max: 3.9 }, { label: 'ALB:GLO ratio', unit: '', min: '', max: '' },
+      { label: 'Amylase', unit: 'µ/L', min: '', max: 1800 },
+      { label: 'Total Cholesterol', unit: 'mg/dL', min: 112, max: 358 }, { label: 'Triglyceride', unit: 'mg/dL', min: 21, max: 87 },
+      { label: 'LIPASE', unit: '', min: 77, max: 695 },
+      { label: 'TOTAL BILIRUBIN', unit: 'mg/dL', min: '', max: '' },
+      { label: '- Direct (TOTAL BILIRUBIN)', unit: 'mg/dL', min: '', max: '' },
+      { label: '- Indirect (TOTAL BILIRUBIN)', unit: 'mg/dL', min: '', max: '' },
+      { label: 'TOTAL CALCIUM', unit: 'mg/dL', min: 9.8, max: 12 }, { label: 'PHOSPHORUS', unit: 'mg/dL', min: 2.5, max: 5 },
+      { label: 'SODIUM', unit: 'mEq/dL', min: 138, max: 152 }, { label: 'POTASSIUM', unit: 'mEq/dL', min: 3.5, max: 5.1 },
+      { label: 'CHLORIDE', unit: 'mEq/dL', min: 109, max: 125 },
+    ],
+  },
+};
+
+function openPanelForm() {
+  const holder = document.getElementById('labForm');
+  holder.innerHTML = `
+    <div class="edit-form">
+      <h3>➕ เพิ่มหมวดผลเลือด</h3>
+      <div class="fld">
+        <label>เลือกเทมเพลตสำเร็จรูป (ค่า + เกณฑ์ปกติมาให้เลย)</label>
+        <label class="tpl-row"><input type="checkbox" id="tplCbc"> <b>CBC (Hematology)</b> — 16 ค่า</label>
+        <label class="tpl-row"><input type="checkbox" id="tplChem"> <b>ค่าชีวเคมี (Blood Chemistry)</b> — 22 ค่า</label>
+      </div>
+      <div class="fld">
+        <label>หรือสร้างหมวดว่างเอง (พิมพ์ชื่อ)</label>
+        <input type="text" id="tplCustom" placeholder="เช่น Urinalysis, Thyroid Panel">
+      </div>
+      <div class="btns">
+        <button class="btn" id="tplSave">เพิ่ม</button>
+        <button class="btn-ghost" id="tplCancel">ยกเลิก</button>
+      </div>
+      <div class="saving" id="tplMsg" style="margin-top:8px"></div>
+    </div>`;
+
+  document.getElementById('tplCancel').onclick = () => { holder.innerHTML = ''; };
+  document.getElementById('tplSave').onclick = async () => {
+    const wantCbc = document.getElementById('tplCbc').checked;
+    const wantChem = document.getElementById('tplChem').checked;
+    const customName = document.getElementById('tplCustom').value.trim();
+    if (!wantCbc && !wantChem && !customName) { alert('เลือกเทมเพลต หรือพิมพ์ชื่อหมวดอย่างน้อยหนึ่งอย่าง'); return; }
+
+    const btn = document.getElementById('tplSave');
+    btn.disabled = true; btn.textContent = 'กำลังเพิ่ม...';
+    try {
+      const d = PET.data || {};
+      const panels = [...(d.labPanels || [])];
+      let cfg = [...(d.labConfig || [])];
+      let firstId = null;
+      const usedTemplate = wantCbc || wantChem;
+
+      const addTemplate = (tplKey) => {
+        const tpl = LAB_TEMPLATES[tplKey];
+        const id = 'panel_' + Math.random().toString(36).slice(2, 7);
+        if (!firstId) firstId = id;
+        panels.push({ id, name: tpl.name });
+        tpl.params.forEach((p) => cfg.push({
+          panel: id, key: 'p_' + Math.random().toString(36).slice(2, 8),
+          label: p.label, unit: p.unit, min: p.min, max: p.max,
+        }));
+      };
+      if (wantCbc) addTemplate('cbc');
+      if (wantChem) addTemplate('chem');
+      if (customName) {
+        const id = 'panel_' + Math.random().toString(36).slice(2, 7);
+        if (!firstId) firstId = id;
+        panels.push({ id, name: customName });
+      }
+
+      await TC.setPetPath(PET.id, ['labConfig'], cfg);
       PET.data = await TC.setPetPath(PET.id, ['labPanels'], panels);
-      LAB_OPEN = id;
+      LAB_OPEN = firstId;
+
+      if (usedTemplate) {
+        alert('เพิ่มหมวดจากเทมเพลตแล้ว ✅\n\n⚠️ อย่าลืมตรวจสอบ "เกณฑ์ปกติ" ให้ตรงกับใบแล็บของน้อง — ' +
+          'แต่ละแล็บ/เครื่องตรวจอาจใช้ช่วงค่าปกติต่างกัน แก้ได้ที่ ⚙️ ค่าตรวจ + เกณฑ์ปกติ ในแต่ละหมวด');
+      }
       showTab('labs');
-      // เปิดตัวตั้งค่าที่ตรวจ + เกณฑ์ปกติ ให้เลย (หมวดใหม่ยังไม่มีค่าตรวจ)
-      setTimeout(() => { const b = document.getElementById(`labParams-${id}`); if (b) openParamEditor(id); }, 60);
-    },
-  });
+    } catch (e) {
+      document.getElementById('tplMsg').textContent = e.message || 'เพิ่มไม่สำเร็จ';
+      btn.disabled = false; btn.textContent = 'เพิ่ม';
+    }
+  };
 }
 
 
