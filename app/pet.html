@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=33">
+<link rel="stylesheet" href="theme.css?v=34">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -43,7 +43,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=33"></script>
+<script src="lib.js?v=34"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -2049,11 +2049,13 @@ function getSections(d) {
   }
   const custom = (d.custom || {});
   for (const [id, sec] of Object.entries(custom)) {
-    const icon = sec.type === 'graph' ? '📈' : '📋';
+    const icon = sec.type === 'graph' ? '📈' : sec.type === 'alert' ? '🚦' : '📋';
     map[id] = {
       label: `${icon} ${sec.title || 'หัวข้อ'}`,
       custom: true, type: sec.type,
-      build: () => (sec.type === 'graph' ? customGraphBox(id, sec) : customListBox(id, sec)),
+      build: () => (sec.type === 'graph' ? customGraphBox(id, sec)
+                  : sec.type === 'alert' ? customAlertBox(id, sec)
+                  : customListBox(id, sec)),
     };
   }
   return map;
@@ -2145,6 +2147,7 @@ function toggleSummaryCfg(d) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
         <button class="btn-ghost" id="cfgAddList">➕ เพิ่มหัวข้อแบบลิสต์</button>
         <button class="btn-ghost" id="cfgAddGraph">➕ เพิ่มหัวข้อแบบกราฟ</button>
+        <button class="btn-ghost" id="cfgAddAlert">🚦 เพิ่มไฟเตือนจากค่าผลเลือด</button>
       </div>
       <div class="btns"><button class="btn" id="cfgSave">บันทึก</button>
         <button class="btn-ghost" id="cfgCancel">ปิด</button></div>
@@ -2193,6 +2196,21 @@ function toggleSummaryCfg(d) {
   };
   document.getElementById('cfgAddList').onclick = () => addCustom('list');
   document.getElementById('cfgAddGraph').onclick = () => addCustom('graph');
+
+  // เพิ่มไฟเตือนจากค่าผลเลือด — สร้างโครงเปล่าแล้วเปิดฟอร์มตั้งเกณฑ์ทันที
+  document.getElementById('cfgAddAlert').onclick = async () => {
+    const title = await TC.prompt('ชื่อหัวข้อไฟเตือน (เช่น เกณฑ์ฉีด Leuco Plus, ระวังค่าตับ)');
+    if (!title || !title.trim()) return;
+    const id = 'c_' + Math.random().toString(36).slice(2, 8);
+    const custom = JSON.parse(JSON.stringify(d.custom || {}));
+    custom[id] = { type: 'alert', title: title.trim(), sourceKey: '', direction: 'below', danger: '', warn: '', rules: [] };
+    try {
+      PET.data = await TC.setPetPath(PET.id, ['custom'], custom);
+      SUMMARY_CFG_OPEN = false;
+      showTab('summary');
+      setTimeout(() => editCustomAlert(id), 40);   // เปิดฟอร์มตั้งเกณฑ์ให้เลือกค่าผลเลือดเลย
+    } catch (e) { document.getElementById('cfgMsg').textContent = e.message; }
+  };
 
   document.getElementById('cfgCancel').onclick = () => { SUMMARY_CFG_OPEN = false; holder.innerHTML = ''; };
   document.getElementById('cfgSave').onclick = async () => {
@@ -2279,6 +2297,98 @@ function customGraphBox(id, sec) {
     title: sec.title, unit: sec.unit || '', rows: sec.items || [],
     editKey: 'cust_' + id,
     savePath: ['custom', id, 'items'],
+  });
+}
+
+/* ---- ไฟเตือนจากค่าผลเลือด (เพิ่มเอง) — เลือกได้ว่าผูกกับค่าตรวจตัวไหน + ตั้งเกณฑ์เอง ----
+ *  โครงเดียวกับ Leuco Plus แต่ไม่ล็อกที่ WBC · sec = {type:'alert', title, sourceKey, sourceLabel, direction, danger, warn, rules[]}
+ *  direction: 'below' = ค่ายิ่งต่ำยิ่งอันตราย · 'above' = ค่ายิ่งสูงยิ่งอันตราย */
+
+/** รวมค่าผลเลือดทั้งหมดของน้องตัวนี้ (จาก labConfig + ที่เคยกรอกจริง) → [{value:key, label}] */
+function labValueOptions(d) {
+  const seen = new Map();
+  (d.labConfig || []).forEach((c) => { if (c.key && !seen.has(c.key)) seen.set(c.key, c.label || c.key); });
+  (d.labs || []).forEach((l) => Object.keys(l.values || {}).forEach((k) => { if (!seen.has(k)) seen.set(k, k); }));
+  return [...seen.entries()].map(([value, label]) => ({ value, label }));
+}
+
+function customAlertBox(id, sec) {
+  const d = PET.data || {};
+  const key = sec.sourceKey || '';
+  const label = sec.sourceLabel || (labValueOptions(d).find((o) => o.value === key) || {}).label || key;
+  const dir = sec.direction || 'below';
+  const danger = (sec.danger !== '' && sec.danger != null) ? Number(sec.danger) : null;
+  const warn = (sec.warn !== '' && sec.warn != null) ? Number(sec.warn) : null;
+
+  const labs = key ? (d.labs || []).filter((l) => l.values && l.values[key] != null) : [];
+  labs.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const latest = labs[0];
+
+  let cls = 'lp-gray', verdict, detail = '';
+  if (!key) {
+    verdict = 'ยังไม่ได้เลือกค่าผลเลือด — กด ✏️ ตั้งเกณฑ์';
+  } else if (!latest) {
+    verdict = `ยังไม่มีผล ${label}`;
+  } else {
+    const val = Number(latest.values[key]);
+    const cmp = dir === 'below' ? 'ต่ำกว่า' : 'สูงกว่า';
+    const hit = (th) => th != null && (dir === 'below' ? val < th : val > th);
+    if (hit(danger)) { cls = 'lp-red'; verdict = `🔴 ${label} ${val.toLocaleString()} — ${cmp} ${danger.toLocaleString()}`; }
+    else if (hit(warn)) { cls = 'lp-yellow'; verdict = `🟡 ${label} ${val.toLocaleString()} — ${cmp} ${warn.toLocaleString()} ควรเฝ้าระวัง`; }
+    else { cls = 'lp-green'; verdict = `🟢 ${label} ${val.toLocaleString()} — อยู่ในเกณฑ์`; }
+    detail = `ผลล่าสุด ${TC.thDate(latest.date)}`;
+  }
+
+  const el = document.createElement('div');
+  el.className = `leuco-box ${cls}`;
+  el.innerHTML = `
+    <div class="edit-bar" style="margin-bottom:8px">
+      <div class="lp-head" style="margin:0">🚦 ${TC.esc(sec.title || 'ไฟเตือนจากค่าผลเลือด')}</div>
+      ${ROLE.canEdit ? '<a class="sum-edit-toggle" id="editAlert-' + id + '" style="color:var(--gold)">✏️ ตั้งเกณฑ์</a>' : ''}
+    </div>
+    <div class="lp-verdict">${TC.esc(verdict)}</div>
+    ${detail ? `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;font-family:var(--mono)">${TC.esc(detail)}</div>` : ''}
+    ${(sec.rules || []).length ? `<ul class="lp-rules">${sec.rules.map((r) => `<li>${TC.esc(r)}</li>`).join('')}</ul>` : ''}
+    <div id="formc-${id}"></div>`;
+  if (ROLE.canEdit) setTimeout(() => {
+    el.querySelector(`#editAlert-${id}`).onclick = () => editCustomAlert(id);
+  }, 0);
+  return el;
+}
+
+function editCustomAlert(id) {
+  const sec = (PET.data.custom || {})[id] || {};
+  const opts = [{ value: '', label: '— เลือกค่าผลเลือด —' }, ...labValueOptions(PET.data)];
+  openForm(`formc-${id}`, {
+    title: '✏️ ตั้งเกณฑ์ไฟเตือน',
+    fields: [
+      { key: 'title', label: 'ชื่อหัวข้อ', type: 'text', placeholder: 'เช่น เกณฑ์ฉีด Leuco Plus' },
+      { key: 'sourceKey', label: 'ผูกกับค่าผลเลือด', type: 'select', options: opts },
+      { key: 'direction', label: 'ทิศทางอันตราย', type: 'select', options: [
+        { value: 'below', label: 'ค่ายิ่งต่ำยิ่งอันตราย (เช่น WBC)' },
+        { value: 'above', label: 'ค่ายิ่งสูงยิ่งอันตราย (เช่น ค่าตับ/ไต)' }] },
+      { key: 'danger', label: '🔴 เกณฑ์อันตราย (เกินนี้ = แดง)', type: 'text', placeholder: 'เช่น 4000' },
+      { key: 'warn', label: '🟡 เกณฑ์เฝ้าระวัง (เกินนี้ = เหลือง)', type: 'text', placeholder: 'เช่น 4500' },
+      { key: 'rules', label: 'หมายเหตุ/คำแนะนำ (บรรทัดละข้อ)', type: 'textarea', placeholder: 'เช่น ต่ำกว่า 4,000 แม้อาการปกติ → ฉีด' },
+    ],
+    values: {
+      title: sec.title || '', sourceKey: sec.sourceKey || '', direction: sec.direction || 'below',
+      danger: sec.danger ?? '', warn: sec.warn ?? '', rules: (sec.rules || []).join('\n'),
+    },
+    onSave: async (v) => {
+      if (!v.title) throw new Error('กรุณาตั้งชื่อหัวข้อ');
+      if (v.danger && Number.isNaN(Number(v.danger))) throw new Error('เกณฑ์ 🔴 ต้องเป็นตัวเลข');
+      if (v.warn && Number.isNaN(Number(v.warn))) throw new Error('เกณฑ์ 🟡 ต้องเป็นตัวเลข');
+      const opt = opts.find((o) => o.value === v.sourceKey);
+      const secNew = {
+        ...(PET.data.custom || {})[id], type: 'alert', title: v.title,
+        sourceKey: v.sourceKey, sourceLabel: (opt && opt.value) ? opt.label : '',
+        direction: v.direction, danger: v.danger, warn: v.warn,
+        rules: v.rules.split('\n').map((s) => s.trim()).filter(Boolean),
+      };
+      PET.data = await TC.setPetPath(PET.id, ['custom', id], secNew);
+      showTab('summary');
+    },
   });
 }
 

@@ -8,7 +8,7 @@
 ## ⚡ กับดักที่เจอบ่อย (เจอซ้ำแน่ถ้าไม่รู้)
 
 ### 1. แคช JS/HTML ค้าง — อาการ "แก้แล้วไม่เปลี่ยน"
-- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 33** (`sed -i '' 's/theme.css?v=33/theme.css?v=34/g; s/lib.js?v=33/lib.js?v=34/g' app/*.html`)
+- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 34** (`sed -i '' 's/theme.css?v=34/theme.css?v=35/g; s/lib.js?v=34/lib.js?v=35/g' app/*.html`)
 - **`index.html` / `pet.html` / `family.html` / `login.html` เอง ติด `?v=` ไม่ได้** (เป็น entry point) → เวลาแก้ inline JS ในไฟล์พวกนี้ ต้อง **hard refresh (Cmd+Shift+R)** หรือ incognito
 - อาการคลาสสิกที่หลงเชื่อว่าเป็นบั๊กโค้ด แต่จริง ๆ คือแคช: "ยังเห็น section เดิม", "TC.xxx is not a function", "ปุ่มเก่ายังอยู่" → **เช็กแคชก่อนเสมอ**
 - บน workers.dev ต้องรอ build (~1 นาที) หลัง push ด้วย
@@ -76,6 +76,13 @@ select set_config('role', 'authenticated', true);
 - ⚠️ ลบหมวด = เขียน `symptoms` ทั้งก้อนกลับโดยลบ key นั้น (ไม่ใช่ set `[]`) — เพราะ `dailyCats` union จะดึง key ที่มี array ว่างกลับมาโชว์ (แก้แล้วให้ union เช็ก `.length` ด้วย เป็นกันชนอีกชั้น)
 - `<input type=color>` คืนค่า `#rrggbb` เสมอ — เก็บตรงๆ ได้ ไม่ต้องแปลง
 - **น้องใหม่มี "อาการทั่วไป" (general) ให้อัตโนมัติ** — `dailyCats()` คืนอย่างน้อย 1 หมวดเสมอ (ถ้าไม่มี tabs/ไม่มีบันทึกเลย) เพื่อให้ลงบันทึกได้ทันทีโดยไม่ต้องสร้างหมวดก่อน · เปลี่ยนสี/เพิ่มหมวดทีหลังได้ผ่าน ⚙️ จัดการหมวด (`pickCats` เลยตัด fallback เดิมที่โชว์ทั้ง 4 หมวดออก)
+
+### 12. หน้าสรุป: ไฟเตือนจากค่าผลเลือด (custom type 'alert') — เลือกค่าตรวจตัวไหนก็ได้ (13 ส.ค. 2026)
+- section หน้าสรุปเพิ่มชนิดที่ 3: **`custom[id] = {type:'alert', title, sourceKey, sourceLabel, direction, danger, warn, rules[]}`** (นอกจาก list/graph เดิม) · ปุ่ม "🚦 เพิ่มไฟเตือนจากค่าผลเลือด" ใน ⚙️ ปรับหน้าสรุป
+- **generalize ของ Leuco Plus** — Leuco เดิม (`SUMMARY_TEMPLATES.leuco`) ยัง**ล็อก WBC** ไว้ (เฟ่ใช้อยู่ ไม่แตะ) · ตัวใหม่นี้ผูกกับค่าผลเลือด **ตัวไหนก็ได้** (เลือกจาก `labValueOptions(d)` = keys จาก labConfig + labs)
+- `direction`: `below` = ค่ายิ่งต่ำยิ่งอันตราย (เช่น WBC) · `above` = ค่ายิ่งสูงยิ่งอันตราย (เช่น ค่าตับ/ไต) · เทียบ `danger`(🔴)/`warn`(🟡) แล้วโชว์กล่อง `.leuco-box` สีตามระดับ (reuse CSS เดิม)
+- ลบได้เหมือน custom อื่น (🗑 ในหน้าปรับสรุป → `delCustom`) · แก้เกณฑ์ผ่าน `editCustomAlert(id)` (openForm)
+- flow เพิ่ม: prompt ชื่อ → สร้างโครงเปล่า `sourceKey:''` → เปิด `editCustomAlert` ให้เลือกค่า+ตั้งเกณฑ์ทันที (ถ้ายังไม่เลือกค่า กล่องโชว์ "ยังไม่ได้เลือกค่าผลเลือด")
 
 ---
 
