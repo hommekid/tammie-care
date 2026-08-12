@@ -162,6 +162,12 @@ const TC = (() => {
     if (error) throw new Error(saveErrorTH(error));
   }
 
+  /** แก้ชื่อครอบครัว (admin เท่านั้น ตาม RLS families_update) */
+  async function renameFamily(fid, name) {
+    const { error } = await sb.from('families').update({ name: name.trim() }).eq('id', fid);
+    if (error) throw new Error(saveErrorTH(error));
+  }
+
   /** รายชื่อครอบครัวของฉัน (ไว้โชว์ในหน้าจัดการ) */
   async function myFamilies() {
     const { data, error } = await sb.from('families').select('id,name');
@@ -331,6 +337,6 @@ const TC = (() => {
   return { sb, requireAuth, signOut, getMyRole, listPets, getPet, signedUrl, fillImg,
            setPetPath, uploadPhoto, resizeImage,
            familyOverview, addMember, addVet, setMemberPermission, removeMember, removeVet,
-           createPet, setPetProfile, setPetArchived, deletePet, myFamilies, myProfile, updateMyName,
+           createPet, setPetProfile, setPetArchived, deletePet, myFamilies, renameFamily, myProfile, updateMyName,
            calcAge, ageText, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS };
 })();

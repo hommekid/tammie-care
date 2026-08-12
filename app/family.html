@@ -52,7 +52,9 @@
 
 <header class="tc-header">
   <a class="back" href="index.html">←</a>
-  <div><h1>จัดการครอบครัว</h1><div class="sub" id="famName"></div></div>
+  <div><h1>จัดการครอบครัว</h1>
+    <div class="sub"><span id="famName"></span> <a id="editFamName" style="color:var(--sky);cursor:pointer;font-family:'Sarabun',sans-serif" title="แก้ชื่อครอบครัว">✏️ แก้ชื่อ</a></div>
+  </div>
   <div class="spacer"></div>
   <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
 </header>
@@ -84,7 +86,19 @@ let FID = null, ME = null, ROLE = null;
   const fams = await TC.myFamilies();
   if (!fams.length) { c.innerHTML = '<div class="empty">ไม่พบครอบครัว</div>'; return; }
   FID = fams[0].id;
-  document.getElementById('famName').textContent = fams[0].name;
+  let famName = fams[0].name;
+  document.getElementById('famName').textContent = famName;
+
+  // แก้ชื่อครอบครัว (admin)
+  document.getElementById('editFamName').onclick = async () => {
+    const n = prompt('ชื่อครอบครัว', famName);
+    if (n === null || !n.trim() || n.trim() === famName) return;
+    try {
+      await TC.renameFamily(FID, n);
+      famName = n.trim();
+      document.getElementById('famName').textContent = famName;
+    } catch (e) { alert(e.message); }
+  };
 
   render();
 })();
