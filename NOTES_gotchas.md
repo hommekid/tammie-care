@@ -39,6 +39,14 @@ select set_config('role', 'authenticated', true);
 - `pet-photos` เป็น private bucket → เปิดรูปตรง ๆ ไม่ได้ ต้อง `TC.signedUrl(path)` (มี cache ในตัว)
 - path เก็บใน data เป็น `<pet_id>/<ชื่อไฟล์>` — RLS ของ storage ผูกสิทธิ์รูปเข้ากับสิทธิ์ของสัตว์ตัวนั้น (`05_storage_policies.sql`)
 
+### 7. ⚠️ SMTP ในตัวของ Supabase free จำกัดหนัก — วางแผนก่อนเปิดใช้จริง
+- เมลยืนยัน/รีเซ็ตรหัส ของ Supabase built-in ส่งได้ **~2-3 เมล/ชั่วโมง** เท่านั้น + เป็นแค่สำหรับ dev/ทดสอบ (Supabase บอกเองว่าห้ามใช้ production)
+- **ระหว่างเทสตอนนี้:** ปิด Confirm email (Authentication → Providers → Email) ไว้ → สมัครอีเมลปลอมได้เลย ใช้งานทันที ไม่ติดโควตา
+- **ก่อนเปิดใช้จริง / ทำระบบขอเข้าครอบครัว** ต้องเลือกทางใดทางหนึ่ง:
+  - **Google OAuth** (แนะนำสุดสำหรับ use case นี้) — ไม่ต้องส่งเมลเลย, ไม่ติดโควตา SMTP, คนในครอบครัวล็อกอินด้วย Gmail ที่มีอยู่, ปลอดภัยกว่ารหัสผ่าน, ได้อีเมลจริงมาโชว์ตอน admin approve พอดี
+  - **ต่อ custom SMTP** — Authentication → SMTP Settings: Resend (ฟรี 3,000/เดือน, เซ็ตง่ายสุด) / Brevo (300/วัน) / Mailgun / SendGrid
+- ⚠️ Magic link / OTP **ก็ติดโควตา SMTP เดียวกัน** — ไม่ช่วยแก้ปัญหานี้
+
 ---
 
 ## 🧭 เหตุผลการตัดสินใจสำคัญ (ทำไมทำแบบนี้)
