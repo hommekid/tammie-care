@@ -1613,7 +1613,6 @@ function openLabForm(idx, holderId, forcePanel) {
 
 function drawLabForm(panelId, cur) {
   const d = PET.data || {};
-  const panels = d.labPanels || [];
   const cfgs = labConfigFor(panelId);
   const today = new Date();
   const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1630,12 +1629,6 @@ function drawLabForm(panelId, cur) {
   document.getElementById(_lfHolder).innerHTML = `
     <div class="edit-form">
       <h3>${cur ? '✏️ แก้ผลตรวจ' : '➕ เพิ่มผลตรวจ'}</h3>
-      <div class="fld">
-        <label>หมวด</label>
-        <select id="lfPanel" ${cur ? 'disabled' : ''}>
-          ${panels.map((p) => `<option value="${p.id}" ${p.id === panelId ? 'selected' : ''}>${TC.esc(p.name)}</option>`).join('')}
-        </select>
-      </div>
       <div class="fld">
         <label>วันที่ตรวจ</label>
         <input type="date" id="lfDate" value="${cur ? cur.date : todayISO}">
@@ -1675,8 +1668,7 @@ function drawLabForm(panelId, cur) {
       <div class="saving" id="lfMsg" style="margin-top:8px"></div>
     </div>`;
 
-  // เปลี่ยนหมวด (เฉพาะตอนเพิ่มใหม่) → วาดช่องกรอกใหม่ตาม labConfig ของหมวดนั้น
-  if (!cur) document.getElementById('lfPanel').onchange = (e) => { LAB_EDIT.extraKeys = []; drawLabForm(e.target.value, null); };
+  // ไม่มีตัวเลือกหมวดในฟอร์มแล้ว — ฟอร์มเปิดอยู่ในหมวดของตัวเองเสมอ (panelId มาจากหมวดที่กาง)
   if (cur) document.getElementById('lfDelete').onclick = () => delLab(panelId, cur);
 
   // ปุ่มกางชิปที่เหลือ (กันชิปพรืดเมื่อมีผลเยอะ)
