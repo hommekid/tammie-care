@@ -92,6 +92,18 @@ a { color: var(--sky); text-decoration: none; }
 }
 .field input:focus { border-color: var(--sky); box-shadow: 0 0 0 3px rgba(91,134,191,0.14); }
 
+/* ---------- ช่องวันที่ (แก้กล่องยื่นล้นบน iOS Safari) ----------
+   iOS เรนเดอร์ input[type=date] เป็นคอนโทรลเนทีฟที่มี "ความกว้างขั้นต่ำ" ของตัวเอง
+   → สั่ง width:100% อย่างเดียวเอาไม่อยู่ กล่องยื่นล้นการ์ดออกไปทางขวา
+   ต้องปิด appearance + ปลด min-width ด้วย · และค่าในช่องถูกจัดกึ่งกลางโดยดีฟอลต์
+   จึงต้องสั่งชิดซ้ายให้ตรงกับช่องอื่น ๆ ในฟอร์ม */
+input[type=date] {
+  -webkit-appearance: none; appearance: none;
+  min-width: 0; max-width: 100%; text-align: left;
+}
+input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+input[type=date]::-webkit-calendar-picker-indicator { margin-left: auto; opacity: .55; }
+
 /* ---------- กล่องข้อความ ---------- */
 .msg { border-radius: 10px; padding: 12px 14px; font-size: 13.5px; margin-bottom: 14px; }
 .msg-err { background: var(--red-dim); border: 1px solid var(--red); color: #b83d3d; }
