@@ -8,7 +8,7 @@
 ## ⚡ กับดักที่เจอบ่อย (เจอซ้ำแน่ถ้าไม่รู้)
 
 ### 1. แคช JS/HTML ค้าง — อาการ "แก้แล้วไม่เปลี่ยน"
-- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 30** (`sed -i '' 's/theme.css?v=30/theme.css?v=31/g; s/lib.js?v=30/lib.js?v=31/g' app/*.html`)
+- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 33** (`sed -i '' 's/theme.css?v=33/theme.css?v=34/g; s/lib.js?v=33/lib.js?v=34/g' app/*.html`)
 - **`index.html` / `pet.html` / `family.html` / `login.html` เอง ติด `?v=` ไม่ได้** (เป็น entry point) → เวลาแก้ inline JS ในไฟล์พวกนี้ ต้อง **hard refresh (Cmd+Shift+R)** หรือ incognito
 - อาการคลาสสิกที่หลงเชื่อว่าเป็นบั๊กโค้ด แต่จริง ๆ คือแคช: "ยังเห็น section เดิม", "TC.xxx is not a function", "ปุ่มเก่ายังอยู่" → **เช็กแคชก่อนเสมอ**
 - บน workers.dev ต้องรอ build (~1 นาที) หลัง push ด้วย
@@ -69,6 +69,14 @@ select set_config('role', 'authenticated', true);
 - `display.builtins[]` ยังอยู่ในโค้ด (เผื่ออนาคต) แต่ตอนนี้ไม่มี UI เขียนค่าลงไปแล้ว — presence มาจาก `hasData` ล้วน ๆ
 - `leucoBox` ทำ `const lp = d.leucoPlus || {}` (กันพังถ้าไม่มีข้อมูล)
 
+### 11. หมวดอาการประจำวัน เพิ่ม/ลบ/เปลี่ยนสีเองได้ (12 ส.ค. 2026)
+- หมวดเก็บใน **`data.display.tabs = [{source, label, color}]`** · `dailyCats(d)` อ่าน+เติม `SYM_COLOR_MAP` (side effect) ให้ `symColor()` ใช้ทั้งหน้า · `SYM_COLORS`/`SYM_LABELS` เดิมเหลือเป็น fallback เฉยๆ
+- UI: ปุ่ม "⚙️ จัดการหมวด" ในแท็บอาการ → `toggleCatCfg()` (แถวละ: `<input type=color>` + ชื่อ + 🗑) · หมวดใหม่ได้ `source = 'cat_xxxxx'`
+- ⚠️ **`display.tabs` อาจมี entry `source:'treatments'` ปนอยู่** (ของเก่า) — ตอนบันทึกต้อง filter หมวดอาการออกมาแก้ แล้ว **ผูก entry treatments กลับคืน** ไม่งั้นหาย
+- ⚠️ ลบหมวด = เขียน `symptoms` ทั้งก้อนกลับโดยลบ key นั้น (ไม่ใช่ set `[]`) — เพราะ `dailyCats` union จะดึง key ที่มี array ว่างกลับมาโชว์ (แก้แล้วให้ union เช็ก `.length` ด้วย เป็นกันชนอีกชั้น)
+- `<input type=color>` คืนค่า `#rrggbb` เสมอ — เก็บตรงๆ ได้ ไม่ต้องแปลง
+- **น้องใหม่มี "อาการทั่วไป" (general) ให้อัตโนมัติ** — `dailyCats()` คืนอย่างน้อย 1 หมวดเสมอ (ถ้าไม่มี tabs/ไม่มีบันทึกเลย) เพื่อให้ลงบันทึกได้ทันทีโดยไม่ต้องสร้างหมวดก่อน · เปลี่ยนสี/เพิ่มหมวดทีหลังได้ผ่าน ⚙️ จัดการหมวด (`pickCats` เลยตัด fallback เดิมที่โชว์ทั้ง 4 หมวดออก)
+
 ---
 
 ## 🧭 เหตุผลการตัดสินใจสำคัญ (ทำไมทำแบบนี้)
@@ -87,6 +95,7 @@ select set_config('role', 'authenticated', true);
 | กล่อง dialog | ทำกล่องเองทั้ง alert/confirm/prompt ที่ `lib.js` (`window.alert` ทับ · `TC.confirm`/`TC.prompt` คืน Promise) | หัวข้อ dialog ของเบราว์เซอร์เป็นชื่อโดเมน เปลี่ยนไม่ได้ · confirm/prompt แลกกับต้อง `await` ทุก call site (ดูกับดักข้อ 8) |
 | ฟอร์มเพิ่ม/แก้ผลตรวจ | **ไม่มี dropdown เลือกหมวด** — ฟอร์มเปิดอยู่ในหมวดที่กางเสมอ | ทุกทางเข้าส่ง `panelId` มาให้อยู่แล้ว · เลือกซ้ำ = ช่องเปล่าให้กดผิดหมวด |
 | หน้าสรุป section | แยกเป็น **core (danger/watch) มีเสมอ** + **เทมเพลต (leuco/tumor) เลือกเพิ่ม/ลบได้** (เหมือนเทมเพลตผลเลือด) | สัตว์ใหม่ควรเริ่มโล่ง มีแค่ 2 อันหลัก · leuco/tumor เป็นเคสเฉพาะโรค ไม่ใช่ทุกตัวต้องมี |
+| หมวดอาการประจำวัน | ผู้ใช้ **เพิ่ม/ลบหมวด + เลือกสีเอง** ได้ (⚙️ จัดการหมวด) เก็บใน `display.tabs = [{source,label,color}]` | น้องแต่ละตัวมีอาการต่างกัน · สี default hardcode ไม่พอ |
 
 ---
 

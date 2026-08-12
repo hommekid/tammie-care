@@ -62,6 +62,7 @@
 - **กล่อง dialog ของเราเอง หัวเป็น "🐾 Tammie says" ครบทั้ง alert/confirm/prompt** — `lib.js` ทับ `window.alert` (ไม่ต้องแก้ call site) + เพิ่ม `TC.confirm`/`TC.prompt` คืน Promise แล้วแปลงทุก call site เป็น `await` (family/index/pet) · เบราว์เซอร์บังคับหัวข้อ dialog เป็นชื่อโดเมน เปลี่ยนไม่ได้ · ⚠️ ที่เรียก confirm/prompt ใหม่ต้อง async+await ดู `NOTES_gotchas.md` กับดักข้อ 8
 - **ฟอร์มเพิ่ม/แก้ผลตรวจ: เอา dropdown "หมวด" ออก** — ฟอร์มเปิดอยู่ในหมวดที่กางอยู่แล้ว (ทุกทางเข้าส่ง `panelId` มาให้) ช่องเลือกซ้ำมีแต่จะกดผิดหมวด
 - **แก้ช่องวันที่ยื่นล้นกล่องบนมือถือ (iOS Safari)** — `input[type=date]` เป็นคอนโทรลเนทีฟที่ `width:100%` เอาไม่อยู่ · เพิ่ม rule กลางใน `theme.css` (`-webkit-appearance:none` + `min-width:0` + ชิดซ้าย) ครอบทุกช่องวันที่ในระบบ ดู `NOTES_gotchas.md` กับดักข้อ 9
+- **อาการประจำวัน: เพิ่ม/ลบหมวด + เลือกสีเองได้** (⚙️ จัดการหมวด) — เก็บใน `display.tabs = [{source,label,color}]` · หมวดเดิม (ทั่วไป/ท้องเสีย/เลือดกำเดา/อาเจียน) เป็น fallback ดู `NOTES_gotchas.md` กับดักข้อ 11
 - **หน้าสรุป: สัตว์ใหม่เริ่มด้วยแค่ 🚨 danger + 📋 watch** — section อื่นให้ user สร้างเอง (➕ หัวข้อลิสต์/กราฟ = custom) · leuco/tumor แสดงเฉพาะน้องที่มีข้อมูลเดิม (เฟ่/เฟ่อ) และลบได้ผ่าน ⚙️ ปรับหน้าสรุป · ไม่มีปุ่มเพิ่มเทมเพลต leuco/tumor (เอาออก — นอกเหนือ default ให้สร้างเอง) ดู `NOTES_gotchas.md` กับดักข้อ 10
 - 📄 **แผนระบบขอเข้า/เชิญเข้าครอบครัวแตกเป็นไฟล์แยกแล้ว → `JOIN_FLOW_PLAN.md`** (schema + RLS + RPC + UI + test checklist)
 

@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=31">
+<link rel="stylesheet" href="theme.css?v=33">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -43,7 +43,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=31"></script>
+<script src="lib.js?v=33"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -333,20 +333,35 @@ function showTab(key) {
 
 /* ================= แท็บ 🌡️ อาการประจำวัน ================= */
 
+// สี/ชื่อ default ของหมวดเดิม (ใช้เป็น fallback ถ้าโปรไฟล์ยังไม่กำหนดสีเอง)
 const SYM_COLORS = { diarrhea: '#d98a3d', general: '#5b8def', nosebleed: '#e85555', vomiting: '#b06be8' };
 const SYM_LABELS = { diarrhea: 'ท้องเสีย', general: 'อาการทั่วไป', nosebleed: 'เลือดกำเดา', vomiting: '🤢 อาเจียน' };
-const symColor = (src) => SYM_COLORS[src] || '#e8b84b';
+// จานสีสำรองสำหรับหมวดใหม่ที่ยังไม่เลือกสี (ไล่ตามลำดับ)
+const SYM_PALETTE = ['#5b8def', '#d98a3d', '#e85555', '#b06be8', '#3fae86', '#e0a93e', '#5aa0c8', '#c96fa8'];
+let SYM_COLOR_MAP = {};   // src → สี · เติมค่าโดย dailyCats() ทุกครั้งที่วาด
+const symColor = (src) => SYM_COLOR_MAP[src] || SYM_COLORS[src] || '#e8b84b';
 const sideLabel = (s) => (s === 'left' ? 'รูจมูกซ้าย' : s === 'right' ? 'รูจมูกขวา' : s || '');
 
-/** หมวดอาการของโปรไฟล์นี้ — ใช้ display.tabs ถ้ามี ไม่มีก็อนุมานจาก symptoms */
+/** หมวดอาการของโปรไฟล์นี้ — [{source, label, color}] · ใช้ display.tabs ถ้ามี ไม่มีก็อนุมานจาก symptoms
+ *  side effect: เติม SYM_COLOR_MAP ให้ symColor() ใช้ได้ทั้งหน้า */
 function dailyCats(d) {
   const tabs = (d.display && d.display.tabs) || null;
+  let cats;
   if (tabs) {
-    return tabs.filter((t) => t.source !== 'treatments')
-               .map((t) => ({ source: t.source, label: t.label || SYM_LABELS[t.source] || t.source }));
+    cats = tabs.filter((t) => t.source !== 'treatments')
+               .map((t) => ({ source: t.source, label: t.label || SYM_LABELS[t.source] || t.source, color: t.color || SYM_COLORS[t.source] }));
+    // กันหมวดที่มีข้อมูลแต่ไม่อยู่ใน tabs หายไป (เผื่อ tabs เก่าไม่ครบ)
+    const have = new Set(cats.map((c) => c.source));
+    Object.keys(d.symptoms || {}).forEach((k) => {
+      if (!have.has(k) && (d.symptoms[k] || []).length) cats.push({ source: k, label: SYM_LABELS[k] || k, color: SYM_COLORS[k] });
+    });
+  } else {
+    cats = Object.keys(d.symptoms || {}).map((k) => ({ source: k, label: SYM_LABELS[k] || k, color: SYM_COLORS[k] }));
   }
-  return Object.keys(d.symptoms || {})
-    .map((k) => ({ source: k, label: SYM_LABELS[k] || k }));
+  // น้องใหม่ (ยังไม่มีหมวด/ยังไม่มีบันทึก) → มี "อาการทั่วไป" ให้ใช้ได้เลย · เปลี่ยนสี/เพิ่มหมวดทีหลังได้
+  if (!cats.length) cats = [{ source: 'general', label: SYM_LABELS.general, color: SYM_COLORS.general }];
+  cats.forEach((c, i) => { c.color = c.color || SYM_PALETTE[i % SYM_PALETTE.length]; SYM_COLOR_MAP[c.source] = c.color; });
+  return cats;
 }
 
 /* ---------- ปฏิทินกลาง (ใช้ทั้งแท็บอาการและการรักษา) ---------- */
@@ -484,10 +499,8 @@ function renderDaily(root) {
   const d = PET.data || {};
   const cats = dailyCats(d).filter((c) => ((d.symptoms || {})[c.source] || []).length);
 
-  // หมวดที่เลือกได้ตอนเพิ่มบันทึก — รวมหมวดที่ยังไม่มีข้อมูลด้วย
-  const allCats = dailyCats(d);
-  const pickCats = allCats.length ? allCats
-    : Object.keys(SYM_LABELS).map((k) => ({ source: k, label: SYM_LABELS[k] }));
+  // หมวดที่เลือกได้ตอนเพิ่มบันทึก — รวมหมวดที่ยังไม่มีข้อมูลด้วย (dailyCats คืน "อาการทั่วไป" ให้เสมออย่างน้อย 1 หมวด)
+  const pickCats = dailyCats(d);
 
   const events = [];
   cats.forEach((c) => (d.symptoms[c.source] || []).forEach((it, idx) =>
@@ -497,8 +510,10 @@ function renderDaily(root) {
     <div class="edit-bar">
       <span class="section-label" style="margin:0">🌡️ อาการประจำวัน</span>
       ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddSym">➕ เพิ่มบันทึก</button>' : ''}
+      ${ROLE.canEdit ? '<a class="sum-edit-toggle" id="btnMngCats" style="margin:0">⚙️ จัดการหมวด/สี</a>' : ''}
       <span class="saving" id="symMsg"></span>
     </div>
+    <div id="catCfg"></div>
     ${cats.length ? `<div class="legend">${cats.map((c) =>
       `<span><i class="dot" style="background:${symColor(c.source)}"></i> ${TC.esc(c.label)}</span>`).join('')}</div>` : ''}
     <div id="symForm"></div>
@@ -506,6 +521,7 @@ function renderDaily(root) {
 
   if (ROLE.canEdit) {
     document.getElementById('btnAddSym').onclick = () => openSymForm(pickCats, null);
+    document.getElementById('btnMngCats').onclick = () => toggleCatCfg(d);
   }
 
   if (!events.length) return;
@@ -551,6 +567,85 @@ function renderDaily(root) {
       });
     },
   });
+}
+
+/* ---------- จัดการหมวดอาการ: เพิ่ม/ลบ/แก้ชื่อ/เปลี่ยนสี ----------
+ * หมวดเก็บใน display.tabs = [{source, label, color}] (+ entry treatments ถ้ามี เก็บไว้เหมือนเดิม) */
+let CAT_CFG_OPEN = false;
+function toggleCatCfg(d) {
+  CAT_CFG_OPEN = !CAT_CFG_OPEN;
+  const holder = document.getElementById('catCfg');
+  if (!CAT_CFG_OPEN) { holder.innerHTML = ''; return; }
+
+  const counts = {};
+  dailyCats(d).forEach((c) => { counts[c.source] = ((d.symptoms || {})[c.source] || []).length; });
+  let rows = dailyCats(d).map((c) => ({ source: c.source, label: c.label, color: c.color }));
+  const delSet = new Set();   // source ที่มีข้อมูล + ถูกลบ → ต้องล้าง symptoms ตอนบันทึก
+
+  const swatch = 'width:38px;height:34px;padding:0;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;flex:0 0 auto';
+  const nameInp = "flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:'Sarabun',sans-serif;font-size:14px";
+
+  const draw = () => {
+    holder.querySelector('#catRows').innerHTML = rows.map((c, i) => `
+      <div class="cfg-row" data-i="${i}" style="gap:8px">
+        <input type="color" value="${c.color}" data-color="${i}" style="${swatch}" title="เปลี่ยนสี">
+        <input type="text" value="${TC.esc(c.label)}" data-label="${i}" style="${nameInp}" placeholder="ชื่อหมวด">
+        <button class="btn-ghost cat-del" data-i="${i}" style="padding:4px 9px;border-color:var(--red);color:var(--red)" title="ลบหมวด">🗑</button>
+      </div>`).join('') || '<div class="empty">ยังไม่มีหมวด — เพิ่มด้านล่าง</div>';
+    holder.querySelectorAll('[data-color]').forEach((inp) => inp.oninput = () => { rows[+inp.dataset.color].color = inp.value; });
+    holder.querySelectorAll('[data-label]').forEach((inp) => inp.oninput = () => { rows[+inp.dataset.label].label = inp.value; });
+    holder.querySelectorAll('.cat-del').forEach((b) => b.onclick = async () => {
+      const i = +b.dataset.i, c = rows[i], n = counts[c.source] || 0;
+      if (n && !await TC.confirm(`ลบหมวด "${c.label}"\n\nมีบันทึกในหมวดนี้ ${n} รายการ จะถูกลบไปด้วย กู้คืนไม่ได้`, { okLabel: 'ลบหมวด', danger: true })) return;
+      if (n) delSet.add(c.source);
+      rows.splice(i, 1); draw();
+    });
+  };
+
+  holder.innerHTML = `
+    <div class="edit-form">
+      <h3>⚙️ จัดการหมวดอาการ</h3>
+      <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">แตะช่องสีเพื่อเปลี่ยนสี · แก้ชื่อได้ · 🗑 ลบหมวด (บันทึกในหมวดหายด้วย)</p>
+      <div id="catRows"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <input type="color" id="newCatColor" value="#3fae86" style="${swatch}" title="สีหมวดใหม่">
+        <input type="text" id="newCatName" placeholder="ชื่อหมวดใหม่ (เช่น ไอ, คัน)" style="${nameInp}">
+        <button class="btn-ghost" id="catAdd">➕ เพิ่ม</button>
+      </div>
+      <div class="btns"><button class="btn" id="catSave">บันทึก</button><button class="btn-ghost" id="catCancel">ปิด</button></div>
+      <div class="saving" id="catMsg" style="margin-top:8px"></div>
+    </div>`;
+  draw();
+
+  holder.querySelector('#catAdd').onclick = () => {
+    const nameEl = holder.querySelector('#newCatName');
+    const name = nameEl.value.trim();
+    if (!name) return;
+    rows.push({ source: 'cat_' + Math.random().toString(36).slice(2, 7), label: name, color: holder.querySelector('#newCatColor').value });
+    nameEl.value = '';
+    draw();
+  };
+  holder.querySelector('#catCancel').onclick = () => { CAT_CFG_OPEN = false; holder.innerHTML = ''; };
+  holder.querySelector('#catSave').onclick = async () => {
+    const msg = holder.querySelector('#catMsg');
+    rows.forEach((c) => { c.label = c.label.trim(); });
+    if (rows.some((c) => !c.label)) { msg.textContent = 'ชื่อหมวดห้ามว่าง'; return; }
+    // เก็บ entry ที่ไม่ใช่หมวดอาการ (เช่น treatments) ไว้เหมือนเดิม
+    const others = (((d.display || {}).tabs) || []).filter((t) => t.source === 'treatments');
+    const display = JSON.parse(JSON.stringify(d.display || {}));
+    display.tabs = [...rows.map((c) => ({ source: c.source, label: c.label, color: c.color })), ...others];
+    try {
+      // ลบข้อมูลของหมวดที่ถูกลบ (เขียนทั้ง symptoms กลับ เพื่อไม่ให้เหลือ key กำพร้า)
+      if (delSet.size) {
+        const sym = JSON.parse(JSON.stringify(d.symptoms || {}));
+        delSet.forEach((src) => delete sym[src]);
+        PET.data = await TC.setPetPath(PET.id, ['symptoms'], sym);
+      }
+      PET.data = await TC.setPetPath(PET.id, ['display'], display);
+      CAT_CFG_OPEN = false;
+      showTab('daily');
+    } catch (e) { msg.textContent = e.message; }
+  };
 }
 
 /** เปิดฟอร์มเพิ่ม/แก้บันทึกอาการ · edit = {src, idx} ถ้าเป็นการแก้ */
