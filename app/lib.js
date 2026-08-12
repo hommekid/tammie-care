@@ -6,6 +6,59 @@
 const TC = (() => {
   const cfg = window.TC_CONFIG;
 
+  // ---------- กล่องแจ้งเตือน — ทับ window.alert ให้หัวเป็น "Tammie says" ----------
+  // ทำไมต้องทับ: alert() ของเบราว์เซอร์บังคับโชว์หัวข้อเป็นชื่อโดเมน
+  //   ("tammie-care.hommekidgo.workers.dev says") — เปลี่ยนจาก JS ไม่ได้เลย
+  //   ทางเดียวคือทำกล่องเอง แล้วทับ window.alert ทุกจุดที่เรียกอยู่แล้วจะได้ของใหม่ทันที
+  //   (28 จุดใน pet/family/index — ไม่ต้องแก้ทีละที่)
+  // ⚠️ ต่างจากของเดิมตรงที่ "ไม่บล็อก" — โค้ดบรรทัดถัดไปทำงานต่อทันทีไม่รอกดตกลง
+  //   ตรวจแล้วว่าทุกจุดที่ใช้เป็นการแจ้งผลบรรทัดสุดท้าย (ตามด้วย return หรือจบ catch) จึงไม่กระทบ
+  //   → ถ้าเพิ่ม alert ใหม่ อย่าเขียนโค้ดที่ "ต้องรอ" ต่อท้าย
+  //   confirm() / prompt() ยังเป็นของเบราว์เซอร์ตามเดิม (ทำเป็น async ต้องรื้อทุก call site)
+  (function setupAlert() {
+    const queue = [];
+    let el = null, txt = null, okBtn = null, open = false;
+
+    const close = () => show();   // ปิดอันปัจจุบัน = เด้งอันถัดไปในคิว (ถ้ามี)
+
+    function ensure() {
+      if (el) return;
+      el = document.createElement('div');
+      el.className = 'tc-alert';
+      el.style.display = 'none';
+      el.innerHTML =
+        '<div class="tc-alert-box" role="alertdialog" aria-modal="true">' +
+          '<div class="bar"></div>' +
+          '<h3>🐾 Tammie says</h3>' +
+          '<div class="body"></div>' +
+          '<div class="foot"><button type="button" class="btn">ตกลง</button></div>' +
+        '</div>';
+      txt = el.querySelector('.body');
+      okBtn = el.querySelector('.btn');
+      okBtn.onclick = close;
+      el.onclick = (e) => { if (e.target === el) close(); };        // คลิกนอกกล่อง = ปิด
+      document.addEventListener('keydown', (e) => {
+        if (!open) return;
+        if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); close(); }
+      });
+      (document.body || document.documentElement).appendChild(el);
+    }
+
+    function show() {
+      if (!queue.length) { open = false; if (el) el.style.display = 'none'; return; }
+      ensure();
+      txt.textContent = queue.shift();
+      el.style.display = 'flex';
+      open = true;
+      okBtn.focus();
+    }
+
+    window.alert = (msg) => {
+      queue.push(String(msg ?? ''));
+      if (!open) show();
+    };
+  })();
+
   // ตรวจค่า config ตั้งแต่ต้น — ผิดตรงนี้จะไปโผล่เป็น error ปลายทางที่อ่านไม่รู้เรื่อง
   (function checkConfig() {
     const k = cfg.SUPABASE_KEY || '';
