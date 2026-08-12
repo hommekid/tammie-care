@@ -8,7 +8,7 @@
 ## ⚡ กับดักที่เจอบ่อย (เจอซ้ำแน่ถ้าไม่รู้)
 
 ### 1. แคช JS/HTML ค้าง — อาการ "แก้แล้วไม่เปลี่ยน"
-- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 29** (`sed -i '' 's/theme.css?v=29/theme.css?v=30/g; s/lib.js?v=29/lib.js?v=30/g' app/*.html`)
+- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 30** (`sed -i '' 's/theme.css?v=30/theme.css?v=31/g; s/lib.js?v=30/lib.js?v=31/g' app/*.html`)
 - **`index.html` / `pet.html` / `family.html` / `login.html` เอง ติด `?v=` ไม่ได้** (เป็น entry point) → เวลาแก้ inline JS ในไฟล์พวกนี้ ต้อง **hard refresh (Cmd+Shift+R)** หรือ incognito
 - อาการคลาสสิกที่หลงเชื่อว่าเป็นบั๊กโค้ด แต่จริง ๆ คือแคช: "ยังเห็น section เดิม", "TC.xxx is not a function", "ปุ่มเก่ายังอยู่" → **เช็กแคชก่อนเสมอ**
 - บน workers.dev ต้องรอ build (~1 นาที) หลัง push ด้วย
@@ -62,12 +62,12 @@ select set_config('role', 'authenticated', true);
 - แก้เป็น rule กลางที่ `input[type=date]` ใน `theme.css` แล้ว — ช่องวันที่ใหม่ที่เพิ่มทีหลังได้ทันทีไม่ต้องแก้ซ้ำ (ตอนนี้มี 3 จุด: วันเกิดในโปรไฟล์ · วันที่การรักษา · วันที่ตรวจในผลเลือด)
 - 📌 **บทเรียน: ทดสอบฟอร์มบนมือถือจริงเสมอ** — คอนโทรลเนทีฟ (date/select/file) หน้าตาและขนาดต่างจาก desktop มาก
 
-### 10. หน้าสรุป: section เป็น core + เทมเพลตเลือกได้ (12 ส.ค. 2026)
-- `pet.html` แยก section หน้าสรุปเป็น 2 กลุ่ม: **`SUMMARY_CORE`** (danger/watch — มีเสมอ ลบไม่ได้) และ **`SUMMARY_TEMPLATES`** (leuco/tumor — เลือกเพิ่ม/ลบได้เหมือนเทมเพลตผลเลือด)
-- เทมเพลต "เปิด" สำหรับน้องตัวนี้เมื่อ: อยู่ใน **`data.display.builtins[]`** (กดเพิ่มเอง) **หรือ** มีข้อมูลเดิมอยู่ (`hasData`) → **เฟ่/เฟ่อเก่าไม่ต้อง migrate** (มี leucoPlus/liverTumor อยู่แล้ว = โชว์อัตโนมัติ) · สัตว์ใหม่ `data = {}` → เห็นแค่ danger + watch
-- ลบเทมเพลต = ถอดออกจาก `display.builtins` **+ ล้างข้อมูล** (`leucoPlus → null` · `vitals.liverTumor → []`) กำหนดที่ `clearPath`/`clearValue` ใน `SUMMARY_TEMPLATES`
-- ⚠️ ถ้าเพิ่มเทมเพลตใหม่ใน `SUMMARY_TEMPLATES` ต้องมีครบ: `label` · `build` · `hasData` · `clearPath` · `clearValue`
-- `leucoBox` ทำ `const lp = d.leucoPlus || {}` แล้ว (เปิดเทมเพลตแต่ยังไม่ตั้งเกณฑ์ ก็ไม่พัง กด ✏️ แก้เกณฑ์ทีหลัง)
+### 10. หน้าสรุป: core (มีเสมอ) + custom (สร้างเอง) · leuco/tumor แสดงเฉพาะน้องที่มีข้อมูลเดิม (12 ส.ค. 2026)
+- `pet.html` แยก section หน้าสรุปเป็น 2 กลุ่ม: **`SUMMARY_CORE`** (danger/watch — มีเสมอ ลบไม่ได้) และ **`SUMMARY_TEMPLATES`** (leuco/tumor)
+- **สัตว์ใหม่เห็นแค่ danger + watch** · อยากได้หัวข้ออื่นให้ user สร้างเอง (➕ เพิ่มหัวข้อแบบลิสต์/กราฟ = custom) — **ไม่มีปุ่ม "เพิ่มเทมเพลต leuco/tumor" แล้ว** (เอาออกตามคำขอ: อะไรนอกเหนือ default ให้ user สร้างเอง)
+- leuco/tumor **แสดงเฉพาะน้องที่มีข้อมูลเดิม** (`templateOn` = `hasData` เป็นหลัก · เฟ่/เฟ่อมี leucoPlus/liverTumor อยู่แล้ว จึงโชว์อัตโนมัติ ไม่ต้อง migrate) และ **ลบได้** (🗑 ใน ⚙️ ปรับหน้าสรุป → ถอดจาก `display.builtins` + ล้างข้อมูลตาม `clearPath`/`clearValue`)
+- `display.builtins[]` ยังอยู่ในโค้ด (เผื่ออนาคต) แต่ตอนนี้ไม่มี UI เขียนค่าลงไปแล้ว — presence มาจาก `hasData` ล้วน ๆ
+- `leucoBox` ทำ `const lp = d.leucoPlus || {}` (กันพังถ้าไม่มีข้อมูล)
 
 ---
 

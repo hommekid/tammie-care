@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=29">
+<link rel="stylesheet" href="theme.css?v=30">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -43,7 +43,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=29"></script>
+<script src="lib.js?v=30"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -2039,18 +2039,12 @@ function toggleSummaryCfg(d) {
     </div>`;
   };
 
-  // ปุ่มเพิ่มเทมเพลตที่ยังไม่ได้เปิด (โผล่เฉพาะอันที่ยังไม่มี)
-  const templateAddBtns = () => Object.entries(SUMMARY_TEMPLATES)
-    .filter(([key]) => !templateOn(d, key))
-    .map(([key, t]) => `<button class="btn-ghost cfg-add-tpl" data-key="${key}">➕ ${t.label}</button>`)
-    .join('');
 
   holder.innerHTML = `
     <div class="edit-form">
       <h3>⚙️ ปรับหน้าสรุป</h3>
       <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">ติ๊กเพื่อแสดง/ซ่อน · ลูกศรจัดลำดับ · 🗑 ลบหัวข้อที่เพิ่มเอง</p>
       <div id="cfgRows"></div>
-      ${templateAddBtns() ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px" id="cfgTplBtns">${templateAddBtns()}</div>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
         <button class="btn-ghost" id="cfgAddList">➕ เพิ่มหัวข้อแบบลิสต์</button>
         <button class="btn-ghost" id="cfgAddGraph">➕ เพิ่มหัวข้อแบบกราฟ</button>
@@ -2085,20 +2079,6 @@ function toggleSummaryCfg(d) {
     });
   };
   rerenderRows();
-
-  // เพิ่มเทมเพลต (leuco/tumor) — บันทึกทันทีแล้วเปิด cfg ใหม่ (เหมือนเพิ่มหัวข้อเอง)
-  const addTemplate = async (key) => {
-    const builtins = [...new Set([...((d.display && d.display.builtins) || []), key])];
-    const display = JSON.parse(JSON.stringify(d.display || {}));
-    display.builtins = builtins;
-    try {
-      PET.data = await TC.setPetPath(PET.id, ['display'], display);
-      SUMMARY_CFG_OPEN = false;
-      showTab('summary');
-      setTimeout(() => document.getElementById('tgSummaryCfg')?.click(), 30);
-    } catch (e) { document.getElementById('cfgMsg').textContent = e.message; }
-  };
-  holder.querySelectorAll('.cfg-add-tpl').forEach((b) => b.onclick = () => addTemplate(b.dataset.key));
 
   // เพิ่มหัวข้อใหม่ (custom) — บันทึกทันทีแล้วเปิด cfg ใหม่
   const addCustom = async (type) => {
