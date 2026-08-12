@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=28">
+<link rel="stylesheet" href="theme.css?v=29">
 <style>
   .mrow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px;
           padding: 11px 14px; background: var(--surface); margin-bottom: 8px; flex-wrap: wrap; }
@@ -65,7 +65,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=28"></script>
+<script src="lib.js?v=29"></script>
 <script>
 let FID = null, ME = null, ROLE = null;
 
@@ -91,7 +91,7 @@ let FID = null, ME = null, ROLE = null;
 
   // แก้ชื่อครอบครัว (admin)
   document.getElementById('editFamName').onclick = async () => {
-    const n = prompt('ชื่อครอบครัว', famName);
+    const n = await TC.prompt('ชื่อครอบครัว', famName);
     if (n === null || !n.trim() || n.trim() === famName) return;
     try {
       await TC.renameFamily(FID, n);
@@ -174,7 +174,7 @@ async function render() {
     sel.onchange = () => guard('memMsg', () => TC.setMemberPermission(FID, sel.dataset.perm, sel.value));
   });
   document.querySelectorAll('[data-rmmem]').forEach((a) => {
-    a.onclick = () => { if (confirm('ถอดสมาชิกคนนี้ออกจากครอบครัว?')) guard('memMsg', () => TC.removeMember(FID, a.dataset.rmmem)); };
+    a.onclick = async () => { if (await TC.confirm('ถอดสมาชิกคนนี้ออกจากครอบครัว?', { okLabel: 'ถอด', danger: true })) guard('memMsg', () => TC.removeMember(FID, a.dataset.rmmem)); };
   });
   document.getElementById('btnAddMem').onclick = () => {
     const email = document.getElementById('addMemEmail').value.trim();
@@ -189,7 +189,7 @@ async function render() {
         <a class="rm" data-rmvet="${v.user_id}">ถอนสิทธิ์</a></div>`).join('')
     : '<div class="empty">ยังไม่มีสัตวแพทย์</div>';
   document.querySelectorAll('[data-rmvet]').forEach((a) => {
-    a.onclick = () => { if (confirm('ถอนสิทธิ์หมอคนนี้?')) guard('vetMsg', () => TC.removeVet(FID, a.dataset.rmvet)); };
+    a.onclick = async () => { if (await TC.confirm('ถอนสิทธิ์หมอคนนี้?', { okLabel: 'ถอนสิทธิ์', danger: true })) guard('vetMsg', () => TC.removeVet(FID, a.dataset.rmvet)); };
   });
   document.getElementById('btnAddVet').onclick = () => {
     const email = document.getElementById('addVetEmail').value.trim();
@@ -210,32 +210,34 @@ async function render() {
       </div>
     </div>`).join('') || '<div class="empty">ยังไม่มีสัตว์</div>';
   document.querySelectorAll('[data-arch]').forEach((a) => {
-    a.onclick = () => { if (confirm('ซ่อนสัตว์ตัวนี้จากรายการ? (ข้อมูลไม่หาย กดแสดงกลับมาได้)')) guard('petMsg', () => TC.setPetArchived(a.dataset.arch, true)); };
+    a.onclick = async () => { if (await TC.confirm('ซ่อนสัตว์ตัวนี้จากรายการ? (ข้อมูลไม่หาย กดแสดงกลับมาได้)', { okLabel: 'ซ่อน' })) guard('petMsg', () => TC.setPetArchived(a.dataset.arch, true)); };
   });
   document.querySelectorAll('[data-unarch]').forEach((a) => {
     a.onclick = () => guard('petMsg', () => TC.setPetArchived(a.dataset.unarch, false));
   });
   document.querySelectorAll('[data-del]').forEach((a) => {
-    a.onclick = () => {
+    a.onclick = async () => {
       const name = a.dataset.nm;
 
       // เตือน 3 ชั้น กันลบพลาด (ลบแล้วกู้คืนไม่ได้)
       // ชั้นที่ 1 — อธิบายว่าลบหมดจริง ๆ
-      if (!confirm(
+      if (!await TC.confirm(
         `⚠️ ลบ "${name}" ออกจากระบบถาวร\n\n` +
         `ข้อมูลทั้งหมดของน้องจะถูกลบทิ้ง — ผลเลือด ประวัติการรักษา อาการ นัดหมาย ` +
         `รวมถึงรูปโปรไฟล์และรูปทุกใบที่เคยอัปโหลด จะหายทั้งหมดและกู้คืนไม่ได้เลย\n\n` +
-        `ถ้าแค่อยากเอาออกจากหน้าแรกชั่วคราว ให้ใช้ "ซ่อน" แทน\n\nดำเนินการต่อ?`
+        `ถ้าแค่อยากเอาออกจากหน้าแรกชั่วคราว ให้ใช้ "ซ่อน" แทน\n\nดำเนินการต่อ?`,
+        { okLabel: 'ดำเนินการต่อ', danger: true }
       )) return;
 
       // ชั้นที่ 2 — ย้ำอีกครั้งว่าถาวรจริง
-      if (!confirm(
+      if (!await TC.confirm(
         `แน่ใจแล้วใช่ไหม?\n\n"${name}" และข้อมูลสุขภาพทั้งหมดจะหายถาวร ` +
-        `ไม่มีถังขยะ ไม่มีย้อนกลับ`
+        `ไม่มีถังขยะ ไม่มีย้อนกลับ`,
+        { okLabel: 'ลบถาวร', danger: true }
       )) return;
 
       // ชั้นที่ 3 — พิมพ์ชื่อให้ตรงเพื่อยืนยันครั้งสุดท้าย
-      const typed = prompt(
+      const typed = await TC.prompt(
         `ยืนยันครั้งสุดท้าย — กำลังจะลบ "${name}" ถาวร\n\n` +
         `พิมพ์ชื่อน้องให้ตรง (${name}) แล้วกดตกลง เพื่อลบ:`
       );

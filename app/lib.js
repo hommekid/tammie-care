@@ -6,56 +6,79 @@
 const TC = (() => {
   const cfg = window.TC_CONFIG;
 
-  // ---------- กล่องแจ้งเตือน — ทับ window.alert ให้หัวเป็น "Tammie says" ----------
-  // ทำไมต้องทับ: alert() ของเบราว์เซอร์บังคับโชว์หัวข้อเป็นชื่อโดเมน
+  // ---------- กล่อง dialog ของเราเอง หัวเป็น "🐾 Tammie says" ----------
+  // ทำไมต้องทำเอง: alert()/confirm()/prompt() ของเบราว์เซอร์บังคับหัวข้อเป็นชื่อโดเมน
   //   ("tammie-care.hommekidgo.workers.dev says") — เปลี่ยนจาก JS ไม่ได้เลย
-  //   ทางเดียวคือทำกล่องเอง แล้วทับ window.alert ทุกจุดที่เรียกอยู่แล้วจะได้ของใหม่ทันที
-  //   (28 จุดใน pet/family/index — ไม่ต้องแก้ทีละที่)
-  // ⚠️ ต่างจากของเดิมตรงที่ "ไม่บล็อก" — โค้ดบรรทัดถัดไปทำงานต่อทันทีไม่รอกดตกลง
-  //   ตรวจแล้วว่าทุกจุดที่ใช้เป็นการแจ้งผลบรรทัดสุดท้าย (ตามด้วย return หรือจบ catch) จึงไม่กระทบ
-  //   → ถ้าเพิ่ม alert ใหม่ อย่าเขียนโค้ดที่ "ต้องรอ" ต่อท้าย
-  //   confirm() / prompt() ยังเป็นของเบราว์เซอร์ตามเดิม (ทำเป็น async ต้องรื้อทุก call site)
-  (function setupAlert() {
-    const queue = [];
-    let el = null, txt = null, okBtn = null, open = false;
-
-    const close = () => show();   // ปิดอันปัจจุบัน = เด้งอันถัดไปในคิว (ถ้ามี)
-
-    function ensure() {
-      if (el) return;
-      el = document.createElement('div');
-      el.className = 'tc-alert';
-      el.style.display = 'none';
-      el.innerHTML =
+  // - window.alert ถูกทับ (ทุก alert() เดิมได้กล่องใหม่ทันที ไม่ต้องแก้ call site) · มีคิวในตัว · ไม่บล็อก
+  // - TC.confirm / TC.prompt คืน Promise → call site ต้อง `await` (ต่างจาก confirm/prompt เดิมที่บล็อก)
+  //   ⚠️ เพิ่มที่เรียก confirm/prompt ใหม่ ต้องเป็น async + await เสมอ ไม่งั้น Promise = truthy ตลอด
+  const TCModal = (function setupModal() {
+    // ---- alert: คิว ไม่บล็อก ----
+    const aQueue = [];
+    let aEl = null, aTxt = null, aOk = null, aOpen = false;
+    const aClose = () => aShow();
+    function aEnsure() {
+      if (aEl) return;
+      aEl = document.createElement('div');
+      aEl.className = 'tc-alert'; aEl.style.display = 'none';
+      aEl.innerHTML =
         '<div class="tc-alert-box" role="alertdialog" aria-modal="true">' +
-          '<div class="bar"></div>' +
-          '<h3>🐾 Tammie says</h3>' +
-          '<div class="body"></div>' +
-          '<div class="foot"><button type="button" class="btn">ตกลง</button></div>' +
-        '</div>';
-      txt = el.querySelector('.body');
-      okBtn = el.querySelector('.btn');
-      okBtn.onclick = close;
-      el.onclick = (e) => { if (e.target === el) close(); };        // คลิกนอกกล่อง = ปิด
+          '<div class="bar"></div><h3>🐾 Tammie says</h3><div class="body"></div>' +
+          '<div class="foot"><button type="button" class="btn">ตกลง</button></div></div>';
+      aTxt = aEl.querySelector('.body'); aOk = aEl.querySelector('.btn');
+      aOk.onclick = aClose;
+      aEl.onclick = (e) => { if (e.target === aEl) aClose(); };
       document.addEventListener('keydown', (e) => {
-        if (!open) return;
-        if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); close(); }
+        if (!aOpen) return;
+        if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); aClose(); }
       });
-      (document.body || document.documentElement).appendChild(el);
+      (document.body || document.documentElement).appendChild(aEl);
     }
-
-    function show() {
-      if (!queue.length) { open = false; if (el) el.style.display = 'none'; return; }
-      ensure();
-      txt.textContent = queue.shift();
-      el.style.display = 'flex';
-      open = true;
-      okBtn.focus();
+    function aShow() {
+      if (!aQueue.length) { aOpen = false; if (aEl) aEl.style.display = 'none'; return; }
+      aEnsure(); aTxt.textContent = aQueue.shift(); aEl.style.display = 'flex'; aOpen = true; aOk.focus();
     }
+    window.alert = (msg) => { aQueue.push(String(msg ?? '')); if (!aOpen) aShow(); };
 
-    window.alert = (msg) => {
-      queue.push(String(msg ?? ''));
-      if (!open) show();
+    // ---- confirm / prompt: คืน Promise (ครั้งละกล่อง — call site await กันอยู่แล้ว) ----
+    function ask(message, { prompt = false, defaultVal = '', okLabel = 'ตกลง', danger = false } = {}) {
+      return new Promise((resolve) => {
+        const el = document.createElement('div');
+        el.className = 'tc-alert';
+        el.innerHTML =
+          '<div class="tc-alert-box" role="alertdialog" aria-modal="true">' +
+            '<div class="bar"></div><h3>🐾 Tammie says</h3>' +
+            '<div class="body"></div>' +
+            (prompt ? '<div style="padding:0 20px 4px"><input type="text" class="tc-ask-input"></div>' : '') +
+            '<div class="foot" style="gap:10px">' +
+              '<button type="button" class="btn-ghost tc-cancel">ยกเลิก</button>' +
+              '<button type="button" class="btn tc-ok"' + (danger ? ' style="background:var(--red)"' : '') + '></button>' +
+            '</div></div>';
+        el.querySelector('.body').textContent = message;
+        el.querySelector('.tc-ok').textContent = okLabel;
+        const input = el.querySelector('.tc-ask-input');
+        if (input) input.value = defaultVal ?? '';
+        (document.body || document.documentElement).appendChild(el);
+
+        let done = false;
+        const finish = (val) => { if (done) return; done = true; el.remove(); resolve(val); };
+        const ok = () => finish(prompt ? (input ? input.value : '') : true);
+        const cancel = () => finish(prompt ? null : false);
+
+        el.querySelector('.tc-ok').onclick = ok;
+        el.querySelector('.tc-cancel').onclick = cancel;
+        el.onclick = (e) => { if (e.target === el) cancel(); };
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+          if (e.key === 'Enter' && (input || document.activeElement.classList.contains('tc-ok'))) { e.preventDefault(); ok(); }
+        });
+        el.style.display = 'flex';
+        (input || el.querySelector('.tc-ok')).focus();
+      });
+    }
+    return {
+      confirm: (msg, opts) => ask(String(msg ?? ''), { ...opts }),
+      prompt: (msg, defaultVal) => ask(String(msg ?? ''), { prompt: true, defaultVal }),
     };
   })();
 
@@ -391,5 +414,6 @@ const TC = (() => {
            setPetPath, uploadPhoto, resizeImage,
            familyOverview, addMember, addVet, setMemberPermission, removeMember, removeVet,
            createPet, setPetProfile, setPetArchived, deletePet, myFamilies, renameFamily, myProfile, updateMyName,
-           calcAge, ageText, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS };
+           calcAge, ageText, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS,
+           confirm: TCModal.confirm, prompt: TCModal.prompt };
 })();

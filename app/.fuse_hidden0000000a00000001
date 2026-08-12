@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=29">
+<link rel="stylesheet" href="theme.css?v=28">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -43,7 +43,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=29"></script>
+<script src="lib.js?v=28"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -712,7 +712,7 @@ async function saveSymptom() {
 async function delSymptom(src, idx) {
   const item = (PET.data.symptoms[src] || [])[idx];
   if (!item) return;
-  if (!await TC.confirm(`ลบบันทึกวันที่ ${TC.thDate(item.date)} ?\n\n${(item.detail || '').slice(0, 80)}`)) return;
+  if (!confirm(`ลบบันทึกวันที่ ${TC.thDate(item.date)} ?\n\n${(item.detail || '').slice(0, 80)}`)) return;
 
   const arr = [...(PET.data.symptoms[src] || [])];
   arr.splice(idx, 1);
@@ -965,7 +965,7 @@ async function delTreat(g, i) {
   const list = (PET.data || {}).treatments || [];
   const e = (list[g] || {}).entries?.[i];
   if (!e) return;
-  if (!await TC.confirm(`ลบบันทึกการรักษา ${TC.thDate(list[g].date)}\n${e.doctor || ''} ?`)) return;
+  if (!confirm(`ลบบันทึกการรักษา ${TC.thDate(list[g].date)}\n${e.doctor || ''} ?`)) return;
 
   const arr = JSON.parse(JSON.stringify(list));
   arr[g].entries.splice(i, 1);
@@ -1050,7 +1050,7 @@ function openMedForm(idx) {
 async function delMed(idx) {
   const meds = (PET.data || {}).meds || [];
   if (!meds[idx]) return;
-  if (!await TC.confirm(`ลบยา "${meds[idx].name}" ?`)) return;
+  if (!confirm(`ลบยา "${meds[idx].name}" ?`)) return;
   const arr = [...meds];
   arr.splice(idx, 1);
   try { await saveArr('meds', arr, 'meds'); } catch (e) { alert(e.message); }
@@ -1147,7 +1147,7 @@ function openApptForm(idx) {
 async function delAppt(idx) {
   const list = (PET.data || {}).appointments || [];
   if (!list[idx]) return;
-  if (!await TC.confirm(`ลบนัด ${TC.thDate(list[idx].date)} ${list[idx].doctor || ''} ?`)) return;
+  if (!confirm(`ลบนัด ${TC.thDate(list[idx].date)} ${list[idx].doctor || ''} ?`)) return;
   const arr = [...list];
   arr.splice(idx, 1);
   try { await saveArr('appointments', arr, 'appts'); } catch (e) { alert(e.message); }
@@ -1512,9 +1512,9 @@ async function delPanel(panelId, name) {
   const n = ((PET.data || {}).labs || []).filter((l) => l.panel === panelId).length;
 
   // เตือน 2 ชั้น + พิมพ์ชื่อยืนยัน (ผลตรวจหลายปีมีค่าพอกับลบสัตว์)
-  if (!await TC.confirm(`⚠️ ลบหมวด "${name}" ทั้งหมด\n\nผลตรวจในหมวดนี้ ${n} ครั้ง (ทุกวันที่) จะถูกลบไปด้วย และกู้คืนไม่ได้เลย\n\nถ้าแค่ไม่อยากให้แสดง ให้ใช้ "⚙️ ซ่อน/แสดงหมวด" แทน\n\nดำเนินการต่อ?`)) return;
+  if (!confirm(`⚠️ ลบหมวด "${name}" ทั้งหมด\n\nผลตรวจในหมวดนี้ ${n} ครั้ง (ทุกวันที่) จะถูกลบไปด้วย และกู้คืนไม่ได้เลย\n\nถ้าแค่ไม่อยากให้แสดง ให้ใช้ "⚙️ ซ่อน/แสดงหมวด" แทน\n\nดำเนินการต่อ?`)) return;
   if (n > 0) {
-    const typed = await TC.prompt(`ยืนยันการลบ — พิมพ์ชื่อหมวดให้ตรง (${name}) แล้วกดตกลง:`);
+    const typed = prompt(`ยืนยันการลบ — พิมพ์ชื่อหมวดให้ตรง (${name}) แล้วกดตกลง:`);
     if (typed === null) return;
     if (typed.trim() !== name) { alert('ชื่อไม่ตรง — ยกเลิกการลบ ปลอดภัยไว้ก่อน'); return; }
   }
@@ -1710,10 +1710,10 @@ function drawLabForm(panelId, cur) {
   document.getElementById(_lfHolder).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-async function addLabParam(panelId) {
-  const label = await TC.prompt('ชื่อค่าที่ต้องการเพิ่ม (เช่น Troponin, Cortisol)');
+function addLabParam(panelId) {
+  const label = prompt('ชื่อค่าที่ต้องการเพิ่ม (เช่น Troponin, Cortisol)');
   if (!label) return;
-  const unit = await TC.prompt('หน่วย (เว้นว่างได้ เช่น ng/mL)') || '';
+  const unit = prompt('หน่วย (เว้นว่างได้ เช่น ng/mL)') || '';
   const key = 'p_' + Math.random().toString(36).slice(2, 8);
   const ek = { key, label: label.trim(), unit: unit.trim(), min: '', max: '', _new: true };
   LAB_EDIT.extraKeys.push(ek);
@@ -1784,7 +1784,7 @@ async function saveLab(panelId, cur) {
 }
 
 async function delLab(panelId, cur) {
-  if (!await TC.confirm(`ลบผลตรวจวันที่ ${TC.thDate(cur.date)} ?\n\nลบแล้วกู้คืนไม่ได้`)) return;
+  if (!confirm(`ลบผลตรวจวันที่ ${TC.thDate(cur.date)} ?\n\nลบแล้วกู้คืนไม่ได้`)) return;
   const arr = (PET.data.labs || []).filter((l) => l !== cur);
   try {
     PET.data = await TC.setPetPath(PET.id, ['labs'], arr);
@@ -1865,7 +1865,7 @@ function openPanelForm() {
     if (wantCbc && existNames.has(LAB_TEMPLATES.cbc.name.toLowerCase())) dup.push('CBC (Hematology)');
     if (wantChem && existNames.has(LAB_TEMPLATES.chem.name.toLowerCase())) dup.push('Blood Chemistry');
     if (customName && existNames.has(customName.toLowerCase())) dup.push(customName);
-    if (dup.length && !await TC.confirm(`มีหมวดชื่อ "${dup.join('", "')}" อยู่แล้ว\n\nเพิ่มต่อจะได้หมวดซ้ำ — ต้องการเพิ่มซ้ำจริงหรือไม่?`)) return;
+    if (dup.length && !confirm(`มีหมวดชื่อ "${dup.join('", "')}" อยู่แล้ว\n\nเพิ่มต่อจะได้หมวดซ้ำ — ต้องการเพิ่มซ้ำจริงหรือไม่?`)) return;
 
     const btn = document.getElementById('tplSave');
     btn.disabled = true; btn.textContent = 'กำลังเพิ่ม...';
@@ -2076,9 +2076,9 @@ function toggleSummaryCfg(d) {
     holder.querySelectorAll('.cfg-dn').forEach((b) => b.onclick = () => {
       const i = Number(b.dataset.i); [curOrder[i + 1], curOrder[i]] = [curOrder[i], curOrder[i + 1]]; rerenderRows();
     });
-    holder.querySelectorAll('.cfg-del').forEach((b) => b.onclick = async () => {
+    holder.querySelectorAll('.cfg-del').forEach((b) => b.onclick = () => {
       const key = b.dataset.key;
-      if (!await TC.confirm(`ลบหัวข้อ "${(sections[key] || {}).label || ''}" ทิ้ง? (ข้อมูลในหัวข้อนี้จะหายด้วย)`)) return;
+      if (!confirm(`ลบหัวข้อ "${(sections[key] || {}).label || ''}" ทิ้ง? (ข้อมูลในหัวข้อนี้จะหายด้วย)`)) return;
       if (key in SUMMARY_TEMPLATES) delTemplate.add(key); else delCustom.add(key);
       curOrder = curOrder.filter((k) => k !== key);
       rerenderRows();
@@ -2102,7 +2102,7 @@ function toggleSummaryCfg(d) {
 
   // เพิ่มหัวข้อใหม่ (custom) — บันทึกทันทีแล้วเปิด cfg ใหม่
   const addCustom = async (type) => {
-    const title = await TC.prompt(type === 'graph' ? 'ชื่อหัวข้อกราฟ (เช่น น้ำหนัก, ขนาดก้อน)' : 'ชื่อหัวข้อลิสต์ (เช่น สิ่งที่หมอสั่ง)');
+    const title = prompt(type === 'graph' ? 'ชื่อหัวข้อกราฟ (เช่น น้ำหนัก, ขนาดก้อน)' : 'ชื่อหัวข้อลิสต์ (เช่น สิ่งที่หมอสั่ง)');
     if (!title || !title.trim()) return;
     const id = 'c_' + Math.random().toString(36).slice(2, 8);
     const custom = JSON.parse(JSON.stringify(d.custom || {}));
@@ -2190,7 +2190,7 @@ function editCustomList(id, idx) {
 }
 async function delCustomList(id, idx) {
   const items = ((PET.data.custom || {})[id] || {}).items || [];
-  if (!await TC.confirm(`ลบ "${items[idx]}" ?`)) return;
+  if (!confirm(`ลบ "${items[idx]}" ?`)) return;
   const arr = [...items]; arr.splice(idx, 1);
   try { PET.data = await TC.setPetPath(PET.id, ['custom', id, 'items'], arr); showTab('summary'); }
   catch (e) { alert(e.message); }
@@ -2356,7 +2356,7 @@ function editDanger(src, idx) {
 
 async function delDanger(src, idx) {
   const ds = PET.data.dangerSigns || {};
-  if (!await TC.confirm(`ลบ "${(ds[src] || [])[idx]}" ?`)) return;
+  if (!confirm(`ลบ "${(ds[src] || [])[idx]}" ?`)) return;
   const dsNew = JSON.parse(JSON.stringify(ds));
   dsNew[src].splice(idx, 1);
   try { PET.data = await TC.setPetPath(PET.id, ['dangerSigns'], dsNew); showTab('summary'); }
@@ -2407,7 +2407,7 @@ function editWatch(idx) {
 
 async function delWatch(idx) {
   const list = PET.data.watchList || [];
-  if (!await TC.confirm(`ลบ "${list[idx]}" ?`)) return;
+  if (!confirm(`ลบ "${list[idx]}" ?`)) return;
   const arr = [...list]; arr.splice(idx, 1);
   try { PET.data = await TC.setPetPath(PET.id, ['watchList'], arr); showTab('summary'); }
   catch (e) { alert(e.message); }
@@ -2515,7 +2515,7 @@ function editGraphEntry(savePath, uid, idx) {
 
 async function delGraphEntry(savePath, idx) {
   const rows = readPath(savePath);
-  if (!await TC.confirm(`ลบบันทึก ${TC.thDateShort(rows[idx].date)} ?`)) return;
+  if (!confirm(`ลบบันทึก ${TC.thDateShort(rows[idx].date)} ?`)) return;
   const arr = [...rows]; arr.splice(idx, 1);
   try { PET.data = await TC.setPetPath(PET.id, savePath, arr); showTab('summary'); }
   catch (e) { alert(e.message); }
