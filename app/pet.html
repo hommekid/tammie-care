@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=27">
+<link rel="stylesheet" href="theme.css?v=28">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -43,7 +43,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=27"></script>
+<script src="lib.js?v=28"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -1914,22 +1914,44 @@ function openPanelForm() {
 /* ================= แท็บสรุป ================= */
 
 // section ทั้งหมดในหน้าสรุป + ตัวสร้างกล่อง (parent เลือกแสดง/ซ่อน/จัดลำดับได้)
-const SUMMARY_BUILTIN = {
-  leuco:  { label: '💉 เกณฑ์ฉีด Leuco Plus',      build: (d) => (d.leucoPlus ? leucoBox(d) : null) },
+// section หลัก — สัตว์ทุกตัวมีเสมอ (สัตว์ใหม่เริ่มด้วยแค่ 2 อันนี้)
+const SUMMARY_CORE = {
   danger: { label: '🚨 สัญญาณต้องไปหาหมอทันที',   build: (d) => dangerBox(d.dangerSigns || {}) },
   watch:  { label: '📋 สิ่งที่ต้องติดตาม',         build: (d) => watchBox(d.watchList || []) },
-  tumor:  { label: '📈 ขนาดก้อนในตับ', build: (d) => {
-    const rows = (d.vitals && d.vitals.liverTumor) || [];
-    // โชว์เมื่อมีข้อมูล หรือ (แก้ได้ + โปรไฟล์มี vitals อยู่แล้ว) · สัตว์ใหม่/เฟ่อ = ไม่โผล่เปล่า
-    return (rows.length || (ROLE.canEdit && d.vitals)) ? tumorChart(rows) : null;
-  } },
 };
-// default: สัตว์ใหม่โชว์ 2 อย่าง — สัญญาณอันตราย + สิ่งที่ต้องติดตาม (leuco/tumor โผล่เมื่อมีข้อมูล)
+
+// เทมเพลตสำเร็จรูป — เลือกเพิ่มได้ทีหลัง (เหมือนเทมเพลตผลเลือด) · ลบได้ (ข้อมูลหายด้วย)
+// "มี" section นี้ = เปิดไว้ใน display.builtins หรือมีข้อมูลอยู่แล้ว (เฟ่/เฟ่อเก่าไม่ต้อง migrate)
+const SUMMARY_TEMPLATES = {
+  leuco: {
+    label: '💉 เกณฑ์ฉีด Leuco Plus',
+    build: (d) => leucoBox(d),
+    hasData: (d) => !!d.leucoPlus,
+    clearPath: ['leucoPlus'], clearValue: null,
+  },
+  tumor: {
+    label: '📈 ขนาดก้อนในตับ',
+    build: (d) => tumorChart((d.vitals && d.vitals.liverTumor) || []),
+    hasData: (d) => !!(d.vitals && d.vitals.liverTumor && d.vitals.liverTumor.length),
+    clearPath: ['vitals', 'liverTumor'], clearValue: [],
+  },
+};
+
+// เทมเพลตถูก "เปิด" สำหรับน้องตัวนี้ไหม (กดเพิ่มแล้ว หรือมีข้อมูลเดิมอยู่)
+function templateOn(d, key) {
+  const on = (d.display && d.display.builtins) || [];
+  return on.includes(key) || SUMMARY_TEMPLATES[key].hasData(d);
+}
+
+// default order: สัตว์ใหม่โชว์ danger + watch · เทมเพลตต่อท้ายเมื่อถูกเปิด
 const SUMMARY_DEFAULT_ORDER = ['danger', 'watch', 'leuco', 'tumor'];
 
-// รวม section ทั้งหมด (built-in + ที่ผู้ใช้เพิ่มเอง) → map key→{label, build}
+// รวม section ทั้งหมด (core + เทมเพลตที่เปิด + ที่ผู้ใช้เพิ่มเอง) → map key→{label, build}
 function getSections(d) {
-  const map = { ...SUMMARY_BUILTIN };
+  const map = { ...SUMMARY_CORE };
+  for (const key of Object.keys(SUMMARY_TEMPLATES)) {
+    if (templateOn(d, key)) map[key] = SUMMARY_TEMPLATES[key];
+  }
   const custom = (d.custom || {});
   for (const [id, sec] of Object.entries(custom)) {
     const icon = sec.type === 'graph' ? '📈' : '📋';
@@ -1996,28 +2018,39 @@ function toggleSummaryCfg(d) {
   const sections = getSections(d);
   const hidden = new Set((d.display && d.display.hidden) || []);
   let curOrder = summaryOrder(d);
-  const delCustom = new Set();   // custom id ที่จะลบตอนบันทึก
+  const delCustom = new Set();     // custom id ที่จะลบตอนบันทึก
+  const delTemplate = new Set();   // เทมเพลต (leuco/tumor) ที่จะลบ + ล้างข้อมูลตอนบันทึก
+
+  // ลบได้: หัวข้อที่เพิ่มเอง (custom) และเทมเพลต (leuco/tumor) — core (danger/watch) ลบไม่ได้
+  const canDelete = (key) => !!sections[key] && (sections[key].custom || key in SUMMARY_TEMPLATES);
 
   const rowHTML = (key, i) => {
     const sec = sections[key]; if (!sec) return '';
     return `<div class="cfg-row" data-key="${key}">
       <label style="display:flex;align-items:center;gap:10px;flex:1;margin:0;cursor:pointer;min-width:0">
         <input type="checkbox" ${hidden.has(key) ? '' : 'checked'} data-vis="${key}">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sec.label}${sec.custom ? '' : ''}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sec.label}</span>
       </label>
       <span style="display:flex;gap:4px">
         <button class="btn-ghost cfg-up" data-i="${i}" ${i === 0 ? 'disabled' : ''} style="padding:4px 9px">↑</button>
         <button class="btn-ghost cfg-dn" data-i="${i}" ${i === curOrder.length - 1 ? 'disabled' : ''} style="padding:4px 9px">↓</button>
-        ${sec.custom ? `<button class="btn-ghost cfg-del" data-key="${key}" style="padding:4px 9px;border-color:var(--red);color:var(--red)">🗑</button>` : ''}
+        ${canDelete(key) ? `<button class="btn-ghost cfg-del" data-key="${key}" style="padding:4px 9px;border-color:var(--red);color:var(--red)">🗑</button>` : ''}
       </span>
     </div>`;
   };
+
+  // ปุ่มเพิ่มเทมเพลตที่ยังไม่ได้เปิด (โผล่เฉพาะอันที่ยังไม่มี)
+  const templateAddBtns = () => Object.entries(SUMMARY_TEMPLATES)
+    .filter(([key]) => !templateOn(d, key))
+    .map(([key, t]) => `<button class="btn-ghost cfg-add-tpl" data-key="${key}">➕ ${t.label}</button>`)
+    .join('');
 
   holder.innerHTML = `
     <div class="edit-form">
       <h3>⚙️ ปรับหน้าสรุป</h3>
       <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">ติ๊กเพื่อแสดง/ซ่อน · ลูกศรจัดลำดับ · 🗑 ลบหัวข้อที่เพิ่มเอง</p>
       <div id="cfgRows"></div>
+      ${templateAddBtns() ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px" id="cfgTplBtns">${templateAddBtns()}</div>` : ''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
         <button class="btn-ghost" id="cfgAddList">➕ เพิ่มหัวข้อแบบลิสต์</button>
         <button class="btn-ghost" id="cfgAddGraph">➕ เพิ่มหัวข้อแบบกราฟ</button>
@@ -2046,12 +2079,26 @@ function toggleSummaryCfg(d) {
     holder.querySelectorAll('.cfg-del').forEach((b) => b.onclick = () => {
       const key = b.dataset.key;
       if (!confirm(`ลบหัวข้อ "${(sections[key] || {}).label || ''}" ทิ้ง? (ข้อมูลในหัวข้อนี้จะหายด้วย)`)) return;
-      delCustom.add(key);
+      if (key in SUMMARY_TEMPLATES) delTemplate.add(key); else delCustom.add(key);
       curOrder = curOrder.filter((k) => k !== key);
       rerenderRows();
     });
   };
   rerenderRows();
+
+  // เพิ่มเทมเพลต (leuco/tumor) — บันทึกทันทีแล้วเปิด cfg ใหม่ (เหมือนเพิ่มหัวข้อเอง)
+  const addTemplate = async (key) => {
+    const builtins = [...new Set([...((d.display && d.display.builtins) || []), key])];
+    const display = JSON.parse(JSON.stringify(d.display || {}));
+    display.builtins = builtins;
+    try {
+      PET.data = await TC.setPetPath(PET.id, ['display'], display);
+      SUMMARY_CFG_OPEN = false;
+      showTab('summary');
+      setTimeout(() => document.getElementById('tgSummaryCfg')?.click(), 30);
+    } catch (e) { document.getElementById('cfgMsg').textContent = e.message; }
+  };
+  holder.querySelectorAll('.cfg-add-tpl').forEach((b) => b.onclick = () => addTemplate(b.dataset.key));
 
   // เพิ่มหัวข้อใหม่ (custom) — บันทึกทันทีแล้วเปิด cfg ใหม่
   const addCustom = async (type) => {
@@ -2076,12 +2123,21 @@ function toggleSummaryCfg(d) {
     const display = JSON.parse(JSON.stringify(d.display || {}));
     display.hidden = newHidden;
     display.order = curOrder;
+    // ลบเทมเพลตที่กด 🗑: ถอดออกจาก builtins (ล้างข้อมูลด้านล่างอีกที)
+    if (delTemplate.size) {
+      display.builtins = ((display.builtins) || []).filter((k) => !delTemplate.has(k));
+    }
     try {
       // ลบ custom section ที่กด 🗑
       if (delCustom.size) {
         const custom = JSON.parse(JSON.stringify(d.custom || {}));
         delCustom.forEach((k) => delete custom[k]);
         PET.data = await TC.setPetPath(PET.id, ['custom'], custom);
+      }
+      // ล้างข้อมูลของเทมเพลตที่ลบ (leucoPlus → null · vitals.liverTumor → [])
+      for (const k of delTemplate) {
+        const t = SUMMARY_TEMPLATES[k];
+        PET.data = await TC.setPetPath(PET.id, t.clearPath, t.clearValue);
       }
       PET.data = await TC.setPetPath(PET.id, ['display'], display);
       SUMMARY_CFG_OPEN = false;
@@ -2151,7 +2207,7 @@ function customGraphBox(id, sec) {
 
 /* ---- ไฟเตือน Leuco Plus (เทียบ WBC ดิบ 🔴<4000 / 🟡4000-4499 / 🟢≥4500) ---- */
 function leucoBox(d) {
-  const lp = d.leucoPlus;
+  const lp = d.leucoPlus || {};   // เปิดเทมเพลตแต่ยังไม่ตั้งเกณฑ์ → ใช้ค่าเริ่มต้น กด ✏️ แก้เกณฑ์ ทีหลัง
   const labs = (d.labs || []).filter((l) => l.values && l.values.wbc != null);
   labs.sort((a, b) => new Date(b.date) - new Date(a.date));
   const latest = labs[0];
