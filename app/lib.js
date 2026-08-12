@@ -290,6 +290,44 @@ const TC = (() => {
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  // ---------- tooltip กดค้าง (มือถือ) — อ่านจาก attribute title ----------
+  (function setupTouchTip() {
+    let tipEl, timer, shown, sx, sy;
+    const ensure = () => {
+      if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'm-tip'; document.body.appendChild(tipEl); }
+      return tipEl;
+    };
+    const show = (el) => {
+      const text = el.getAttribute('title') || el.dataset.tip;
+      if (!text) return;
+      const t = ensure();
+      t.textContent = text;
+      t.style.display = 'block';
+      const r = el.getBoundingClientRect();
+      const left = Math.max(8, Math.min(window.innerWidth - 8 - t.offsetWidth, r.left + window.scrollX));
+      let top = r.top + window.scrollY - t.offsetHeight - 8;
+      if (top < window.scrollY + 4) top = r.bottom + window.scrollY + 8;   // ไม่พอด้านบน → ไปด้านล่าง
+      t.style.left = left + 'px'; t.style.top = top + 'px';
+      shown = true;
+    };
+    const hide = () => { if (tipEl) tipEl.style.display = 'none'; shown = false; };
+
+    document.addEventListener('touchstart', (e) => {
+      const el = e.target.closest('[title],[data-tip]');
+      if (!el) return;
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+      timer = setTimeout(() => show(el), 350);   // กดค้าง ~0.35 วิ
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (Math.abs(e.touches[0].clientX - sx) > 8 || Math.abs(e.touches[0].clientY - sy) > 8) clearTimeout(timer);
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      clearTimeout(timer);
+      if (shown) { e.preventDefault(); hide(); }   // แสดง tooltip แล้ว ไม่ให้ click ทำงาน
+    }, { passive: false });
+    document.addEventListener('touchcancel', () => { clearTimeout(timer); hide(); });
+  })();
+
   return { sb, requireAuth, signOut, getMyRole, listPets, getPet, signedUrl, fillImg,
            setPetPath, uploadPhoto, resizeImage,
            familyOverview, addMember, addVet, setMemberPermission, removeMember, removeVet,

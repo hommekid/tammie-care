@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=22">
+<link rel="stylesheet" href="theme.css?v=25">
 <style>
   .mrow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px;
           padding: 11px 14px; background: var(--surface); margin-bottom: 8px; flex-wrap: wrap; }
@@ -21,7 +21,27 @@
   .pet-row { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px;
              padding: 10px 14px; background: var(--surface); margin-bottom: 8px; }
   .pet-row.arch { opacity: .55; }
-  .pet-row .nm { flex: 1; font-weight: 600; }
+  .pet-row .nm { flex: 1; font-weight: 600; text-decoration: none; min-width: 0; }
+  .pet-actions { display: flex; gap: 8px; }
+  .pet-btn {
+    font-family: 'Sarabun', sans-serif; font-size: 12.5px; font-weight: 500;
+    border: 1px solid var(--border); border-radius: 16px; padding: 6px 13px;
+    cursor: pointer; background: var(--surface2); color: var(--text-dim); white-space: nowrap;
+    text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  }
+  /* มือถือ: ชื่ออยู่บรรทัดบน · 3 ปุ่มเรียงเท่ากันบรรทัดล่าง */
+  @media (max-width: 560px) {
+    .pet-row { flex-direction: column; align-items: stretch; gap: 8px; }
+    .pet-actions { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .pet-btn { padding: 8px 4px; font-size: 12px; }
+  }
+  .pet-btn { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+  .pet-btn:hover { border-color: var(--sky); color: var(--sky); }
+  .pet-btn.edit { color: var(--gold); border-color: var(--gold-dim); }
+  .pet-btn.edit:hover { background: rgba(217,158,62,0.12); }
+  .pet-btn.show { color: var(--sky); border-color: var(--sky-soft); }
+  .pet-btn.danger { color: var(--red); border-color: #f0c3c3; }
+  .pet-btn.danger:hover { background: var(--red-dim); }
   .add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-top: 10px; }
   .add-row .field { margin: 0; flex: 1; min-width: 160px; }
   .card + .card { margin-top: 18px; }
@@ -166,11 +186,14 @@ async function render() {
   // ----- สัตว์ -----
   document.getElementById('pets').innerHTML = pets.map((p) => `
     <div class="pet-row ${p.archived ? 'arch' : ''}">
-      <span class="nm">${TC.esc(p.name)}${p.archived ? ' <span style="font-size:11px;color:var(--text-muted)">(ซ่อนอยู่)</span>' : ''}</span>
-      ${p.archived
-        ? `<a class="rm" style="color:var(--sky)" data-unarch="${p.id}">แสดง</a>`
-        : `<a class="rm" data-arch="${p.id}">ซ่อน</a>`}
-      <a class="rm" data-del="${p.id}" data-nm="${TC.esc(p.name)}">ลบถาวร</a>
+      <a class="nm" href="pet.html?id=${p.id}" title="ดูข้อมูลสุขภาพของน้อง">${TC.esc(p.name)}${p.archived ? ' <span style="font-size:11px;color:var(--text-muted)">(ซ่อนอยู่)</span>' : ''}</a>
+      <div class="pet-actions">
+        <a class="pet-btn edit" href="pet.html?id=${p.id}&edit=profile" title="แก้ชื่อ/พันธุ์/วันเกิด/รูป/สถานะของน้อง">✏️ แก้โปรไฟล์</a>
+        ${p.archived
+          ? `<button class="pet-btn show" data-unarch="${p.id}" title="เอากลับมาแสดงในหน้าแรก">👁 แสดง</button>`
+          : `<button class="pet-btn" data-arch="${p.id}" title="ซ่อนจากหน้าแรก (ข้อมูลไม่หาย กดแสดงกลับได้)">🙈 ซ่อน</button>`}
+        <button class="pet-btn danger" data-del="${p.id}" data-nm="${TC.esc(p.name)}" title="ลบน้องและข้อมูลทั้งหมดถาวร (กู้คืนไม่ได้)">🗑 ลบถาวร</button>
+      </div>
     </div>`).join('') || '<div class="empty">ยังไม่มีสัตว์</div>';
   document.querySelectorAll('[data-arch]').forEach((a) => {
     a.onclick = () => { if (confirm('ซ่อนสัตว์ตัวนี้จากรายการ? (ข้อมูลไม่หาย กดแสดงกลับมาได้)')) guard('petMsg', () => TC.setPetArchived(a.dataset.arch, true)); };

@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=22">
+<link rel="stylesheet" href="theme.css?v=25">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -83,7 +83,13 @@ let ROLE = { canEdit: false, isAdmin: false, role: null };
 
   renderHeader();
   renderTabs();
-  showTab('summary');
+  // มาจาก "✏️ แก้ข้อมูล" ในหน้าจัดการ → เปิดฟอร์มแก้โปรไฟล์เลย (ถ้าเป็น admin)
+  if (new URLSearchParams(location.search).get('edit') === 'profile' && ROLE.isAdmin) {
+    showTab('summary');
+    openProfileEdit();
+  } else {
+    showTab('summary');
+  }
 })();
 
 function renderHeader() {
@@ -1207,18 +1213,16 @@ function renderLabs(root) {
     <div class="edit-bar">
       <span class="section-label" style="margin:0">🧪 ผลเลือด</span>
       ${ROLE.canEdit ? `
-        <button class="btn-ghost" id="btnAddLab">➕ เพิ่มผลตรวจ</button>
         <button class="btn-ghost" id="btnAddPanel">➕ เพิ่มหมวด</button>
-        ${allPanels.length ? '<a class="sum-edit-toggle" id="btnMngPanel" style="margin:0">⚙️ จัดการหมวด</a>' : ''}` : ''}
+        ${allPanels.length ? '<a class="sum-edit-toggle" id="btnMngPanel" style="margin:0">⚙️ ซ่อน/แสดงหมวด</a>' : ''}` : ''}
     </div>
     <div id="labForm"></div>
     <div id="labPanelCfg"></div>
     ${panels.length ? `<div id="labAccs"></div>` :
-      (allPanels.length ? '<div class="empty">หมวดทั้งหมดถูกซ่อนอยู่ — กด ⚙️ จัดการหมวด เพื่อแสดง</div>'
+      (allPanels.length ? '<div class="empty">หมวดทั้งหมดถูกซ่อนอยู่ — กด ⚙️ ซ่อน/แสดงหมวด เพื่อแสดง</div>'
                         : '<div class="empty">ยังไม่มีผลเลือด</div>')}`;
 
   if (ROLE.canEdit) {
-    document.getElementById('btnAddLab').onclick = () => openLabForm(null);
     document.getElementById('btnAddPanel').onclick = openPanelForm;
     const mng = document.getElementById('btnMngPanel');
     if (mng) mng.onclick = () => toggleLabPanelCfg(d, allPanels, hidden);
@@ -1244,7 +1248,7 @@ function toggleLabPanelCfg(d, allPanels, hidden) {
 
   holder.innerHTML = `
     <div class="edit-form">
-      <h3>⚙️ จัดการหมวดที่แสดง</h3>
+      <h3>⚙️ ซ่อน/แสดงหมวด</h3>
       <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">ติ๊กหมวดที่อยากให้แสดง — เอาติ๊กออกเพื่อซ่อน (ข้อมูลไม่หาย กลับมาแสดงได้)</p>
       ${allPanels.map((p) => `
         <label class="tpl-row"><input type="checkbox" data-pan="${p.id}" ${hidden.includes(p.id) ? '' : 'checked'}> ${TC.esc(p.name)}</label>
@@ -1307,10 +1311,16 @@ function fillLabBody(body, panel) {
   const latest = rows[0];
   if (!latest) {
     body.innerHTML = `<div class="empty">ยังไม่มีผลตรวจในหมวดนี้</div>
-      ${ROLE.canEdit ? `<div class="inline-actions" style="margin-top:10px">
-        <a class="act-edit" id="labParams-${panel.id}">⚙️ ตั้งค่าที่ตรวจ + เกณฑ์ปกติ</a></div>
+      ${ROLE.canEdit ? `<div class="inline-actions" style="margin-top:10px;gap:14px;flex-wrap:wrap">
+        <a class="act-edit" id="labAddInline-${panel.id}" style="color:var(--sky);font-weight:600">➕ เพิ่มผลตรวจในหมวดนี้</a>
+        <a class="act-edit" id="labParams-${panel.id}">⚙️ ค่าตรวจ + เกณฑ์ปกติ</a></div>
+      <div id="labFormInline-${panel.id}"></div>
       <div id="paramForm-${panel.id}"></div>` : ''}`;
-    if (ROLE.canEdit) document.getElementById(`labParams-${panel.id}`).onclick = () => openParamEditor(panel.id);
+    if (ROLE.canEdit) {
+      document.getElementById(`labAddInline-${panel.id}`).onclick = () =>
+        openLabForm(null, `labFormInline-${panel.id}`, panel.id);
+      document.getElementById(`labParams-${panel.id}`).onclick = () => openParamEditor(panel.id);
+    }
     return;
   }
 
@@ -1334,6 +1344,13 @@ function fillLabBody(body, panel) {
     }).join('');
 
   body.innerHTML = `
+    ${ROLE.canEdit ? `<div class="inline-actions" style="margin-bottom:10px;gap:14px;flex-wrap:wrap">
+      <a class="act-edit" id="labAddInline-${panel.id}" style="color:var(--sky);font-weight:600">➕ เพิ่มผลตรวจในหมวดนี้</a>
+      <a class="act-edit" id="labEditLatest-${panel.id}">✏️ แก้ผลล่าสุด (${TC.thDateShort(latest.date)})</a>
+      <a class="act-edit" id="labParams-${panel.id}">⚙️ ค่าตรวจ + เกณฑ์ปกติ</a>
+    </div>
+    <div id="labFormInline-${panel.id}"></div>
+    <div id="paramForm-${panel.id}"></div>` : ''}
     <div class="lab-latest">${cards}</div>
     <div class="lab-latest-date">ผลล่าสุด ${TC.thDate(latest.date)}</div>
     ${latest.note ? `<div class="lab-note">${TC.esc(latest.note)}</div>` : ''}
@@ -1343,12 +1360,7 @@ function fillLabBody(body, panel) {
     <details class="lab-history">
       <summary>📋 ตารางทุกวันที่ (${rows.length} ครั้ง)</summary>
       <div id="labTbl-${panel.id}"></div>
-    </details>
-    ${ROLE.canEdit ? `<div class="inline-actions" style="margin-top:12px;gap:14px">
-      <a class="act-edit" id="labEditLatest-${panel.id}">✏️ แก้ผลล่าสุด (${TC.thDateShort(latest.date)})</a>
-      <a class="act-edit" id="labParams-${panel.id}">⚙️ ค่าตรวจ + เกณฑ์ปกติ</a>
-    </div>
-    <div id="paramForm-${panel.id}"></div>` : ''}`;
+    </details>`;
 
   if (plottableKeys.size) {
     const head = document.getElementById(`labGraphHead-${panel.id}`);
@@ -1369,9 +1381,12 @@ function fillLabBody(body, panel) {
   renderLabTable(panel.id, 0);
 
   if (ROLE.canEdit) {
+    // เพิ่มผลตรวจในหมวดนี้ — ฟอร์มโผล่ในหมวดเลย (ไม่เด้งขึ้นบน) + ล็อกหมวดนี้ไว้
+    document.getElementById(`labAddInline-${panel.id}`).onclick = () =>
+      openLabForm(null, `labFormInline-${panel.id}`, panel.id);
     document.getElementById(`labEditLatest-${panel.id}`).onclick = () => {
       const gi = (PET.data.labs || []).findIndex((l) => l === latest);
-      openLabForm(gi);
+      openLabForm(gi, `labFormInline-${panel.id}`);
     };
     document.getElementById(`labParams-${panel.id}`).onclick = () => openParamEditor(panel.id);
   }
@@ -1495,7 +1510,14 @@ function openParamEditor(panelId) {
 
 async function delPanel(panelId, name) {
   const n = ((PET.data || {}).labs || []).filter((l) => l.panel === panelId).length;
-  if (!confirm(`ลบหมวด "${name}" ทั้งหมด?\n\nผลตรวจในหมวดนี้ ${n} ครั้ง จะถูกลบไปด้วย · กู้คืนไม่ได้`)) return;
+
+  // เตือน 2 ชั้น + พิมพ์ชื่อยืนยัน (ผลตรวจหลายปีมีค่าพอกับลบสัตว์)
+  if (!confirm(`⚠️ ลบหมวด "${name}" ทั้งหมด\n\nผลตรวจในหมวดนี้ ${n} ครั้ง (ทุกวันที่) จะถูกลบไปด้วย และกู้คืนไม่ได้เลย\n\nถ้าแค่ไม่อยากให้แสดง ให้ใช้ "⚙️ ซ่อน/แสดงหมวด" แทน\n\nดำเนินการต่อ?`)) return;
+  if (n > 0) {
+    const typed = prompt(`ยืนยันการลบ — พิมพ์ชื่อหมวดให้ตรง (${name}) แล้วกดตกลง:`);
+    if (typed === null) return;
+    if (typed.trim() !== name) { alert('ชื่อไม่ตรง — ยกเลิกการลบ ปลอดภัยไว้ก่อน'); return; }
+  }
   try {
     const d = PET.data;
     // ลบทั้ง panel + labConfig + labs ของหมวดนี้ (เขียนทีละ path)
@@ -1577,14 +1599,14 @@ function renderLabTable(panelId, page) {
 
 let LAB_EDIT = null;   // {panel, extraKeys:[{key,label,unit}...]}
 
-function openLabForm(idx) {
+function openLabForm(idx, holderId, forcePanel) {
   const d = PET.data || {};
   const panels = d.labPanels || [];
   if (!panels.length) { alert('ยังไม่มีหมวดผลเลือด — กด "➕ เพิ่มหมวด" ก่อน'); return; }
 
   const cur = idx == null ? null : d.labs[idx];
-  const panel = cur ? cur.panel : (LAB_OPEN || panels[0].id);
-  LAB_EDIT = { idx, extraKeys: [] };
+  const panel = cur ? cur.panel : (forcePanel || LAB_OPEN || panels[0].id);
+  LAB_EDIT = { idx, extraKeys: [], holder: holderId || 'labForm' };
 
   drawLabForm(panel, cur);
 }
@@ -1604,7 +1626,8 @@ function drawLabForm(panelId, cur) {
     </div>`;
   };
 
-  document.getElementById('labForm').innerHTML = `
+  const _lfHolder = (LAB_EDIT && LAB_EDIT.holder) || 'labForm';
+  document.getElementById(_lfHolder).innerHTML = `
     <div class="edit-form">
       <h3>${cur ? '✏️ แก้ผลตรวจ' : '➕ เพิ่มผลตรวจ'}</h3>
       <div class="fld">
@@ -1667,7 +1690,7 @@ function drawLabForm(panelId, cur) {
   document.querySelectorAll('.lab-date-chip').forEach((chip) => {
     chip.onclick = () => {
       const gi = (PET.data.labs || []).findIndex((l) => l.panel === panelId && l.date === chip.dataset.dt);
-      if (gi >= 0) { LAB_EDIT = { idx: gi, extraKeys: [] }; drawLabForm(panelId, PET.data.labs[gi]); }
+      if (gi >= 0) { LAB_EDIT = { idx: gi, extraKeys: [], holder: (LAB_EDIT && LAB_EDIT.holder) || 'labForm' }; drawLabForm(panelId, PET.data.labs[gi]); }
     };
   });
 
@@ -1686,13 +1709,13 @@ function drawLabForm(panelId, cur) {
   checkDup();
 
   document.getElementById('lfAddParam').onclick = () => addLabParam(panelId);
-  document.getElementById('lfCancel').onclick = () => { LAB_EDIT = null; document.getElementById('labForm').innerHTML = ''; };
+  document.getElementById('lfCancel').onclick = () => { LAB_EDIT = null; document.getElementById(_lfHolder).innerHTML = ''; };
   document.getElementById('lfSave').onclick = () => saveLab(panelId, cur);
 
   // วาดค่าที่เพิ่งเพิ่มระหว่างกรอก (กรณีกด addLabParam แล้ว re-draw)
   LAB_EDIT.extraKeys.forEach((ek) => appendParamInput(ek));
 
-  document.getElementById('labForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById(_lfHolder).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function addLabParam(panelId) {
@@ -1843,6 +1866,14 @@ function openPanelForm() {
     const wantChem = document.getElementById('tplChem').checked;
     const customName = document.getElementById('tplCustom').value.trim();
     if (!wantCbc && !wantChem && !customName) { alert('เลือกเทมเพลต หรือพิมพ์ชื่อหมวดอย่างน้อยหนึ่งอย่าง'); return; }
+
+    // กันเพิ่มหมวดชื่อซ้ำกับที่มีอยู่แล้ว
+    const existNames = new Set((PET.data.labPanels || []).map((p) => p.name.trim().toLowerCase()));
+    const dup = [];
+    if (wantCbc && existNames.has(LAB_TEMPLATES.cbc.name.toLowerCase())) dup.push('CBC (Hematology)');
+    if (wantChem && existNames.has(LAB_TEMPLATES.chem.name.toLowerCase())) dup.push('Blood Chemistry');
+    if (customName && existNames.has(customName.toLowerCase())) dup.push(customName);
+    if (dup.length && !confirm(`มีหมวดชื่อ "${dup.join('", "')}" อยู่แล้ว\n\nเพิ่มต่อจะได้หมวดซ้ำ — ต้องการเพิ่มซ้ำจริงหรือไม่?`)) return;
 
     const btn = document.getElementById('tplSave');
     btn.disabled = true; btn.textContent = 'กำลังเพิ่ม...';
@@ -2076,7 +2107,7 @@ function customListBox(id, sec) {
   el.innerHTML = `
     <div class="edit-bar" style="margin-bottom:6px">
       <span class="title" style="margin:0">📋 ${TC.esc(sec.title)}</span>
-      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgc-${id}">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgc-${id}">${editing ? '✓ เสร็จ' : '✏️ จัดการ'}</a>` : ''}
     </div>
     ${items.length ? `<ul>${items.map((t, i) => `<li>${TC.esc(t)}${editing ? `
       <span class="inline-actions"><a class="act-edit" data-e="${i}">แก้</a><a class="act-del" data-d="${i}">ลบ</a></span>` : ''}</li>`).join('')}</ul>`
@@ -2212,7 +2243,7 @@ function dangerBox(ds) {
     <div style="flex:1;min-width:0">
       <div class="edit-bar" style="margin-bottom:6px">
         <span class="title" style="margin:0">สัญญาณต้องไปหาหมอทันที</span>
-        ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgDanger">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+        ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgDanger">${editing ? '✓ เสร็จ' : '✏️ จัดการ'}</a>` : ''}
       </div>
       ${rows.length ? `<ul>${rows.map((r) => `<li>${TC.esc(r.t)}${editing ? `
         <span class="inline-actions"><a class="act-edit" data-e="${r.src}:${r.i}">แก้</a><a class="act-del" data-d="${r.src}:${r.i}">ลบ</a></span>` : ''}</li>`).join('')}</ul>`
@@ -2292,7 +2323,7 @@ function watchBox(list) {
   el.innerHTML = `
     <div class="edit-bar" style="margin-bottom:6px">
       <span class="title" style="margin:0">📋 สิ่งที่ต้องติดตาม</span>
-      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgWatch">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tgWatch">${editing ? '✓ เสร็จ' : '✏️ จัดการ'}</a>` : ''}
     </div>
     ${list.length ? `<ul>${list.map((t, i) => `<li>${TC.esc(t)}${editing ? `
       <span class="inline-actions"><a class="act-edit" data-e="${i}">แก้</a><a class="act-del" data-d="${i}">ลบ</a></span>` : ''}</li>`).join('')}</ul>`
@@ -2354,7 +2385,7 @@ function genericGraphBox(opts) {
   el.innerHTML = `
     <div class="edit-bar">
       <span class="section-label" style="margin:0">📈 ${TC.esc(title)}${unit ? ` (${TC.esc(unit)})` : ''}</span>
-      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tg-${uid}">${editing ? 'เสร็จ' : '✏️ จัดการ'}</a>` : ''}
+      ${ROLE.canEdit ? `<a class="sum-edit-toggle" id="tg-${uid}">${editing ? '✓ เสร็จ' : '✏️ จัดการ'}</a>` : ''}
     </div>
     <div id="form-${uid}"></div>
     <div class="tumor-box"><canvas></canvas></div>
