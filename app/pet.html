@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=36">
+<link rel="stylesheet" href="theme.css?v=37">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -43,7 +43,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=36"></script>
+<script src="lib.js?v=37"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -834,7 +834,12 @@ function openForm(holderId, { title, fields, values = {}, prefix = 'photo', onSa
   FORM = { photos: [...((photoField && values[photoField.key]) || [])], files: [], prefix, fields };
 
   const fieldHTML = (f) => {
-    const v = values[f.key] ?? '';
+    let v = values[f.key] ?? '';
+    // เพิ่มใหม่แล้วช่องวันที่ว่าง → เติมวันนี้ให้ (เหมือนฟอร์มอาการ/ผลเลือด) กันลืมกรอกบนมือถือ
+    if (f.type === 'date' && !v) {
+      const t = new Date();
+      v = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    }
     if (f.type === 'photos') {
       return `<label>${TC.esc(f.label)}</label>
         <input type="file" id="ff-${f.key}" accept="image/*" multiple>
