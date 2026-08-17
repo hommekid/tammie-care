@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=34">
+<link rel="stylesheet" href="theme.css?v=35">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -43,7 +43,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=34"></script>
+<script src="lib.js?v=35"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -845,9 +845,20 @@ function openForm(holderId, { title, fields, values = {}, prefix = 'photo', onSa
         <textarea id="ff-${f.key}" placeholder="${TC.esc(f.placeholder || '')}">${TC.esc(v)}</textarea>`;
     }
     if (f.type === 'select') {
+      const opt = (o) => `<option value="${TC.esc(o.value)}" ${o.value === v ? 'selected' : ''}>${TC.esc(o.label)}</option>`;
+      // ถ้า option มี .group → จัดกลุ่มด้วย <optgroup> (ตัวที่ไม่มี group เช่น "— เลือก —" อยู่บนสุด)
+      const grouped = f.options.filter((o) => o.group);
+      let optsHtml;
+      if (grouped.length) {
+        const order = [], byG = {};
+        grouped.forEach((o) => { if (!byG[o.group]) { byG[o.group] = []; order.push(o.group); } byG[o.group].push(o); });
+        optsHtml = f.options.filter((o) => !o.group).map(opt).join('')
+          + order.map((g) => `<optgroup label="${TC.esc(g)}">${byG[g].map(opt).join('')}</optgroup>`).join('');
+      } else {
+        optsHtml = f.options.map(opt).join('');
+      }
       return `<label>${TC.esc(f.label)}</label>
-        <select id="ff-${f.key}">${f.options.map((o) =>
-          `<option value="${TC.esc(o.value)}" ${o.value === v ? 'selected' : ''}>${TC.esc(o.label)}</option>`).join('')}</select>`;
+        <select id="ff-${f.key}">${optsHtml}</select>`;
     }
     return `<label>${TC.esc(f.label)}</label>
       <input type="${f.type}" id="ff-${f.key}" value="${TC.esc(v)}" placeholder="${TC.esc(f.placeholder || '')}">`;
@@ -2304,12 +2315,19 @@ function customGraphBox(id, sec) {
  *  โครงเดียวกับ Leuco Plus แต่ไม่ล็อกที่ WBC · sec = {type:'alert', title, sourceKey, sourceLabel, direction, danger, warn, rules[]}
  *  direction: 'below' = ค่ายิ่งต่ำยิ่งอันตราย · 'above' = ค่ายิ่งสูงยิ่งอันตราย */
 
-/** รวมค่าผลเลือดทั้งหมดของน้องตัวนี้ (จาก labConfig + ที่เคยกรอกจริง) → [{value:key, label}] */
+/** รวมค่าผลเลือดทั้งหมดของน้องตัวนี้ (จาก labConfig + ที่เคยกรอกจริง) → [{value:key, label, group}]
+ *  group = ชื่อหมวด (labPanels) เพื่อจัดกลุ่มใน dropdown ไม่ให้เป็นลิสต์ยาวพรืด */
 function labValueOptions(d) {
-  const seen = new Map();
-  (d.labConfig || []).forEach((c) => { if (c.key && !seen.has(c.key)) seen.set(c.key, c.label || c.key); });
-  (d.labs || []).forEach((l) => Object.keys(l.values || {}).forEach((k) => { if (!seen.has(k)) seen.set(k, k); }));
-  return [...seen.entries()].map(([value, label]) => ({ value, label }));
+  const panelName = {};
+  (d.labPanels || []).forEach((p) => { panelName[p.id] = p.name || p.id; });
+  const seen = new Map();   // key → {label, group}
+  (d.labConfig || []).forEach((c) => {
+    if (c.key && !seen.has(c.key)) seen.set(c.key, { label: c.label || c.key, group: panelName[c.panel] || 'อื่นๆ' });
+  });
+  (d.labs || []).forEach((l) => Object.keys(l.values || {}).forEach((k) => {
+    if (!seen.has(k)) seen.set(k, { label: k, group: 'อื่นๆ' });
+  }));
+  return [...seen.entries()].map(([value, info]) => ({ value, label: info.label, group: info.group }));
 }
 
 function customAlertBox(id, sec) {
