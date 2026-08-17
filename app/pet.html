@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=35">
+<link rel="stylesheet" href="theme.css?v=36">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -43,7 +43,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=35"></script>
+<script src="lib.js?v=36"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -1282,7 +1282,8 @@ function labConfigFor(panel) {
 //   ">2000" = ค่าจริงสูงกว่า 2000 · "<200" = ค่าจริงต่ำกว่า 200
 function parseLabVal(v) {
   if (typeof v === 'number') return { op: '', n: v };
-  const s = String(v ?? '').trim();
+  // ตัด comma หลักพันทิ้งก่อนแปลงเป็นเลข ("1,000" → 1000) · เก็บค่าที่พิมพ์ไว้ตามเดิม แค่ตอนคำนวณมองข้าม
+  const s = String(v ?? '').trim().replace(/,/g, '');
   const m = s.match(/^([<>]=?)\s*(-?\d+\.?\d*)/);
   if (m) return { op: m[1][0], n: Number(m[2]) };
   const num = Number(s);
@@ -2348,13 +2349,18 @@ function customAlertBox(id, sec) {
   } else if (!latest) {
     verdict = `ยังไม่มีผล ${label}`;
   } else {
-    const val = Number(latest.values[key]);
-    const cmp = dir === 'below' ? 'ต่ำกว่า' : 'สูงกว่า';
-    const hit = (th) => th != null && (dir === 'below' ? val < th : val > th);
-    if (hit(danger)) { cls = 'lp-red'; verdict = `🔴 ${label} ${val.toLocaleString()} — ${cmp} ${danger.toLocaleString()}`; }
-    else if (hit(warn)) { cls = 'lp-yellow'; verdict = `🟡 ${label} ${val.toLocaleString()} — ${cmp} ${warn.toLocaleString()} ควรเฝ้าระวัง`; }
-    else { cls = 'lp-green'; verdict = `🟢 ${label} ${val.toLocaleString()} — อยู่ในเกณฑ์`; }
-    detail = `ผลล่าสุด ${TC.thDate(latest.date)}`;
+    const val = parseLabVal(latest.values[key]).n;   // รองรับ comma หลักพัน + ค่า < >
+    if (val == null) {
+      verdict = `ผล ${label} ล่าสุดอ่านเป็นตัวเลขไม่ได้ (${TC.esc(String(latest.values[key]))})`;
+      detail = `ผลล่าสุด ${TC.thDate(latest.date)}`;
+    } else {
+      const cmp = dir === 'below' ? 'ต่ำกว่า' : 'สูงกว่า';
+      const hit = (th) => th != null && (dir === 'below' ? val < th : val > th);
+      if (hit(danger)) { cls = 'lp-red'; verdict = `🔴 ${label} ${val.toLocaleString()} — ${cmp} ${danger.toLocaleString()}`; }
+      else if (hit(warn)) { cls = 'lp-yellow'; verdict = `🟡 ${label} ${val.toLocaleString()} — ${cmp} ${warn.toLocaleString()} ควรเฝ้าระวัง`; }
+      else { cls = 'lp-green'; verdict = `🟢 ${label} ${val.toLocaleString()} — อยู่ในเกณฑ์`; }
+      detail = `ผลล่าสุด ${TC.thDate(latest.date)}`;
+    }
   }
 
   const el = document.createElement('div');
@@ -2419,8 +2425,9 @@ function leucoBox(d) {
 
   let cls = 'lp-gray', verdict = 'ยังไม่มีผล WBC', detail = '';
 
-  if (latest) {
-    let wbc = Number(latest.values.wbc);
+  let wbc = latest ? parseLabVal(latest.values.wbc).n : null;   // รองรับ comma หลักพัน
+  if (latest && wbc == null) { verdict = 'ผล WBC ล่าสุดอ่านเป็นตัวเลขไม่ได้'; }
+  else if (latest) {
     if (lp.wbcInThousands) wbc = wbc * 1000;   // เผื่อโปรไฟล์ที่เก็บเป็นพัน
     const always = lp.alwaysBelow ?? 4000;
     const withSym = lp.withSymptomsBelow ?? 4500;
