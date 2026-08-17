@@ -8,7 +8,7 @@
 ## ⚡ กับดักที่เจอบ่อย (เจอซ้ำแน่ถ้าไม่รู้)
 
 ### 1. แคช JS/HTML ค้าง — อาการ "แก้แล้วไม่เปลี่ยน"
-- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 36** (`sed -i '' 's/theme.css?v=36/theme.css?v=37/g; s/lib.js?v=36/lib.js?v=37/g' app/*.html`)
+- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 38** (`sed -i '' 's/theme.css?v=38/theme.css?v=39/g; s/lib.js?v=38/lib.js?v=39/g' app/*.html`)
 - **`index.html` / `pet.html` / `family.html` / `login.html` เอง ติด `?v=` ไม่ได้** (เป็น entry point) → เวลาแก้ inline JS ในไฟล์พวกนี้ ต้อง **hard refresh (Cmd+Shift+R)** หรือ incognito
 - อาการคลาสสิกที่หลงเชื่อว่าเป็นบั๊กโค้ด แต่จริง ๆ คือแคช: "ยังเห็น section เดิม", "TC.xxx is not a function", "ปุ่มเก่ายังอยู่" → **เช็กแคชก่อนเสมอ**
 - บน workers.dev ต้องรอ build (~1 นาที) หลัง push ด้วย
@@ -76,6 +76,12 @@ select set_config('role', 'authenticated', true);
 - ⚠️ ลบหมวด = เขียน `symptoms` ทั้งก้อนกลับโดยลบ key นั้น (ไม่ใช่ set `[]`) — เพราะ `dailyCats` union จะดึง key ที่มี array ว่างกลับมาโชว์ (แก้แล้วให้ union เช็ก `.length` ด้วย เป็นกันชนอีกชั้น)
 - `<input type=color>` คืนค่า `#rrggbb` เสมอ — เก็บตรงๆ ได้ ไม่ต้องแปลง
 - **น้องใหม่มี "อาการทั่วไป" (general) ให้อัตโนมัติ** — `dailyCats()` คืนอย่างน้อย 1 หมวดเสมอ (ถ้าไม่มี tabs/ไม่มีบันทึกเลย) เพื่อให้ลงบันทึกได้ทันทีโดยไม่ต้องสร้างหมวดก่อน · เปลี่ยนสี/เพิ่มหมวดทีหลังได้ผ่าน ⚙️ จัดการหมวด (`pickCats` เลยตัด fallback เดิมที่โชว์ทั้ง 4 หมวดออก)
+
+### 13. บันทึกน้ำหนัก — section ในหน้าสรุป (default on, ซ่อนได้) + หัวโปรไฟล์ (13 ส.ค. 2026)
+- น้ำหนักเก็บใน **`data.vitals.weight = [{date, size, note}]`** (โครงเดียวกับกราฟก้อนในตับ) · ใช้ `weightChart(d)` = `genericGraphBox` savePath `['vitals','weight']`
+- section "⚖️ น้ำหนัก (kg)" อยู่ใน `getSections` **เสมอ (default on ทุกตัว)** แต่ **ซ่อนได้** ผ่าน ⚙️ ปรับหน้าสรุป (untick → เข้า `display.hidden`) · ลบถาวรไม่ได้ (ไม่ใช่ custom/template) — แค่ซ่อน ข้อมูลไม่หาย · ไม่มีข้อมูลก็ไม่พัง (กราฟโชว์ "ยังไม่มีค่าที่วัดได้")
+- หัวโปรไฟล์โชว์ "⚖️ น้ำหนักล่าสุด X kg" **เฉพาะเมื่อมีข้อมูล + section ไม่ถูกซ่อน** · แตะ → `logWeight()` ไปหน้าสรุปเปิดฟอร์มบันทึกเลย (guard ว่า `form-weight` มีอยู่)
+- ⚠️ header อัปเดตตอน `renderHeader()` (โหลดหน้า) เท่านั้น — บันทึกน้ำหนักใหม่แล้วเลข "ล่าสุด" ที่หัวจะสดตอนรีเฟรช/เปิดหน้าใหม่ (กราฟในสรุปสดทันที)
 
 ### 12. หน้าสรุป: ไฟเตือนจากค่าผลเลือด (custom type 'alert') — เลือกค่าตรวจตัวไหนก็ได้ (13 ส.ค. 2026)
 - section หน้าสรุปเพิ่มชนิดที่ 3: **`custom[id] = {type:'alert', title, sourceKey, sourceLabel, direction, danger, warn, rules[]}`** (นอกจาก list/graph เดิม) · ปุ่ม "🚦 เพิ่มไฟเตือนจากค่าผลเลือด" ใน ⚙️ ปรับหน้าสรุป

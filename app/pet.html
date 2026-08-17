@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=37">
+<link rel="stylesheet" href="theme.css?v=38">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -26,6 +26,7 @@
   <div>
     <h1 id="petName">กำลังโหลด...</h1>
     <div class="sub" id="petSub"></div>
+    <div class="sub" id="petWeight" style="display:none;margin-top:2px"></div>
   </div>
   <div class="spacer"></div>
   <span id="rolePill"></span>
@@ -43,7 +44,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=37"></script>
+<script src="lib.js?v=38"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
@@ -102,6 +103,21 @@ function renderHeader() {
   const age = TC.ageText(card.birthDate || prof.birthDate);
   if (age) bits.push(`อายุ ${age}`);
   document.getElementById('petSub').textContent = bits.join(' · ');
+
+  // น้ำหนักล่าสุด (optional) — โชว์เฉพาะเมื่อมีข้อมูลและไม่ได้ซ่อน section น้ำหนัก · แตะเพื่อบันทึกเร็ว
+  const hidden = (d.display && d.display.hidden) || [];
+  const wLatest = ((d.vitals && d.vitals.weight) || [])
+    .filter((r) => r.size != null).sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  const wEl = document.getElementById('petWeight');
+  if (wLatest && !hidden.includes('weight')) {
+    wEl.style.display = '';
+    wEl.innerHTML = `⚖️ น้ำหนักล่าสุด ${wLatest.size} kg · ${TC.thDateShort(wLatest.date)}`
+      + (ROLE.canEdit ? ' <span style="color:var(--sky)">✎ บันทึก</span>' : '');
+    wEl.style.cursor = ROLE.canEdit ? 'pointer' : 'default';
+    wEl.onclick = ROLE.canEdit ? logWeight : null;
+  } else {
+    wEl.style.display = 'none'; wEl.innerHTML = '';
+  }
 
   const photo = card.photo || prof.photo;
   if (photo) {
@@ -2055,12 +2071,14 @@ function templateOn(d, key) {
   return on.includes(key) || SUMMARY_TEMPLATES[key].hasData(d);
 }
 
-// default order: สัตว์ใหม่โชว์ danger + watch · เทมเพลตต่อท้ายเมื่อถูกเปิด
-const SUMMARY_DEFAULT_ORDER = ['danger', 'watch', 'leuco', 'tumor'];
+// default order: สัตว์ใหม่โชว์ danger + watch + น้ำหนัก · เทมเพลตต่อท้ายเมื่อถูกเปิด
+const SUMMARY_DEFAULT_ORDER = ['danger', 'watch', 'weight', 'leuco', 'tumor'];
 
-// รวม section ทั้งหมด (core + เทมเพลตที่เปิด + ที่ผู้ใช้เพิ่มเอง) → map key→{label, build}
+// รวม section ทั้งหมด (core + น้ำหนัก + เทมเพลตที่เปิด + ที่ผู้ใช้เพิ่มเอง) → map key→{label, build}
 function getSections(d) {
   const map = { ...SUMMARY_CORE };
+  // น้ำหนัก — มีทุกตัว (default on) แต่ซ่อนได้ผ่าน ⚙️ ปรับหน้าสรุป · ไม่มีข้อมูลก็ไม่พัง
+  map.weight = { label: '⚖️ น้ำหนัก (kg)', build: (dd) => weightChart(dd) };
   for (const key of Object.keys(SUMMARY_TEMPLATES)) {
     if (templateOn(d, key)) map[key] = SUMMARY_TEMPLATES[key];
   }
@@ -2628,6 +2646,23 @@ async function delWatch(idx) {
   const arr = [...list]; arr.splice(idx, 1);
   try { PET.data = await TC.setPetPath(PET.id, ['watchList'], arr); showTab('summary'); }
   catch (e) { alert(e.message); }
+}
+
+/* ---- กราฟน้ำหนัก (optional) = กราฟทั่วไป (savePath = vitals.weight) ----
+ * ไม่มีข้อมูลก็ไม่พัง (โชว์ "ยังไม่มีค่าที่วัดได้") · ซ่อนได้ผ่าน ⚙️ ปรับหน้าสรุป */
+function weightChart(d) {
+  return genericGraphBox({
+    title: 'น้ำหนัก', unit: 'kg', rows: (d.vitals && d.vitals.weight) || [],
+    editKey: 'weight', savePath: ['vitals', 'weight'],
+  });
+}
+
+/** แตะน้ำหนักที่หัวโปรไฟล์ → ไปหน้าสรุปแล้วเปิดฟอร์มบันทึกน้ำหนักเลย (ถ้า section ไม่ถูกซ่อน) */
+function logWeight() {
+  showTab('summary');
+  setTimeout(() => {
+    if (document.getElementById('form-weight')) editGraphEntry(['vitals', 'weight'], 'weight', null);
+  }, 60);
 }
 
 /* ---- กราฟก้อนในตับ = กราฟทั่วไป (savePath = vitals.liverTumor) ---- */
