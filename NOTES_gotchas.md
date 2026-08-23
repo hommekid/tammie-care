@@ -8,7 +8,7 @@
 ## ⚡ กับดักที่เจอบ่อย (เจอซ้ำแน่ถ้าไม่รู้)
 
 ### 1. แคช JS/HTML ค้าง — อาการ "แก้แล้วไม่เปลี่ยน"
-- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 38** (`sed -i '' 's/theme.css?v=38/theme.css?v=39/g; s/lib.js?v=38/lib.js?v=39/g' app/*.html`)
+- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 41** (`sed -i '' 's/theme.css?v=41/theme.css?v=42/g; s/lib.js?v=41/lib.js?v=42/g' app/*.html`)
 - **`index.html` / `pet.html` / `family.html` / `login.html` เอง ติด `?v=` ไม่ได้** (เป็น entry point) → เวลาแก้ inline JS ในไฟล์พวกนี้ ต้อง **hard refresh (Cmd+Shift+R)** หรือ incognito
 - อาการคลาสสิกที่หลงเชื่อว่าเป็นบั๊กโค้ด แต่จริง ๆ คือแคช: "ยังเห็น section เดิม", "TC.xxx is not a function", "ปุ่มเก่ายังอยู่" → **เช็กแคชก่อนเสมอ**
 - บน workers.dev ต้องรอ build (~1 นาที) หลัง push ด้วย
@@ -76,6 +76,17 @@ select set_config('role', 'authenticated', true);
 - ⚠️ ลบหมวด = เขียน `symptoms` ทั้งก้อนกลับโดยลบ key นั้น (ไม่ใช่ set `[]`) — เพราะ `dailyCats` union จะดึง key ที่มี array ว่างกลับมาโชว์ (แก้แล้วให้ union เช็ก `.length` ด้วย เป็นกันชนอีกชั้น)
 - `<input type=color>` คืนค่า `#rrggbb` เสมอ — เก็บตรงๆ ได้ ไม่ต้องแปลง
 - **น้องใหม่มี "อาการทั่วไป" (general) ให้อัตโนมัติ** — `dailyCats()` คืนอย่างน้อย 1 หมวดเสมอ (ถ้าไม่มี tabs/ไม่มีบันทึกเลย) เพื่อให้ลงบันทึกได้ทันทีโดยไม่ต้องสร้างหมวดก่อน · เปลี่ยนสี/เพิ่มหมวดทีหลังได้ผ่าน ⚙️ จัดการหมวด (`pickCats` เลยตัด fallback เดิมที่โชว์ทั้ง 4 หมวดออก)
+
+### 14. รวมปฏิทิน — แท็บ "🗓️ ปฏิทิน" เดียว แทน อาการ+การรักษา (13 ส.ค. 2026)
+- แท็บ `daily` + `treat` **ถูกยุบเป็น `calendar`** ใน `TABS` + dispatch · `renderDaily`/`renderTreat` ถูกลบทิ้ง เหลือ **`renderCalendar()`** ตัวเดียวรวม events อาการ+การรักษาบน `buildCalendar` เดียว (key `'calendar'`)
+- **presentation merge — ไม่ยุบ data**: อาการยังอยู่ `symptoms[หมวด][]` · การรักษายังอยู่ `treatments[]` · ฟอร์มแยกเหมือนเดิม (`openSymForm` / `openTreatForm`)
+- **"หาหมอ" = หมวดพิเศษ** source `'treat'` (const `TREAT_SRC`) · สีเก็บที่ **`display.treatColor`** (ไม่ยุ่ง treatments data) · recolor ได้ · **ลบ/แก้ชื่อไม่ได้**
+- helper ที่ share (openSymForm/saveSymptom/delSymptom/openTreatForm/delTreat) เดิมชี้ `showTab('daily'/'treat')` → **แก้เป็น `'calendar'` หมดแล้ว** · `setCalFocus`/`buildCalendar` key ก็ใช้ `'calendar'`
+- ⚠️ **ลบหมวดอาการ = ย้ายบันทึกไป general (อาการทั่วไป) ไม่ลบทิ้ง** (`moveSet` ใน `toggleCatCfg`) · `general` + `treat` ลบไม่ได้ (general = ปลายทาง fallback) · ถ้าย้ายแล้วไม่มี general ในลิสต์ จะเติมให้อัตโนมัติ
+- นัดหมาย (`appts`) **ยังแยกแท็บเหมือนเดิม** (อดีต vs อนาคต คนละงาน)
+- **สี default**: อาการทั่วไป (general) = ฟ้า `#5b8def` · หาหมอ (treat) = เขียว `#5fa57f` (`treatColor` fallback) · `dailyCats` การันตี general อยู่ในลิสต์เสมอ (default + ปลายทาง fallback)
+- **หาหมอแก้ชื่อได้** — เก็บ `display.treatLabel` (default 'หาหมอ') · `treatLabel(d)` ใช้ที่ legend + ปุ่ม 🏥 · ในตัวจัดการหมวด แถวหาหมอ = สี+ชื่อแก้ได้ (ลบไม่ได้) แทรก**ต่อจากอาการทั่วไป** (render หลัง row ที่ locked=general)
+- `actionsHTML`/`wireActions`/`drawFlow` ยังใช้อยู่ (meds/appts/renderCalendar) — ไม่ได้ลบ
 
 ### 13. บันทึกน้ำหนัก — section ในหน้าสรุป (default on, ซ่อนได้) + หัวโปรไฟล์ (13 ส.ค. 2026)
 - น้ำหนักเก็บใน **`data.vitals.weight = [{date, size, note}]`** (โครงเดียวกับกราฟก้อนในตับ) · ใช้ `weightChart(d)` = `genericGraphBox` savePath `['vitals','weight']`

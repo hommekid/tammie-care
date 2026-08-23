@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=38">
+<link rel="stylesheet" href="theme.css?v=41">
 <style>
   .panel { display: none; }
   .panel.active { display: block; }
@@ -44,16 +44,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=38"></script>
+<script src="lib.js?v=41"></script>
 <script>
 // แท็บตามลำดับเดิมของ V1 — Phase นี้ทำ "สรุป" ก่อน ที่เหลือทยอยพอร์ต
 const TABS = [
-  { key: 'summary', label: '📋 สรุป' },
-  { key: 'daily',   label: '🌡️ อาการประจำวัน' },
-  { key: 'treat',   label: '🏥 การรักษา' },
-  { key: 'labs',    label: '🧪 ผลเลือด' },
-  { key: 'meds',    label: '💊 ยา' },
-  { key: 'appts',   label: '📅 นัดหมาย' },
+  { key: 'summary',  label: '📋 สรุป' },
+  { key: 'calendar', label: '🗓️ ปฏิทิน' },
+  { key: 'labs',     label: '🧪 ผลเลือด' },
+  { key: 'meds',     label: '💊 ยา' },
+  { key: 'appts',    label: '📅 นัดหมาย' },
 ];
 
 let PET = null;
@@ -340,8 +339,7 @@ function showTab(key) {
   if (key === 'summary') renderSummary(c);
   else if (key === 'meds') renderMeds(c);
   else if (key === 'appts') renderAppts(c);
-  else if (key === "daily") renderDaily(c);
-  else if (key === "treat") renderTreat(c);
+  else if (key === "calendar") renderCalendar(c);
   else if (key === "labs") renderLabs(c);
   else c.innerHTML = `<div class="soon"><span class="big">🚧</span>แท็บนี้กำลังพอร์ตมาระบบใหม่<br>
     <span style="font-size:13px">ระหว่างนี้ดูได้จากเว็บเดิม</span></div>`;
@@ -374,8 +372,10 @@ function dailyCats(d) {
   } else {
     cats = Object.keys(d.symptoms || {}).map((k) => ({ source: k, label: SYM_LABELS[k] || k, color: SYM_COLORS[k] }));
   }
-  // น้องใหม่ (ยังไม่มีหมวด/ยังไม่มีบันทึก) → มี "อาการทั่วไป" ให้ใช้ได้เลย · เปลี่ยนสี/เพิ่มหมวดทีหลังได้
-  if (!cats.length) cats = [{ source: 'general', label: SYM_LABELS.general, color: SYM_COLORS.general }];
+  // "อาการทั่วไป" (general) มีเป็น default เสมอ — ใช้ได้ทันที + เป็นปลายทางตอนลบหมวด · สีฟ้า
+  if (!cats.some((c) => c.source === 'general')) {
+    cats.unshift({ source: 'general', label: SYM_LABELS.general, color: SYM_COLORS.general });
+  }
   cats.forEach((c, i) => { c.color = c.color || SYM_PALETTE[i % SYM_PALETTE.length]; SYM_COLOR_MAP[c.source] = c.color; });
   return cats;
 }
@@ -511,82 +511,121 @@ function attachPhotos(holder, paths) {
 
 let SYM_EDIT = null;   // {src, idx|null, photos:[path...], files:[File...]}
 
-function renderDaily(root) {
+const TREAT_SRC = 'treat';   // หมวดพิเศษ "หาหมอ" (การรักษา) บนปฏิทินรวม
+const treatColor = (d) => (d.display && d.display.treatColor) || '#5fa57f';   // หาหมอ default = เขียว
+const treatLabel = (d) => (d.display && d.display.treatLabel) || 'หาหมอ';      // ชื่อหมวดหาหมอ (แก้ได้)
+
+/* ---------- ปฏิทินรวม: อาการประจำวัน + การรักษา (แทน 2 แท็บเดิม) ---------- */
+function renderCalendar(root) {
   const d = PET.data || {};
-  const cats = dailyCats(d).filter((c) => ((d.symptoms || {})[c.source] || []).length);
+  SYM_COLOR_MAP[TREAT_SRC] = treatColor(d);   // ให้ symColor('treat') ใช้ได้
 
-  // หมวดที่เลือกได้ตอนเพิ่มบันทึก — รวมหมวดที่ยังไม่มีข้อมูลด้วย (dailyCats คืน "อาการทั่วไป" ให้เสมออย่างน้อย 1 หมวด)
-  const pickCats = dailyCats(d);
+  const symCats = dailyCats(d);                // หมวดอาการ (เติม SYM_COLOR_MAP ด้วย)
+  const pickCats = symCats;                    // หมวดให้เลือกตอนเพิ่มอาการ
+  const usedSym = symCats.filter((c) => ((d.symptoms || {})[c.source] || []).length);
+  const treats = d.treatments || [];
 
+  // legend: อาการทั่วไป → หาหมอ → หมวดอาการอื่นที่มีข้อมูล
+  const legend = [];
+  const genCat = usedSym.find((c) => c.source === 'general');
+  if (genCat) legend.push({ src: 'general', label: genCat.label });
+  if (treats.length) legend.push({ src: TREAT_SRC, label: treatLabel(d) });
+  usedSym.filter((c) => c.source !== 'general').forEach((c) => legend.push({ src: c.source, label: c.label }));
+
+  // รวม events: อาการ (flat) + การรักษา (วันละก้อน มี entries)
   const events = [];
-  cats.forEach((c) => (d.symptoms[c.source] || []).forEach((it, idx) =>
-    events.push({ ...it, _src: c.source, _label: c.label, _idx: idx })));
+  usedSym.forEach((c) => (d.symptoms[c.source] || []).forEach((it, idx) =>
+    events.push({ ...it, _kind: 'sym', _src: c.source, _label: c.label, _idx: idx })));
+  treats.forEach((r) => events.push({ date: r.date, _kind: 'treat', _src: TREAT_SRC, entries: r.entries || [] }));
 
   root.innerHTML = `
     <div class="edit-bar">
-      <span class="section-label" style="margin:0">🌡️ อาการประจำวัน</span>
-      ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddSym">➕ เพิ่มบันทึก</button>' : ''}
+      <span class="section-label" style="margin:0">🗓️ ปฏิทินสุขภาพ</span>
+      ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddSym">➕ อาการ</button>' : ''}
+      ${ROLE.canEdit ? `<button class="btn-ghost" id="btnAddTx">🏥 ${TC.esc(treatLabel(d))}</button>` : ''}
       ${ROLE.canEdit ? '<a class="sum-edit-toggle" id="btnMngCats" style="margin:0">⚙️ จัดการหมวด/สี</a>' : ''}
       <span class="saving" id="symMsg"></span>
     </div>
     <div id="catCfg"></div>
-    ${cats.length ? `<div class="legend">${cats.map((c) =>
-      `<span><i class="dot" style="background:${symColor(c.source)}"></i> ${TC.esc(c.label)}</span>`).join('')}</div>` : ''}
+    ${legend.length ? `<div class="legend">${legend.map((c) =>
+      `<span><i class="dot" style="background:${symColor(c.src)}"></i> ${TC.esc(c.label)}</span>`).join('')}</div>` : ''}
     <div id="symForm"></div>
-    ${events.length ? '<div id="dailyCal"></div>' : '<div class="empty">ยังไม่มีบันทึกอาการ</div>'}`;
+    <div id="txForm"></div>
+    ${events.length ? '<div id="healthCal"></div>' : '<div class="empty">ยังไม่มีบันทึก — กด ➕ อาการ หรือ 🏥 หาหมอ</div>'}`;
 
   if (ROLE.canEdit) {
     document.getElementById('btnAddSym').onclick = () => openSymForm(pickCats, null);
+    document.getElementById('btnAddTx').onclick = () => openTreatForm(null);
     document.getElementById('btnMngCats').onclick = () => toggleCatCfg(d);
   }
 
   if (!events.length) return;
 
-  buildCalendar(document.getElementById('dailyCal'), {
-    key: 'daily',
+  buildCalendar(document.getElementById('healthCal'), {
+    key: 'calendar',
     events,
     dotsOf: (items) => [...new Set(items.map((i) => i._src))].map(symColor),
     onDetail: (iso, items, box) => {
+      const syms = items.filter((it) => it._kind === 'sym');
+      const treatDay = items.find((it) => it._kind === 'treat');
+      const gi = treatDay ? treats.findIndex((r) => r.date === iso) : -1;
+      const entries = treatDay ? treatDay.entries : [];
+
       box.innerHTML = `
         <div class="day-box">
-          <div class="day-head">📅 ${TC.thDate(iso)} · ${items.length} รายการ</div>
-          ${items.map((it, i) => `
+          <div class="day-head">📅 ${TC.thDate(iso)} · ${syms.length + entries.length} รายการ</div>
+          ${syms.map((it, i) => `
             <div class="sym-card" style="border-left-color:${symColor(it._src)}">
               <div class="sym-kind" style="color:${symColor(it._src)}">
                 ${TC.esc(it._label)}${it._src === 'nosebleed' && it.side ? ' · ' + TC.esc(sideLabel(it.side)) : ''}
               </div>
               <div class="sym-detail">${TC.esc(it.detail || '')}</div>
-              ${(it.photos || []).length ? `<div class="sym-photos" data-i="${i}"></div>` : ''}
+              ${(it.photos || []).length ? `<div class="sym-photos" data-sp="${i}"></div>` : ''}
               ${ROLE.canEdit ? `<div class="inline-actions">
                 <a class="act-edit" data-edit="${it._src}:${it._idx}">แก้</a>
-                <a class="act-del" data-del="${it._src}:${it._idx}">ลบ</a>
-              </div>` : ''}
+                <a class="act-del" data-del="${it._src}:${it._idx}">ลบ</a></div>` : ''}
+            </div>`).join('')}
+          ${entries.map((e, i) => `
+            <div class="tx-entry" style="border-left:3px solid ${symColor(TREAT_SRC)};padding-left:10px">
+              <div class="tx-doctor">🏥 ${TC.esc(e.doctor || 'ไม่ระบุหมอ')}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}</div>
+              <div class="tx-notes">${TC.esc(e.notes || '')}</div>
+              ${(e.photos || []).length ? `<div class="sym-photos" data-tp="${i}"></div>` : ''}
+              ${e.flow ? `<div class="tx-flow"><div class="tx-flow-label">🗺 ขั้นตอน/แผนการรักษา</div><div class="mmd" data-mf="${i}"></div></div>` : ''}
+              ${ROLE.canEdit ? `<div class="inline-actions">
+                <a class="act-edit" data-etx="${gi}:${i}">แก้</a>
+                <a class="act-del" data-dtx="${gi}:${i}">ลบ</a></div>` : ''}
             </div>`).join('')}
         </div>`;
 
-      items.forEach((it, i) => {
-        const h = box.querySelector(`.sym-photos[data-i="${i}"]`);
+      syms.forEach((it, i) => {
+        const h = box.querySelector(`.sym-photos[data-sp="${i}"]`);
         if (h) attachPhotos(h, it.photos);
       });
-
-      box.querySelectorAll('[data-edit]').forEach((a) => {
-        a.onclick = () => {
-          const [src, idx] = a.dataset.edit.split(':');
-          openSymForm(pickCats, { src, idx: Number(idx) });
-        };
+      entries.forEach((e, i) => {
+        const h = box.querySelector(`.sym-photos[data-tp="${i}"]`);
+        if (h) attachPhotos(h, e.photos);
+        if (e.flow) drawFlow(box.querySelector(`.mmd[data-mf="${i}"]`), e.flow, i);
       });
-      box.querySelectorAll('[data-del]').forEach((a) => {
-        a.onclick = () => {
-          const [src, idx] = a.dataset.del.split(':');
-          delSymptom(src, Number(idx));
-        };
+
+      box.querySelectorAll('[data-edit]').forEach((a) => a.onclick = () => {
+        const [src, idx] = a.dataset.edit.split(':'); openSymForm(pickCats, { src, idx: Number(idx) });
+      });
+      box.querySelectorAll('[data-del]').forEach((a) => a.onclick = () => {
+        const [src, idx] = a.dataset.del.split(':'); delSymptom(src, Number(idx));
+      });
+      box.querySelectorAll('[data-etx]').forEach((a) => a.onclick = () => {
+        const [g, i] = a.dataset.etx.split(':').map(Number); openTreatForm({ g, i });
+      });
+      box.querySelectorAll('[data-dtx]').forEach((a) => a.onclick = () => {
+        const [g, i] = a.dataset.dtx.split(':').map(Number); delTreat(g, i);
       });
     },
   });
 }
 
-/* ---------- จัดการหมวดอาการ: เพิ่ม/ลบ/แก้ชื่อ/เปลี่ยนสี ----------
- * หมวดเก็บใน display.tabs = [{source, label, color}] (+ entry treatments ถ้ามี เก็บไว้เหมือนเดิม) */
+/* ---------- จัดการหมวดปฏิทิน: เพิ่ม/ลบ/แก้ชื่อ/เปลี่ยนสี ----------
+ * หมวดอาการเก็บใน display.tabs = [{source, label, color}] · สีหาหมอเก็บ display.treatColor
+ * ลบหมวดอาการ = ย้ายบันทึกไป "อาการทั่วไป" (general) ไม่ลบทิ้ง · general + หาหมอ ลบไม่ได้ */
 let CAT_CFG_OPEN = false;
 function toggleCatCfg(d) {
   CAT_CFG_OPEN = !CAT_CFG_OPEN;
@@ -596,36 +635,58 @@ function toggleCatCfg(d) {
   const counts = {};
   dailyCats(d).forEach((c) => { counts[c.source] = ((d.symptoms || {})[c.source] || []).length; });
   let rows = dailyCats(d).map((c) => ({ source: c.source, label: c.label, color: c.color }));
-  const delSet = new Set();   // source ที่มีข้อมูล + ถูกลบ → ต้องล้าง symptoms ตอนบันทึก
+  let treatCol = treatColor(d);        // สีหมวด "หาหมอ"
+  let treatLbl = treatLabel(d);        // ชื่อหมวด "หาหมอ" (แก้ได้)
+  const moveSet = new Set();           // source ที่ถูกลบ → ย้ายบันทึกไป general ตอนบันทึก
 
   const swatch = 'width:38px;height:34px;padding:0;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;flex:0 0 auto';
   const nameInp = "flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:'Sarabun',sans-serif;font-size:14px";
+  const genLabel = () => (rows.find((r) => r.source === 'general') || {}).label || 'อาการทั่วไป';
+
+  // แถวหมวดพิเศษ "หาหมอ" — เปลี่ยนสี+ชื่อได้ ลบไม่ได้ (แทรกต่อจากอาการทั่วไป)
+  const treatRowHTML = () => `
+    <div class="cfg-row" data-treat="1" style="gap:8px">
+      <input type="color" value="${treatCol}" id="treatColor" style="${swatch}" title="เปลี่ยนสีหมวดหาหมอ">
+      <input type="text" value="${TC.esc(treatLbl)}" id="treatLabelInp" style="${nameInp}" placeholder="หาหมอ">
+      <button class="btn-ghost" style="padding:4px 9px;visibility:hidden" tabindex="-1" aria-hidden="true">🗑</button>
+    </div>`;
 
   const draw = () => {
-    holder.querySelector('#catRows').innerHTML = rows.map((c, i) => `
-      <div class="cfg-row" data-i="${i}" style="gap:8px">
+    // เรียง: อาการทั่วไป → หาหมอ → หมวดอื่น
+    holder.querySelector('#catRows').innerHTML = rows.map((c, i) => {
+      const locked = c.source === 'general';   // อาการทั่วไป = ปลายทาง fallback ลบไม่ได้
+      const row = `<div class="cfg-row" data-i="${i}" style="gap:8px">
         <input type="color" value="${c.color}" data-color="${i}" style="${swatch}" title="เปลี่ยนสี">
         <input type="text" value="${TC.esc(c.label)}" data-label="${i}" style="${nameInp}" placeholder="ชื่อหมวด">
-        <button class="btn-ghost cat-del" data-i="${i}" style="padding:4px 9px;border-color:var(--red);color:var(--red)" title="ลบหมวด">🗑</button>
-      </div>`).join('') || '<div class="empty">ยังไม่มีหมวด — เพิ่มด้านล่าง</div>';
+        ${locked
+          ? '<button class="btn-ghost" style="padding:4px 9px;visibility:hidden" tabindex="-1" aria-hidden="true">🗑</button>'
+          : `<button class="btn-ghost cat-del" data-i="${i}" style="padding:4px 9px;border-color:var(--red);color:var(--red)" title="ลบหมวด (ย้ายบันทึกไปทั่วไป)">🗑</button>`}
+      </div>`;
+      return locked ? row + treatRowHTML() : row;   // หาหมอ ต่อจากอาการทั่วไป
+    }).join('');
+
     holder.querySelectorAll('[data-color]').forEach((inp) => inp.oninput = () => { rows[+inp.dataset.color].color = inp.value; });
     holder.querySelectorAll('[data-label]').forEach((inp) => inp.oninput = () => { rows[+inp.dataset.label].label = inp.value; });
+    holder.querySelector('#treatColor').oninput = (e) => { treatCol = e.target.value; };
+    holder.querySelector('#treatLabelInp').oninput = (e) => { treatLbl = e.target.value; };
     holder.querySelectorAll('.cat-del').forEach((b) => b.onclick = async () => {
       const i = +b.dataset.i, c = rows[i], n = counts[c.source] || 0;
-      if (n && !await TC.confirm(`ลบหมวด "${c.label}"\n\nมีบันทึกในหมวดนี้ ${n} รายการ จะถูกลบไปด้วย กู้คืนไม่ได้`, { okLabel: 'ลบหมวด', danger: true })) return;
-      if (n) delSet.add(c.source);
+      if (n && !await TC.confirm(
+        `ลบหมวด "${c.label}"\n\nบันทึก ${n} รายการในหมวดนี้จะถูกย้ายไป "${genLabel()}" (ไม่หาย)`,
+        { okLabel: 'ลบหมวด → ย้ายไปทั่วไป', danger: true })) return;
+      if (n) moveSet.add(c.source);
       rows.splice(i, 1); draw();
     });
   };
 
   holder.innerHTML = `
     <div class="edit-form">
-      <h3>⚙️ จัดการหมวดอาการ</h3>
-      <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">แตะช่องสีเพื่อเปลี่ยนสี · แก้ชื่อได้ · 🗑 ลบหมวด (บันทึกในหมวดหายด้วย)</p>
+      <h3>⚙️ จัดการหมวด/สี</h3>
+      <p style="font-size:12.5px;color:var(--text-dim);margin-bottom:10px">แตะช่องสีเพื่อเปลี่ยนสีจุด · แก้ชื่อได้ · 🗑 ลบหมวด (บันทึกย้ายไป "อาการทั่วไป" ไม่หาย) · "หาหมอ" กับ "อาการทั่วไป" ลบไม่ได้</p>
       <div id="catRows"></div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
         <input type="color" id="newCatColor" value="#3fae86" style="${swatch}" title="สีหมวดใหม่">
-        <input type="text" id="newCatName" placeholder="ชื่อหมวดใหม่ (เช่น ไอ, คัน)" style="${nameInp}">
+        <input type="text" id="newCatName" placeholder="ชื่อหมวดอาการใหม่ (เช่น ไอ, คัน)" style="${nameInp}">
         <button class="btn-ghost" id="catAdd">➕ เพิ่ม</button>
       </div>
       <div class="btns"><button class="btn" id="catSave">บันทึก</button><button class="btn-ghost" id="catCancel">ปิด</button></div>
@@ -646,20 +707,26 @@ function toggleCatCfg(d) {
     const msg = holder.querySelector('#catMsg');
     rows.forEach((c) => { c.label = c.label.trim(); });
     if (rows.some((c) => !c.label)) { msg.textContent = 'ชื่อหมวดห้ามว่าง'; return; }
-    // เก็บ entry ที่ไม่ใช่หมวดอาการ (เช่น treatments) ไว้เหมือนเดิม
-    const others = (((d.display || {}).tabs) || []).filter((t) => t.source === 'treatments');
-    const display = JSON.parse(JSON.stringify(d.display || {}));
-    display.tabs = [...rows.map((c) => ({ source: c.source, label: c.label, color: c.color })), ...others];
     try {
-      // ลบข้อมูลของหมวดที่ถูกลบ (เขียนทั้ง symptoms กลับ เพื่อไม่ให้เหลือ key กำพร้า)
-      if (delSet.size) {
+      // ย้ายบันทึกของหมวดที่ถูกลบไป general (ต่อท้าย) แล้วลบ key เดิม
+      if (moveSet.size) {
         const sym = JSON.parse(JSON.stringify(d.symptoms || {}));
-        delSet.forEach((src) => delete sym[src]);
+        sym.general = sym.general || [];
+        moveSet.forEach((src) => { sym.general.push(...(sym[src] || [])); delete sym[src]; });
         PET.data = await TC.setPetPath(PET.id, ['symptoms'], sym);
+        // มีการย้าย → การันตีว่ามีหมวด general อยู่ในลิสต์ (ไม่งั้นบันทึกที่ย้ายมาจะไม่โผล่)
+        if (!rows.some((r) => r.source === 'general')) {
+          rows.push({ source: 'general', label: SYM_LABELS.general, color: SYM_COLORS.general });
+        }
       }
+      const others = (((d.display || {}).tabs) || []).filter((t) => t.source === 'treatments');
+      const display = JSON.parse(JSON.stringify(d.display || {}));
+      display.tabs = [...rows.map((c) => ({ source: c.source, label: c.label, color: c.color })), ...others];
+      display.treatColor = treatCol;
+      display.treatLabel = treatLbl.trim() || 'หาหมอ';
       PET.data = await TC.setPetPath(PET.id, ['display'], display);
       CAT_CFG_OPEN = false;
-      showTab('daily');
+      showTab('calendar');
     } catch (e) { msg.textContent = e.message; }
   };
 }
@@ -725,7 +792,7 @@ function openSymForm(cats, edit) {
     e.target.value = '';
     drawThumbs();
   };
-  document.getElementById('fCancel').onclick = () => { SYM_EDIT = null; showTab('daily'); };
+  document.getElementById('fCancel').onclick = () => { SYM_EDIT = null; showTab('calendar'); };
   document.getElementById('fSave').onclick = saveSymptom;
 
   drawThumbs();
@@ -807,9 +874,9 @@ async function saveSymptom() {
     const fresh = await TC.setPetPath(PET.id, ['symptoms', src], arr);
     PET.data = fresh;   // ใช้ค่าที่ฐานข้อมูลตอบกลับ ไม่ใช่ค่าที่เดาเอง
 
-    setCalFocus('daily', date);
+    setCalFocus('calendar', date);
     SYM_EDIT = null;
-    showTab('daily');
+    showTab('calendar');
     document.getElementById('symMsg').textContent = '✅ บันทึกแล้ว';
     setTimeout(() => { const m = document.getElementById('symMsg'); if (m) m.textContent = ''; }, 2500);
   } catch (err) {
@@ -829,7 +896,7 @@ async function delSymptom(src, idx) {
   arr.splice(idx, 1);
   try {
     PET.data = await TC.setPetPath(PET.id, ['symptoms', src], arr);
-    showTab('daily');
+    showTab('calendar');
     // หมายเหตุ: ไม่ลบไฟล์รูปใน Storage — เผื่อกดพลาดจะได้กู้ได้ (ค่อยทำตัวเก็บกวาดทีหลัง)
   } catch (err) {
     alert(err.message || 'ลบไม่สำเร็จ');
@@ -1001,57 +1068,6 @@ const TREAT_FIELDS = [
   { key: 'flow', label: 'Flowchart (Mermaid) — เว้นว่างได้', type: 'textarea', placeholder: 'flowchart TD\n  A[ตรวจเลือด] --> B[ให้ยา]' },
 ];
 
-function renderTreat(root) {
-  const list = (PET.data || {}).treatments || [];
-  const total = list.reduce((n, r) => n + (r.entries || []).length, 0);
-
-  root.innerHTML = `
-    <div class="edit-bar">
-      <span class="section-label" style="margin:0">🏥 การรักษา (${list.length} วัน · ${total} รายการ)</span>
-      ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddTx">➕ เพิ่มการรักษา</button>' : ''}
-    </div>
-    <div id="txForm"></div>
-    ${list.length ? `<div class="legend"><span><i class="dot" style="background:#d99e3e"></i> วันที่ไปหาหมอ</span></div>
-    <div id="treatCal"></div>` : '<div class="empty">ยังไม่มีบันทึกการรักษา</div>'}`;
-
-  if (ROLE.canEdit) document.getElementById('btnAddTx').onclick = () => openTreatForm(null);
-  if (!list.length) return;
-
-  buildCalendar(document.getElementById('treatCal'), {
-    key: 'treat',
-    events: list,
-    dotsOf: () => ['#d99e3e'],
-    onDetail: (iso, items, box) => {
-      // ต้องรู้ตำแหน่งจริงใน array เพื่อแก้/ลบได้ถูกตัว
-      const gi = list.findIndex((r) => r.date === iso);
-      const entries = (list[gi] || {}).entries || [];
-
-      box.innerHTML = `
-        <div class="day-box">
-          <div class="day-head">🏥 ${TC.thDate(iso)} · ${entries.length} รายการ</div>
-          ${entries.map((e, i) => `
-            <div class="tx-entry">
-              <div class="tx-doctor">${TC.esc(e.doctor || 'ไม่ระบุหมอ')}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}</div>
-              <div class="tx-notes">${TC.esc(e.notes || '')}</div>
-              ${(e.photos || []).length ? `<div class="sym-photos" data-i="${i}"></div>` : ''}
-              ${e.flow ? `<div class="tx-flow"><div class="tx-flow-label">🗺 ขั้นตอน/แผนการรักษา</div><div class="mmd" data-i="${i}"></div></div>` : ''}
-              ${actionsHTML(`${gi}:${i}`, `${gi}:${i}`)}
-            </div>`).join('')}
-        </div>`;
-
-      entries.forEach((e, i) => {
-        const h = box.querySelector(`.sym-photos[data-i="${i}"]`);
-        if (h) attachPhotos(h, e.photos);
-        if (e.flow) drawFlow(box.querySelector(`.mmd[data-i="${i}"]`), e.flow, i);
-      });
-
-      wireActions(box,
-        (v) => { const [g, i] = v.split(':').map(Number); openTreatForm({ g, i }); },
-        (v) => { const [g, i] = v.split(':').map(Number); delTreat(g, i); });
-    },
-  });
-}
-
 function openTreatForm(edit) {
   const list = (PET.data || {}).treatments || [];
   const cur = edit ? { ...list[edit.g].entries[edit.i], date: list[edit.g].date } : {};
@@ -1082,8 +1098,8 @@ function openTreatForm(edit) {
       else arr.push({ date: v.date, entries: [entry] });
 
       arr.sort((a, b) => new Date(b.date) - new Date(a.date));
-      setCalFocus('treat', v.date);
-      await saveArr('treatments', arr, 'treat');
+      setCalFocus('calendar', v.date);
+      await saveArr('treatments', arr, 'calendar');
     },
   });
 }
@@ -1097,7 +1113,7 @@ async function delTreat(g, i) {
   const arr = JSON.parse(JSON.stringify(list));
   arr[g].entries.splice(i, 1);
   if (!arr[g].entries.length) arr.splice(g, 1);
-  try { await saveArr('treatments', arr, 'treat'); }
+  try { await saveArr('treatments', arr, 'calendar'); }
   catch (err) { alert(err.message); }
 }
 
