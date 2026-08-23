@@ -77,6 +77,15 @@ select set_config('role', 'authenticated', true);
 - `<input type=color>` คืนค่า `#rrggbb` เสมอ — เก็บตรงๆ ได้ ไม่ต้องแปลง
 - **น้องใหม่มี "อาการทั่วไป" (general) ให้อัตโนมัติ** — `dailyCats()` คืนอย่างน้อย 1 หมวดเสมอ (ถ้าไม่มี tabs/ไม่มีบันทึกเลย) เพื่อให้ลงบันทึกได้ทันทีโดยไม่ต้องสร้างหมวดก่อน · เปลี่ยนสี/เพิ่มหมวดทีหลังได้ผ่าน ⚙️ จัดการหมวด (`pickCats` เลยตัด fallback เดิมที่โชว์ทั้ง 4 หมวดออก)
 
+### 15. Health Timeline — `timeline.html` (รายงานสุขภาพ + PDF) (13 ส.ค. 2026)
+- ไฟล์แยก **`app/timeline.html?id=<pet>`** — เข้าจากปุ่ม "📄 รายงาน" หัวหน้า pet · โหลด pet ผ่าน `TC.getPet` (RLS คุม parent+vet)
+- รวมทุกเหตุการณ์มีวันที่: น้ำหนัก · อาการ (ทุกหมวด) · การรักษา · **ผลเลือด (บอกแค่ชื่อหมวด ไม่โชว์ค่า)** · จัดกลุ่มตามวัน เรียงใหม่→เก่า · ช่วง 7/30/60/365 วัน/กำหนดเอง (default 30 วัน · มีปุ่ม 2 เดือน=60 ให้เลือก) · น้ำหนัก "จาก→ถึง" ในช่วง
+- **รูปกดดูได้** — thumbnail (`.tl-thumb`) ขอ signed URL ทีละใบ (`attachPhotos` ผูกกล่องด้วย `e._i` = index ใน all ที่ sort แล้ว) · คลิก → lightbox (reuse `.lightbox` ใน theme.css) · โหลดเสร็จก่อนกด print = ติดไปใน PDF ด้วย
+- **PDF = `window.print()` + `@media print`** (ซ่อน header/controls, โชว์ `.print-head`) — ผู้ใช้กด "Save as PDF" เองในเมนู print · ฟอนต์ไทยตรง ไม่ต้องมี library
+- **เป็น entry point ใหม่** — ติด `?v=` ไม่ได้ (hard refresh) · แต่ **ไม่ได้แก้ theme.css/lib.js เลย จึงไม่ต้อง bump `?v=`** (ยังชี้ v เดิม) · timeline.html อยู่ใน `app/` → wrangler เสิร์ฟให้อยู่แล้ว
+- **ไม่ import ฟังก์ชันจาก pet.html** — timeline.html มี catInfo/treatLabel/SYM_* ของตัวเอง (ถ้าเพิ่มหมวด/สีใหม่ใน pet.html ต้องซิงก์ default ที่นี่ด้วย ถ้าจะให้ตรง)
+- เทียบช่วงวันด้วย string ISO (`>=from && <=to`) — ได้เพราะ `YYYY-MM-DD` เรียงตามตัวอักษร = เรียงตามเวลา
+
 ### 14. รวมปฏิทิน — แท็บ "🗓️ ปฏิทิน" เดียว แทน อาการ+การรักษา (13 ส.ค. 2026)
 - แท็บ `daily` + `treat` **ถูกยุบเป็น `calendar`** ใน `TABS` + dispatch · `renderDaily`/`renderTreat` ถูกลบทิ้ง เหลือ **`renderCalendar()`** ตัวเดียวรวม events อาการ+การรักษาบน `buildCalendar` เดียว (key `'calendar'`)
 - **presentation merge — ไม่ยุบ data**: อาการยังอยู่ `symptoms[หมวด][]` · การรักษายังอยู่ `treatments[]` · ฟอร์มแยกเหมือนเดิม (`openSymForm` / `openTreatForm`)

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายงานสุขภาพ 🐾 · Tammie Care</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#fdf4eb">
+<link rel="stylesheet" href="theme.css?v=41">
+<style>
+  .crumbs { font-size: 12.5px; color: var(--text-dim); font-family: 'Sarabun', sans-serif; margin-bottom: 1px; display: flex; align-items: center; flex-wrap: wrap; }
+  .crumbs a { color: var(--sky); }
+  .crumbs .sep { color: var(--text-muted); margin: 0 6px; }
+  .crumbs .cur { color: var(--text-dim); }
+  .tl-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 16px; }
+  .tl-range { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tl-range button {
+    font-family: var(--cute); font-size: 13px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-dim);
+    border-radius: 18px; padding: 7px 14px;
+  }
+  .tl-range button.on { background: linear-gradient(135deg, var(--sky), var(--pink)); color: #1a1320; border-color: transparent; font-weight: 600; }
+  .tl-custom { display: none; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .tl-custom.show { display: flex; }
+  .tl-custom input[type=date] { padding: 7px 10px; font-size: 15px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Sarabun', sans-serif; }
+  .tl-pdf { margin-left: auto; }
+
+  .ov { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: var(--sh-card); margin-bottom: 6px; }
+  .ov .nm { font-family: var(--cute); font-size: 20px; font-weight: 700; color: var(--blue); }
+  .ov .meta { font-size: 13.5px; color: var(--text-dim); margin-top: 3px; }
+  .ov .wt { margin-top: 8px; font-size: 14px; }
+  .ov .wt b { color: var(--blue); }
+  .ov .rng { margin-top: 6px; font-size: 12.5px; color: var(--text-muted); font-family: var(--mono); }
+
+  .tl-day { margin-top: 18px; }
+  .tl-date { font-family: var(--cute); font-weight: 600; color: var(--sky); font-size: 14.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dashed var(--border); }
+  .tl-row { border: 1px solid var(--border); border-left: 3px solid var(--text-muted); border-radius: 8px; padding: 9px 13px; margin-bottom: 7px; background: var(--surface); }
+  .tl-kind { font-weight: 600; font-size: 13.5px; }
+  .tl-detail { font-size: 13px; color: var(--text); margin-top: 2px; white-space: pre-wrap; line-height: 1.55; }
+  .tl-sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+  .tl-photos { display: flex; flex-wrap: wrap; margin-top: 7px; }
+  .tl-thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; margin: 0 6px 6px 0; }
+  .print-head { display: none; }
+
+  @media print {
+    .tc-header, .tl-controls, footer { display: none !important; }
+    .print-head { display: block; margin-bottom: 14px; }
+    .print-head h2 { font-size: 18px; color: #000; }
+    .print-head .p-sub { font-size: 12px; color: #333; }
+    body { background: #fff; }
+    .ov, .tl-row { box-shadow: none; break-inside: avoid; }
+    .tl-day { break-inside: auto; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header class="tc-header">
+  <div>
+    <div class="crumbs">
+      <a href="index.html">🐾 หน้าแรก</a><span class="sep">›</span><a id="petCrumb" href="#"></a><span class="sep">›</span><span class="cur">รายงาน</span>
+    </div>
+    <h1 id="ttl">รายงานสุขภาพ</h1>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn-ghost" onclick="TC.signOut()">ออก</button>
+</header>
+
+<div class="container" id="content"><div class="loading">กำลังโหลด...</div></div>
+
+<footer>🐾 Tammie Care · <a href="index.html">หน้าแรก</a></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="lib.js?v=41"></script>
+<script>
+const SYM_LABELS = { diarrhea: 'ท้องเสีย', general: 'อาการทั่วไป', nosebleed: 'เลือดกำเดา', vomiting: '🤢 อาเจียน' };
+const SYM_COLORS = { diarrhea: '#d98a3d', general: '#5b8def', nosebleed: '#e85555', vomiting: '#b06be8' };
+const sideLabel = (s) => (s === 'left' ? 'รูจมูกซ้าย' : s === 'right' ? 'รูจมูกขวา' : s || '');
+
+let PET = null, MODE = 30;   // 7 / 30 / 60 / 365 / 'custom' · default 30 วัน
+const iso = (t) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+const daysAgo = (n) => { const t = new Date(); t.setDate(t.getDate() - n); return iso(t); };
+
+function catInfo(d, src) {
+  const t = (((d.display || {}).tabs) || []).find((x) => x.source === src);
+  return { label: (t && t.label) || SYM_LABELS[src] || src, color: (t && t.color) || SYM_COLORS[src] || '#8c7f6f' };
+}
+const treatLabel = (d) => (d.display && d.display.treatLabel) || 'หาหมอ';
+const treatColor = (d) => (d.display && d.display.treatColor) || '#5fa57f';
+
+(async function main() {
+  const user = await TC.requireAuth();
+  if (!user) return;
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) { location.replace('index.html'); return; }
+  document.getElementById('petCrumb').href = `pet.html?id=${id}`;
+
+  try { PET = await TC.getPet(id); }
+  catch (e) {
+    document.getElementById('content').innerHTML = '<div class="loading">ไม่พบข้อมูล หรือคุณไม่มีสิทธิ์เข้าถึงสัตว์ตัวนี้</div>';
+    return;
+  }
+  document.getElementById('petCrumb').textContent = PET.name;
+  render();
+})();
+
+/** รวมทุกเหตุการณ์ที่มีวันที่ → [{date, kind, color, title, detail, sub}] */
+function buildEvents(d) {
+  const ev = [];
+
+  // น้ำหนัก
+  ((d.vitals && d.vitals.weight) || []).forEach((r) => {
+    if (r.size == null) return;
+    ev.push({ date: r.date, kind: 'weight', color: '#5b86bf', title: '⚖️ น้ำหนัก',
+      detail: `${r.size} kg`, sub: r.note ? TC.esc(r.note) : '' });
+  });
+
+  // อาการ (ทุกหมวด)
+  Object.entries(d.symptoms || {}).forEach(([src, arr]) => {
+    const ci = catInfo(d, src);
+    (arr || []).forEach((it) => {
+      const side = src === 'nosebleed' && it.side ? ' · ' + sideLabel(it.side) : '';
+      ev.push({ date: it.date, kind: 'sym', color: ci.color, title: TC.esc(ci.label) + side,
+        detail: TC.esc(it.detail || ''), sub: '', photos: it.photos || [] });
+    });
+  });
+
+  // การรักษา (หาหมอ)
+  const tl = treatLabel(d), tc = treatColor(d);
+  (d.treatments || []).forEach((day) => {
+    (day.entries || []).forEach((e) => {
+      ev.push({ date: day.date, kind: 'treat', color: tc,
+        title: `🏥 ${TC.esc(tl)}${e.doctor ? ' · ' + TC.esc(e.doctor) : ''}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}`,
+        detail: TC.esc(e.notes || ''), sub: e.flow ? 'มี flowchart' : '', photos: e.photos || [] });
+    });
+  });
+
+  // ผลเลือด — จับกลุ่มตามวัน บอกแค่ชื่อหมวด (ไม่โชว์ค่า)
+  const panelName = {};
+  (d.labPanels || []).forEach((p) => { panelName[p.id] = p.name || p.id; });
+  const byDate = {};
+  (d.labs || []).forEach((l) => { (byDate[l.date] ||= new Set()).add(panelName[l.panel] || l.panel); });
+  Object.entries(byDate).forEach(([date, names]) => {
+    ev.push({ date, kind: 'lab', color: '#d99e3e', title: '🧪 ผลเลือด',
+      detail: 'มีผลตรวจ: ' + [...names].map(TC.esc).join(', '), sub: 'ดูค่าที่แท็บผลเลือด' });
+  });
+
+  return ev;
+}
+
+function render() {
+  const d = PET.data || {};
+  const c = document.getElementById('content');
+
+  const to = iso(new Date());
+  const from = MODE === 'custom'
+    ? (document.getElementById('cFrom')?.value || daysAgo(30))
+    : daysAgo(MODE);
+  const toEff = MODE === 'custom' ? (document.getElementById('cTo')?.value || to) : to;
+
+  const all = buildEvents(d).filter((e) => e.date && e.date >= from && e.date <= toEff);
+  all.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));   // ใหม่ → เก่า
+
+  // ภาพรวมน้ำหนัก ในช่วงที่เลือก
+  const wIn = ((d.vitals && d.vitals.weight) || []).filter((r) => r.size != null && r.date >= from && r.date <= toEff)
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+  let wtHTML = '';
+  if (wIn.length === 1) wtHTML = `น้ำหนัก: <b>${wIn[0].size} kg</b>`;
+  else if (wIn.length > 1) {
+    const a = wIn[0], b = wIn[wIn.length - 1];
+    const diff = Math.round((b.size - a.size) * 100) / 100;
+    const arrow = diff > 0 ? `▲ +${diff}` : diff < 0 ? `▼ ${diff}` : '± 0';
+    wtHTML = `น้ำหนัก: <b>${a.size} kg → ${b.size} kg</b> (${arrow} kg)`;
+  }
+
+  const prof = d.profile || {}, card = d.card || {};
+  const bits = [];
+  if (card.breed || prof.breed) bits.push(card.breed || prof.breed);
+  const age = TC.ageText(card.birthDate || prof.birthDate);
+  if (age) bits.push(`อายุ ${age}`);
+  const rangeText = `${TC.thDate(from)} – ${TC.thDate(toEff)}`;
+
+  // จัดกลุ่มตามวัน (ให้ index กับทุก event เพื่อผูกกล่องรูป)
+  all.forEach((e, i) => { e._i = i; });
+  const groups = [];
+  let cur = null;
+  all.forEach((e) => {
+    if (!cur || cur.date !== e.date) { cur = { date: e.date, rows: [] }; groups.push(cur); }
+    cur.rows.push(e);
+  });
+
+  c.innerHTML = `
+    <div class="print-head">
+      <h2>รายงานสุขภาพ — ${TC.esc(PET.name)}</h2>
+      <div class="p-sub">${TC.esc(bits.join(' · '))} · ช่วง ${rangeText} · ออกเมื่อ ${TC.thDate(to)}</div>
+    </div>
+
+    <div class="tl-controls">
+      <div class="tl-range">
+        <button data-r="7">7 วัน</button>
+        <button data-r="30">30 วัน</button>
+        <button data-r="60">2 เดือน</button>
+        <button data-r="365">1 ปี</button>
+        <button data-r="custom">กำหนดเอง</button>
+      </div>
+      <div class="tl-custom" id="customBox">
+        <input type="date" id="cFrom" value="${MODE === 'custom' ? from : ''}">
+        <span style="color:var(--text-dim)">ถึง</span>
+        <input type="date" id="cTo" value="${MODE === 'custom' ? toEff : ''}">
+      </div>
+      <button class="btn tl-pdf" id="btnPdf">📄 บันทึก PDF</button>
+    </div>
+
+    <div class="ov">
+      <div class="nm">${TC.esc(PET.name)}</div>
+      <div class="meta">${TC.esc(bits.join(' · ')) || '—'}</div>
+      ${wtHTML ? `<div class="wt">${wtHTML}</div>` : ''}
+      <div class="rng">ช่วง ${rangeText} · ${all.length} รายการ</div>
+    </div>
+
+    ${groups.length ? groups.map((g) => `
+      <div class="tl-day">
+        <div class="tl-date">📅 ${TC.thDate(g.date)}</div>
+        ${g.rows.map((e) => `
+          <div class="tl-row" style="border-left-color:${e.color}">
+            <div class="tl-kind" style="color:${e.color}">${e.title}</div>
+            ${e.detail ? `<div class="tl-detail">${e.detail}</div>` : ''}
+            ${e.sub ? `<div class="tl-sub">${e.sub}</div>` : ''}
+            ${(e.photos || []).length ? `<div class="tl-photos" data-ph="${e._i}"></div>` : ''}
+          </div>`).join('')}
+      </div>`).join('')
+    : '<div class="empty" style="padding:30px 0;text-align:center">ไม่มีบันทึกในช่วงนี้</div>'}`;
+
+  // โหลดรูป (ต้องขอ signed URL ทีละใบเพราะ bucket เป็น private) → คลิกเปิดใหญ่
+  all.forEach((e) => {
+    if (!(e.photos || []).length) return;
+    const box = c.querySelector(`.tl-photos[data-ph="${e._i}"]`);
+    if (box) attachPhotos(box, e.photos);
+  });
+
+  // ปุ่มช่วงเวลา
+  c.querySelectorAll('.tl-range button').forEach((b) => {
+    if (String(MODE) === b.dataset.r) b.classList.add('on');
+    b.onclick = () => {
+      MODE = b.dataset.r === 'custom' ? 'custom' : Number(b.dataset.r);
+      render();
+    };
+  });
+  if (MODE === 'custom') {
+    document.getElementById('customBox').classList.add('show');
+    document.getElementById('cFrom').onchange = render;
+    document.getElementById('cTo').onchange = render;
+  }
+  // ชื่อไฟล์ PDF = ชื่อน้อง + ช่วงวันที่ (เบราว์เซอร์ใช้ document.title เป็นชื่อไฟล์ default)
+  document.getElementById('btnPdf').onclick = () => {
+    const orig = document.title;
+    document.title = `รายงานสุขภาพ-${PET.name}-${from}_ถึง_${toEff}`;
+    window.print();
+    setTimeout(() => { document.title = orig; }, 500);
+  };
+}
+
+/** ใส่รูปจาก Storage ลงกล่อง (ขอ signed URL ทีละใบ) · คลิกเปิดใหญ่ */
+function attachPhotos(holder, paths) {
+  (paths || []).forEach(async (p) => {
+    const url = await TC.signedUrl(p);
+    if (!url) return;
+    const img = document.createElement('img');
+    img.src = url; img.className = 'tl-thumb'; img.alt = '';
+    img.onclick = () => openLightbox(url);
+    holder.appendChild(img);
+  });
+}
+
+function openLightbox(url) {
+  const lb = document.createElement('div');
+  lb.className = 'lightbox';
+  lb.innerHTML = `<span class="close">✕</span><img src="${url}" alt="">`;
+  lb.onclick = () => lb.remove();
+  document.body.appendChild(lb);
+}
+</script>
+</body>
+</html>

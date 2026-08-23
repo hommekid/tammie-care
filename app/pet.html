@@ -16,6 +16,15 @@
   .soon { text-align: center; padding: 44px 20px; color: var(--text-muted); font-family: var(--cute); }
   .soon .big { font-size: 34px; display: block; margin-bottom: 8px; }
   .tumor-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.6; }
+  .tc-header > div:first-of-type { min-width: 0; }   /* ให้บล็อกชื่อใช้พื้นที่ได้เต็ม กันคำตัดบรรทัดถี่ */
+  .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }   /* ปุ่มอยู่บรรทัดเดียวกับชื่อ */
+  .name-row h1 { margin: 0; }
+  /* มือถือ: ปุ่มในหัวเหลือไอคอน (ซ่อนข้อความ) กันหัวแน่น + ชื่อเล็กลงนิด */
+  @media (max-width: 560px) {
+    .tc-header .lbl { display: none; }
+    .tc-header h1 { font-size: 18px; }
+    #timelineLink, #editProfileBtn { padding: 6px 9px; font-size: 16px; }
+  }
 </style>
 </head>
 <body>
@@ -23,12 +32,14 @@
 <header class="tc-header">
   <a class="back" href="index.html">←</a>
   <img class="avatar" id="avatar" alt="" style="display:none">
-  <div>
-    <h1 id="petName">กำลังโหลด...</h1>
+  <div style="flex:1;min-width:0">
+    <div class="name-row" id="nameRow">
+      <h1 id="petName">กำลังโหลด...</h1>
+      <a class="btn-ghost" id="timelineLink" href="#" style="text-decoration:none" title="รายงานสุขภาพตามช่วงเวลา (พิมพ์ PDF ไปหาหมอได้)">📄<span class="lbl"> รายงาน</span></a>
+    </div>
     <div class="sub" id="petSub"></div>
     <div class="sub" id="petWeight" style="display:none;margin-top:2px"></div>
   </div>
-  <div class="spacer"></div>
   <span id="rolePill"></span>
 </header>
 
@@ -95,6 +106,7 @@ let ROLE = { canEdit: false, isAdmin: false, role: null };
 function renderHeader() {
   const d = PET.data || {}, prof = d.profile || {}, card = d.card || {};
   document.getElementById('petName').textContent = PET.name;
+  document.getElementById('timelineLink').href = `timeline.html?id=${PET.id}`;
 
   const bits = [];
   if (card.nickname || prof.nickname) bits.push(card.nickname || prof.nickname);
@@ -131,9 +143,9 @@ function renderHeader() {
     b.id = 'editProfileBtn';
     b.className = 'sum-edit-toggle';
     b.style.cursor = 'pointer';
-    b.textContent = '✏️ โปรไฟล์';
+    b.innerHTML = '✏️<span class="lbl"> โปรไฟล์</span>';
     b.onclick = openProfileEdit;
-    document.getElementById('rolePill').after(b);
+    document.getElementById('nameRow').appendChild(b);   // อยู่บรรทัดเดียวกับชื่อ
   }
 }
 
