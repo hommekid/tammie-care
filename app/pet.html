@@ -115,19 +115,16 @@ function renderHeader() {
   if (age) bits.push(`อายุ ${age}`);
   document.getElementById('petSub').textContent = bits.join(' · ');
 
-  // น้ำหนักล่าสุด (optional) — โชว์เฉพาะเมื่อมีข้อมูลและไม่ได้ซ่อน section น้ำหนัก · แตะเพื่อบันทึกเร็ว
+  // น้ำหนักล่าสุด — โชว์เป็นข้อความเฉยๆ (เมื่อมีข้อมูล + ไม่ได้ซ่อน section น้ำหนัก) · จัดการที่กราฟในสรุป
   const hidden = (d.display && d.display.hidden) || [];
   const wLatest = ((d.vitals && d.vitals.weight) || [])
     .filter((r) => r.size != null).sort((a, b) => new Date(b.date) - new Date(a.date))[0];
   const wEl = document.getElementById('petWeight');
   if (wLatest && !hidden.includes('weight')) {
     wEl.style.display = '';
-    wEl.innerHTML = `⚖️ น้ำหนักล่าสุด ${wLatest.size} kg · ${TC.thDateShort(wLatest.date)}`
-      + (ROLE.canEdit ? ' <span style="color:var(--sky)">✎ บันทึก</span>' : '');
-    wEl.style.cursor = ROLE.canEdit ? 'pointer' : 'default';
-    wEl.onclick = ROLE.canEdit ? logWeight : null;
+    wEl.textContent = `⚖️ น้ำหนักล่าสุด ${wLatest.size} kg`;
   } else {
-    wEl.style.display = 'none'; wEl.innerHTML = '';
+    wEl.style.display = 'none'; wEl.textContent = '';
   }
 
   const photo = card.photo || prof.photo;
@@ -2745,14 +2742,6 @@ function weightChart(d) {
     title: 'น้ำหนัก', unit: 'kg', rows: (d.vitals && d.vitals.weight) || [],
     editKey: 'weight', savePath: ['vitals', 'weight'],
   });
-}
-
-/** แตะน้ำหนักที่หัวโปรไฟล์ → ไปหน้าสรุปแล้วเปิดฟอร์มบันทึกน้ำหนักเลย (ถ้า section ไม่ถูกซ่อน) */
-function logWeight() {
-  showTab('summary');
-  setTimeout(() => {
-    if (document.getElementById('form-weight')) editGraphEntry(['vitals', 'weight'], 'weight', null);
-  }, 60);
 }
 
 /* ---- กราฟก้อนในตับ = กราฟทั่วไป (savePath = vitals.liverTumor) ---- */

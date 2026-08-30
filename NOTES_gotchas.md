@@ -97,7 +97,8 @@ select set_config('role', 'authenticated', true);
 - **หาหมอแก้ชื่อได้** — เก็บ `display.treatLabel` (default 'หาหมอ') · `treatLabel(d)` ใช้ที่ legend + ปุ่ม 🏥 · ในตัวจัดการหมวด แถวหาหมอ = สี+ชื่อแก้ได้ (ลบไม่ได้) แทรก**ต่อจากอาการทั่วไป** (render หลัง row ที่ locked=general)
 - `actionsHTML`/`wireActions`/`drawFlow` ยังใช้อยู่ (meds/appts/renderCalendar) — ไม่ได้ลบ
 
-### 13. บันทึกน้ำหนัก — section ในหน้าสรุป (default on, ซ่อนได้) + หัวโปรไฟล์ (13 ส.ค. 2026)
+### 13. บันทึกน้ำหนัก — section กราฟในหน้าสรุป (default on, ซ่อนได้) (13 ส.ค. 2026)
+> อัปเดต: หัวโปรไฟล์โชว์ **"น้ำหนักล่าสุด" เป็นข้อความเฉยๆ** (กดไม่ได้) · เอาปุ่ม ✎ บันทึก + `logWeight` ออกแล้ว · บันทึก/แก้น้ำหนักไปทำที่กราฟ ⚖️ ในหน้าสรุป
 - น้ำหนักเก็บใน **`data.vitals.weight = [{date, size, note}]`** (โครงเดียวกับกราฟก้อนในตับ) · ใช้ `weightChart(d)` = `genericGraphBox` savePath `['vitals','weight']`
 - section "⚖️ น้ำหนัก (kg)" อยู่ใน `getSections` **เสมอ (default on ทุกตัว)** แต่ **ซ่อนได้** ผ่าน ⚙️ ปรับหน้าสรุป (untick → เข้า `display.hidden`) · ลบถาวรไม่ได้ (ไม่ใช่ custom/template) — แค่ซ่อน ข้อมูลไม่หาย · ไม่มีข้อมูลก็ไม่พัง (กราฟโชว์ "ยังไม่มีค่าที่วัดได้")
 - หัวโปรไฟล์โชว์ "⚖️ น้ำหนักล่าสุด X kg" **เฉพาะเมื่อมีข้อมูล + section ไม่ถูกซ่อน** · แตะ → `logWeight()` ไปหน้าสรุปเปิดฟอร์มบันทึกเลย (guard ว่า `form-weight` มีอยู่)
