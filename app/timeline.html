@@ -34,6 +34,15 @@
   .ov .wt b { color: var(--blue); }
   .ov .rng { margin-top: 6px; font-size: 12.5px; color: var(--text-muted); font-family: var(--mono); }
 
+  .tl-filter { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 4px; }
+  .fchip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    font-size: 12.5px; border: 1px solid var(--border); border-radius: 18px; padding: 5px 12px;
+    background: var(--surface); color: var(--text-muted); }
+  .fchip.on { color: var(--text); border-color: var(--sky-soft); background: var(--blue-dim); }
+  .fchip .fdot { width: 9px; height: 9px; border-radius: 50%; opacity: .35; }
+  .fchip.on .fdot { opacity: 1; }
+  .tl-subfilter { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 2px; font-size: 12.5px; color: var(--text-dim); }
+  .tl-subfilter select { margin-left: 5px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; font-family: 'Sarabun', sans-serif; font-size: 13px; }
   .tl-day { margin-top: 18px; }
   .tl-date { font-family: var(--cute); font-weight: 600; color: var(--sky); font-size: 14.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dashed var(--border); }
   .tl-row { border: 1px solid var(--border); border-left: 3px solid var(--text-muted); border-radius: 8px; padding: 9px 13px; margin-bottom: 7px; background: var(--surface); }
@@ -45,7 +54,7 @@
   .print-head { display: none; }
 
   @media print {
-    .tc-header, .tl-controls, footer { display: none !important; }
+    .tc-header, .tl-controls, .tl-filter, .tl-subfilter, footer { display: none !important; }
     .print-head { display: block; margin-bottom: 14px; }
     .print-head h2 { font-size: 18px; color: #000; }
     .print-head .p-sub { font-size: 12px; color: #333; }
@@ -82,6 +91,8 @@ const SYM_COLORS = { diarrhea: '#d98a3d', general: '#5b8def', nosebleed: '#e8555
 const sideLabel = (s) => (s === 'left' ? 'รูจมูกซ้าย' : s === 'right' ? 'รูจมูกขวา' : s || '');
 
 let PET = null, MODE = 30;   // 7 / 30 / 60 / 365 / 'custom' · default 30 วัน
+let FILTER = null;           // Set ของ cat key ที่เปิดอยู่ (null = ยังไม่ init = เปิดทั้งหมด)
+let HOSP = '', DOC = '';     // filter ย่อยของหาหมอ (โรงพยาบาล / หมอ · '' = ทั้งหมด)
 const iso = (t) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 const daysAgo = (n) => { const t = new Date(); t.setDate(t.getDate() - n); return iso(t); };
 
@@ -115,25 +126,26 @@ function buildEvents(d) {
   // น้ำหนัก
   ((d.vitals && d.vitals.weight) || []).forEach((r) => {
     if (r.size == null) return;
-    ev.push({ date: r.date, kind: 'weight', color: '#5b86bf', title: '⚖️ น้ำหนัก',
+    ev.push({ date: r.date, kind: 'weight', cat: 'weight', color: '#5b86bf', title: '⚖️ น้ำหนัก',
       detail: `${r.size} kg`, sub: r.note ? TC.esc(r.note) : '' });
   });
 
-  // อาการ (ทุกหมวด)
+  // อาการ (ทุกหมวด) · cat = source key ของหมวด
   Object.entries(d.symptoms || {}).forEach(([src, arr]) => {
     const ci = catInfo(d, src);
     (arr || []).forEach((it) => {
       const side = src === 'nosebleed' && it.side ? ' · ' + sideLabel(it.side) : '';
-      ev.push({ date: it.date, kind: 'sym', color: ci.color, title: TC.esc(ci.label) + side,
+      ev.push({ date: it.date, kind: 'sym', cat: src, color: ci.color, title: TC.esc(ci.label) + side,
         detail: TC.esc(it.detail || ''), sub: '', photos: it.photos || [] });
     });
   });
 
-  // การรักษา (หาหมอ)
+  // การรักษา (หาหมอ) · เก็บ hosp/doc ไว้ filter ย่อย
   const tl = treatLabel(d), tc = treatColor(d);
   (d.treatments || []).forEach((day) => {
     (day.entries || []).forEach((e) => {
-      ev.push({ date: day.date, kind: 'treat', color: tc,
+      ev.push({ date: day.date, kind: 'treat', cat: 'treat', color: tc,
+        hosp: e.hospital || '', doc: e.doctor || '',
         title: `🏥 ${TC.esc(e.hospital || tl)}${e.doctor ? ' · ' + TC.esc(e.doctor) : ''}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}`,
         detail: TC.esc(e.notes || ''), sub: e.flow ? 'มี flowchart' : '', photos: e.photos || [] });
     });
@@ -145,11 +157,29 @@ function buildEvents(d) {
   const byDate = {};
   (d.labs || []).forEach((l) => { (byDate[l.date] ||= new Set()).add(panelName[l.panel] || l.panel); });
   Object.entries(byDate).forEach(([date, names]) => {
-    ev.push({ date, kind: 'lab', color: '#d99e3e', title: '🧪 ผลเลือด',
+    ev.push({ date, kind: 'lab', cat: 'lab', color: '#d99e3e', title: '🧪 ผลเลือด',
       detail: 'มีผลตรวจ: ' + [...names].map(TC.esc).join(', '), sub: 'ดูค่าที่แท็บผลเลือด' });
   });
 
   return ev;
+}
+
+/** หมวดทั้งหมดที่มีข้อมูล (ไว้ทำ filter chips) → [{key,label,color}] เรียง: อาการทั่วไป→หมวดอื่น→หาหมอ→น้ำหนัก→ผลเลือด */
+function availableCats(d) {
+  const cats = [];
+  const symKeys = Object.keys(d.symptoms || {}).filter((k) => (d.symptoms[k] || []).length);
+  symKeys.sort((a, b) => (a === 'general' ? -1 : b === 'general' ? 1 : 0));
+  symKeys.forEach((src) => { const ci = catInfo(d, src); cats.push({ key: src, label: ci.label, color: ci.color }); });
+  if ((d.treatments || []).length) cats.push({ key: 'treat', label: treatLabel(d), color: treatColor(d) });
+  if (((d.vitals && d.vitals.weight) || []).some((r) => r.size != null)) cats.push({ key: 'weight', label: 'น้ำหนัก', color: '#5b86bf' });
+  if ((d.labs || []).length) cats.push({ key: 'lab', label: 'ผลเลือด', color: '#d99e3e' });
+  return cats;
+}
+/** ค่าที่ไม่ซ้ำของ field ใน treatments entries (hospital/doctor) */
+function treatValues(d, field) {
+  const s = new Set();
+  (d.treatments || []).forEach((day) => (day.entries || []).forEach((e) => { if (e[field]) s.add(e[field]); }));
+  return [...s];
 }
 
 function render() {
@@ -162,7 +192,13 @@ function render() {
     : daysAgo(MODE);
   const toEff = MODE === 'custom' ? (document.getElementById('cTo')?.value || to) : to;
 
-  const all = buildEvents(d).filter((e) => e.date && e.date >= from && e.date <= toEff);
+  const cats = availableCats(d);
+  if (!FILTER) FILTER = new Set(cats.map((c) => c.key));   // ครั้งแรก = เปิดทุกหมวด
+  const all = buildEvents(d).filter((e) =>
+    e.date && e.date >= from && e.date <= toEff
+    && FILTER.has(e.cat)
+    && (e.cat !== 'treat' || ((!HOSP || e.hosp === HOSP) && (!DOC || e.doc === DOC)))
+  );
   all.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));   // ใหม่ → เก่า
 
   // ภาพรวมน้ำหนัก ในช่วงที่เลือก
@@ -222,6 +258,18 @@ function render() {
       <div class="rng">ช่วง ${rangeText} · ${all.length} รายการ</div>
     </div>
 
+    ${cats.length ? `<div class="tl-filter">${cats.map((cc) =>
+      `<span class="fchip ${FILTER.has(cc.key) ? 'on' : ''}" data-cat="${cc.key}"><i class="fdot" style="background:${cc.color}"></i>${TC.esc(cc.label)}</span>`).join('')}</div>` : ''}
+    ${(FILTER.has('treat') && (d.treatments || []).length && (treatValues(d, 'hospital').length || treatValues(d, 'doctor').length)) ? `
+      <div class="tl-subfilter">
+        ${treatValues(d, 'hospital').length ? `<label>🏥 รพ.
+          <select id="fHosp">${['', ...treatValues(d, 'hospital')].map((h) =>
+            `<option value="${TC.esc(h)}" ${HOSP === h ? 'selected' : ''}>${h ? TC.esc(h) : 'ทั้งหมด'}</option>`).join('')}</select></label>` : ''}
+        ${treatValues(d, 'doctor').length ? `<label>👩‍⚕️ หมอ
+          <select id="fDoc">${['', ...treatValues(d, 'doctor')].map((x) =>
+            `<option value="${TC.esc(x)}" ${DOC === x ? 'selected' : ''}>${x ? TC.esc(x) : 'ทั้งหมด'}</option>`).join('')}</select></label>` : ''}
+      </div>` : ''}
+
     ${groups.length ? groups.map((g) => `
       <div class="tl-day">
         <div class="tl-date">📅 ${TC.thDate(g.date)}</div>
@@ -241,6 +289,15 @@ function render() {
     const box = c.querySelector(`.tl-photos[data-ph="${e._i}"]`);
     if (box) attachPhotos(box, e.photos);
   });
+
+  // filter หมวด (chip) + filter ย่อย รพ./หมอ
+  c.querySelectorAll('.fchip').forEach((ch) => ch.onclick = () => {
+    const k = ch.dataset.cat;
+    if (FILTER.has(k)) FILTER.delete(k); else FILTER.add(k);
+    render();
+  });
+  const fh = document.getElementById('fHosp'); if (fh) fh.onchange = () => { HOSP = fh.value; render(); };
+  const fd = document.getElementById('fDoc'); if (fd) fd.onchange = () => { DOC = fd.value; render(); };
 
   // ปุ่มช่วงเวลา
   c.querySelectorAll('.tl-range button').forEach((b) => {
