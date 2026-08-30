@@ -62,7 +62,7 @@ const TABS = [
   { key: 'summary',  label: '📋 สรุป' },
   { key: 'calendar', label: '🗓️ ปฏิทิน' },
   { key: 'labs',     label: '🧪 ผลเลือด' },
-  { key: 'meds',     label: '💊 ยา' },
+  { key: 'meds',     label: '💊 อาหารและยา' },
   { key: 'appts',    label: '📅 นัดหมาย' },
 ];
 
@@ -1143,7 +1143,14 @@ async function drawFlow(el, code, i) {
 }
 
 
-/* ================= แท็บ 💊 ยา ================= */
+/* ================= แท็บ 💊 อาหารและยา ================= */
+
+const FOOD_FIELDS = [
+  { key: 'name', label: 'ชื่ออาหาร', type: 'text', placeholder: 'เช่น Royal Canin Renal' },
+  { key: 'amount', label: 'ปริมาณต่อมื้อ', type: 'text', placeholder: 'เช่น 1/2 ถ้วย, 50g (เว้นว่างได้)' },
+  { key: 'time', label: 'มื้อ/เวลา', type: 'text', placeholder: 'เช่น เช้า-เย็น (เว้นว่างได้)' },
+  { key: 'note', label: 'หมายเหตุ', type: 'text', placeholder: 'เช่น อุ่นก่อนให้ / ผสมยา' },
+];
 
 const MED_FIELDS = [
   { key: 'name', label: 'ชื่อยา', type: 'text', placeholder: 'เช่น Palladia' },
@@ -1153,10 +1160,35 @@ const MED_FIELDS = [
 ];
 
 function renderMeds(root) {
-  const meds = (PET.data || {}).meds || [];
+  const d = PET.data || {};
+  const food = d.food || [];
+  const meds = d.meds || [];
 
   root.innerHTML = `
     <div class="edit-bar">
+      <span class="section-label" style="margin:0">🍚 อาหาร (${food.length} รายการ)</span>
+      ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddFood">➕ เพิ่มอาหาร</button>' : ''}
+    </div>
+    <div id="foodForm"></div>
+    ${food.length ? `
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tbl-scroll">
+          <table class="med-tbl">
+            <thead><tr><th>อาหาร</th><th class="dose">ปริมาณ</th><th class="dose">มื้อ</th><th>หมายเหตุ</th></tr></thead>
+            <tbody id="foodBody">
+              ${food.map((f, i) => `
+                <tr>
+                  <td class="med-name">${TC.esc(f.name)}${actionsHTML(i, i)}</td>
+                  <td class="dose">${TC.esc(f.amount || '—')}</td>
+                  <td class="dose">${TC.esc(f.time || '—')}</td>
+                  <td class="med-note">${TC.esc(f.note || '')}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : '<div class="empty">ยังไม่มีรายการอาหาร</div>'}
+
+    <div class="edit-bar" style="margin-top:22px">
       <span class="section-label" style="margin:0">💊 ยาประจำ (${meds.length} รายการ)</span>
       ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddMed">➕ เพิ่มยา</button>' : ''}
     </div>
@@ -1180,10 +1212,38 @@ function renderMeds(root) {
       </div>` : '<div class="empty">ยังไม่มีรายการยาประจำ</div>'}`;
 
   if (ROLE.canEdit) {
+    document.getElementById('btnAddFood').onclick = () => openFoodForm(null);
     document.getElementById('btnAddMed').onclick = () => openMedForm(null);
-    const body = document.getElementById('medBody');
-    if (body) wireActions(body, (i) => openMedForm(Number(i)), (i) => delMed(Number(i)));
+    const fb = document.getElementById('foodBody');
+    if (fb) wireActions(fb, (i) => openFoodForm(Number(i)), (i) => delFood(Number(i)));
+    const mb = document.getElementById('medBody');
+    if (mb) wireActions(mb, (i) => openMedForm(Number(i)), (i) => delMed(Number(i)));
   }
+}
+
+function openFoodForm(idx) {
+  const food = (PET.data || {}).food || [];
+  openForm('foodForm', {
+    title: idx === null ? '➕ เพิ่มอาหาร' : '✏️ แก้ข้อมูลอาหาร',
+    fields: FOOD_FIELDS,
+    values: idx === null ? {} : food[idx],
+    onSave: async (v) => {
+      if (!v.name) throw new Error('กรุณากรอกชื่ออาหาร');
+      const arr = [...food];
+      const entry = { name: v.name, amount: v.amount, time: v.time, note: v.note };
+      if (idx === null) arr.push(entry); else arr[idx] = entry;
+      await saveArr('food', arr, 'meds');
+    },
+  });
+}
+
+async function delFood(idx) {
+  const food = (PET.data || {}).food || [];
+  if (!food[idx]) return;
+  if (!await TC.confirm(`ลบอาหาร "${food[idx].name}" ?`)) return;
+  const arr = [...food];
+  arr.splice(idx, 1);
+  try { await saveArr('food', arr, 'meds'); } catch (e) { alert(e.message); }
 }
 
 function openMedForm(idx) {
