@@ -16,6 +16,18 @@
   .soon { text-align: center; padding: 44px 20px; color: var(--text-muted); font-family: var(--cute); }
   .soon .big { font-size: 34px; display: block; margin-bottom: 8px; }
   .tumor-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.6; }
+  #medPrintHead { display: none; }
+  /* พิมพ์เฉพาะแท็บอาหารและยา — ซ่อนหัว/แท็บ/ปุ่มจัดการ เหลือแค่ตาราง + หัวรายงาน */
+  @media print {
+    body.print-meds .tc-header, body.print-meds #tabs { display: none !important; }
+    body.print-meds #content .edit-bar .btn-ghost,
+    body.print-meds #content .inline-actions { display: none !important; }
+    body.print-meds #medPrintHead { display: block; margin-bottom: 12px; }
+    body.print-meds { background: #fff; }
+    body.print-meds .card, body.print-meds table { break-inside: auto; }
+    body.print-meds tr { break-inside: avoid; }
+    body.print-meds * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
   .tc-header > div:first-of-type { min-width: 0; }   /* ให้บล็อกชื่อใช้พื้นที่ได้เต็ม กันคำตัดบรรทัดถี่ */
   .name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }   /* ปุ่มอยู่บรรทัดเดียวกับชื่อ */
   .name-row h1 { margin: 0; }
@@ -1162,11 +1174,22 @@ function renderMeds(root) {
   const d = PET.data || {};
   const food = d.food || [];
   const meds = d.meds || [];
+  const prof = d.profile || {}, card = d.card || {};
+  const bits = [];
+  if (card.breed || prof.breed) bits.push(card.breed || prof.breed);
+  const age = TC.ageText(card.birthDate || prof.birthDate);
+  if (age) bits.push(`อายุ ${age}`);
+  const today = TC.thDate(new Date().toISOString().slice(0, 10));
 
   root.innerHTML = `
+    <div id="medPrintHead" class="print-head">
+      <h2 style="font-size:18px;color:var(--blue)">รายงานอาหารและยา — ${TC.esc(PET.name)}</h2>
+      <div style="font-size:12px;color:var(--text-dim)">${TC.esc(bits.join(' · '))} · ออกเมื่อ ${today}</div>
+    </div>
     <div class="edit-bar">
       <span class="section-label" style="margin:0">🍚 อาหาร (${food.length} รายการ)</span>
       ${ROLE.canEdit ? '<button class="btn-ghost" id="btnAddFood">➕ เพิ่มอาหาร</button>' : ''}
+      <button class="btn-ghost" id="btnMedPdf" style="margin-left:auto">📄 บันทึก PDF</button>
     </div>
     <div id="foodForm"></div>
     ${food.length ? `
@@ -1210,6 +1233,7 @@ function renderMeds(root) {
         </div>
       </div>` : '<div class="empty">ยังไม่มีรายการยาประจำ</div>'}`;
 
+  document.getElementById('btnMedPdf').onclick = printMeds;   // โชว์ให้ทุกคน (รวม vet)
   if (ROLE.canEdit) {
     document.getElementById('btnAddFood').onclick = () => openFoodForm(null);
     document.getElementById('btnAddMed').onclick = () => openMedForm(null);
@@ -1218,6 +1242,15 @@ function renderMeds(root) {
     const mb = document.getElementById('medBody');
     if (mb) wireActions(mb, (i) => openMedForm(Number(i)), (i) => delMed(Number(i)));
   }
+}
+
+/** พิมพ์เฉพาะแท็บอาหารและยา เป็น PDF (ซ่อนหัว/แท็บ/ปุ่มตอนพิมพ์) */
+function printMeds() {
+  const orig = document.title;
+  document.title = `อาหารและยา-${PET.name}`;
+  document.body.classList.add('print-meds');
+  window.print();
+  setTimeout(() => { document.body.classList.remove('print-meds'); document.title = orig; }, 500);
 }
 
 function openFoodForm(idx) {
