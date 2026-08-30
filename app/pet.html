@@ -599,7 +599,8 @@ function renderCalendar(root) {
             </div>`).join('')}
           ${entries.map((e, i) => `
             <div class="tx-entry" style="border-left:3px solid ${symColor(TREAT_SRC)};padding-left:10px">
-              <div class="tx-doctor">🏥 ${TC.esc(e.doctor || 'ไม่ระบุหมอ')}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}</div>
+              ${e.hospital ? `<div class="tx-doctor">🏥 ${TC.esc(e.hospital)}</div>` : ''}
+              <div class="tx-doctor"${e.hospital ? ' style="font-weight:500;color:var(--text-dim)"' : ''}>${e.hospital ? '' : '🏥 '}${TC.esc(e.doctor || 'ไม่ระบุหมอ')}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}</div>
               <div class="tx-notes">${TC.esc(e.notes || '')}</div>
               ${(e.photos || []).length ? `<div class="sym-photos" data-tp="${i}"></div>` : ''}
               ${e.flow ? `<div class="tx-flow"><div class="tx-flow-label">🗺 ขั้นตอน/แผนการรักษา</div><div class="mmd" data-mf="${i}"></div></div>` : ''}
@@ -1073,8 +1074,9 @@ function initMermaid() {
 
 const TREAT_FIELDS = [
   { key: 'date', label: 'วันที่', type: 'date' },
-  { key: 'doctor', label: 'หมอ', type: 'text', placeholder: 'เช่น อ.นิช' },
-  { key: 'specialty', label: 'แผนก', type: 'text', placeholder: 'เช่น ทางเดินอาหาร' },
+  { key: 'hospital', label: 'โรงพยาบาลสัตว์ (เว้นว่างได้)', type: 'text' },
+  { key: 'doctor', label: 'หมอ', type: 'text' },
+  { key: 'specialty', label: 'แผนก', type: 'text' },
   { key: 'notes', label: 'บันทึก', type: 'textarea', placeholder: 'หมอบอกว่าอะไร ให้ยาอะไร ต้องทำอะไรต่อ...' },
   { key: 'photos', label: 'รูปภาพ (เลือกได้หลายรูป)', type: 'photos' },
   { key: 'flow', label: 'Flowchart (Mermaid) — เว้นว่างได้', type: 'textarea', placeholder: 'flowchart TD\n  A[ตรวจเลือด] --> B[ให้ยา]' },
@@ -1093,7 +1095,7 @@ function openTreatForm(edit) {
       if (!v.date) throw new Error('กรุณาเลือกวันที่');
       if (!v.doctor && !v.notes) throw new Error('กรุณากรอกชื่อหมอหรือบันทึกอย่างน้อยหนึ่งอย่าง');
 
-      const entry = { doctor: v.doctor, specialty: v.specialty, notes: v.notes };
+      const entry = { hospital: v.hospital, doctor: v.doctor, specialty: v.specialty, notes: v.notes };
       if (photos.length) entry.photos = photos;
       if (v.flow) entry.flow = v.flow;
 

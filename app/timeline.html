@@ -134,7 +134,7 @@ function buildEvents(d) {
   (d.treatments || []).forEach((day) => {
     (day.entries || []).forEach((e) => {
       ev.push({ date: day.date, kind: 'treat', color: tc,
-        title: `🏥 ${TC.esc(tl)}${e.doctor ? ' · ' + TC.esc(e.doctor) : ''}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}`,
+        title: `🏥 ${TC.esc(e.hospital || tl)}${e.doctor ? ' · ' + TC.esc(e.doctor) : ''}${e.specialty ? ' — ' + TC.esc(e.specialty) : ''}`,
         detail: TC.esc(e.notes || ''), sub: e.flow ? 'มี flowchart' : '', photos: e.photos || [] });
     });
   });
