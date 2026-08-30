@@ -16,6 +16,7 @@
   .soon { text-align: center; padding: 44px 20px; color: var(--text-muted); font-family: var(--cute); }
   .soon .big { font-size: 34px; display: block; margin-bottom: 8px; }
   .tumor-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.6; }
+  .req { color: var(--red); font-weight: 700; }   /* ดอกจันทร์แดง = จำเป็นต้องกรอก */
   #medPrintHead { display: none; }
   /* พิมพ์เฉพาะแท็บอาหารและยา — ซ่อนหัว/แท็บ/ปุ่มจัดการ เหลือแค่ตาราง + หัวรายงาน */
   @media print {
@@ -171,7 +172,7 @@ function openProfileEdit() {
   c.innerHTML = `
     <div class="edit-form" style="max-width:520px">
       <h3>✏️ แก้โปรไฟล์น้อง</h3>
-      <div class="fld"><label>ชื่อ</label><input type="text" id="pfName" value="${TC.esc(PET.name || val('name'))}"></div>
+      <div class="fld"><label>ชื่อ <span class="req">*</span></label><input type="text" id="pfName" value="${TC.esc(PET.name || val('name'))}"></div>
       <div class="fld"><label>ชื่อเล่น</label><input type="text" id="pfNick" value="${TC.esc(val('nickname'))}"></div>
       <div class="fld"><label>อีโมจิ (ใช้ตอนไม่มีรูป)</label><input type="text" id="pfEmoji" value="${TC.esc(val('emoji') || '🐾')}" maxlength="4"></div>
       <div class="fld"><label>พันธุ์</label><input type="text" id="pfBreed" value="${TC.esc(val('breed'))}"></div>
@@ -776,7 +777,7 @@ function openSymForm(cats, edit) {
           `<option value="${c.source}" ${c.source === SYM_EDIT.src ? 'selected' : ''}>${TC.esc(c.label)}</option>`).join('')}</select>
       </div>
       <div class="fld">
-        <label>วันที่</label>
+        <label>วันที่ <span class="req">*</span></label>
         <input type="date" id="fDate" value="${cur ? cur.date : todayISO}">
       </div>
       <div class="fld" id="fSideWrap" style="display:none">
@@ -940,18 +941,20 @@ function openForm(holderId, { title, fields, values = {}, prefix = 'photo', onSa
 
   const fieldHTML = (f) => {
     let v = values[f.key] ?? '';
+    // ป้ายชื่อฟิลด์ + ดอกจันทร์แดงถ้าจำเป็นต้องกรอก (field.required)
+    const lbl = `${TC.esc(f.label)}${f.required ? ' <span class="req">*</span>' : ''}`;
     // เพิ่มใหม่แล้วช่องวันที่ว่าง → เติมวันนี้ให้ (เหมือนฟอร์มอาการ/ผลเลือด) กันลืมกรอกบนมือถือ
     if (f.type === 'date' && !v) {
       const t = new Date();
       v = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
     }
     if (f.type === 'photos') {
-      return `<label>${TC.esc(f.label)}</label>
+      return `<label>${lbl}</label>
         <input type="file" id="ff-${f.key}" accept="image/*" multiple>
         <div class="thumb-row" id="ffThumbs"></div>`;
     }
     if (f.type === 'textarea') {
-      return `<label>${TC.esc(f.label)}</label>
+      return `<label>${lbl}</label>
         <textarea id="ff-${f.key}" placeholder="${TC.esc(f.placeholder || '')}">${TC.esc(v)}</textarea>`;
     }
     if (f.type === 'select') {
@@ -967,10 +970,10 @@ function openForm(holderId, { title, fields, values = {}, prefix = 'photo', onSa
       } else {
         optsHtml = f.options.map(opt).join('');
       }
-      return `<label>${TC.esc(f.label)}</label>
+      return `<label>${lbl}</label>
         <select id="ff-${f.key}">${optsHtml}</select>`;
     }
-    return `<label>${TC.esc(f.label)}</label>
+    return `<label>${lbl}</label>
       <input type="${f.type}" id="ff-${f.key}" value="${TC.esc(v)}" placeholder="${TC.esc(f.placeholder || '')}">`;
   };
 
@@ -1082,13 +1085,13 @@ function initMermaid() {
 }
 
 const TREAT_FIELDS = [
-  { key: 'date', label: 'วันที่', type: 'date' },
-  { key: 'hospital', label: 'โรงพยาบาลสัตว์ (เว้นว่างได้)', type: 'text' },
+  { key: 'date', label: 'วันที่', type: 'date', required: true },
+  { key: 'hospital', label: 'โรงพยาบาลสัตว์', type: 'text' },
   { key: 'doctor', label: 'สัตวแพทย์', type: 'text' },
   { key: 'specialty', label: 'แผนก', type: 'text' },
   { key: 'notes', label: 'บันทึก', type: 'textarea', placeholder: 'หมอบอกว่าอะไร ให้ยาอะไร ต้องทำอะไรต่อ...' },
   { key: 'photos', label: 'รูปภาพ (เลือกได้หลายรูป)', type: 'photos' },
-  { key: 'flow', label: 'Flowchart (Mermaid) — เว้นว่างได้', type: 'textarea', placeholder: 'flowchart TD\n  A[ตรวจเลือด] --> B[ให้ยา]' },
+  { key: 'flow', label: 'Flowchart (Mermaid)', type: 'textarea', placeholder: 'flowchart TD\n  A[ตรวจเลือด] --> B[ให้ยา]' },
 ];
 
 function openTreatForm(edit) {
@@ -1157,16 +1160,16 @@ async function drawFlow(el, code, i) {
 /* ================= แท็บ 💊 อาหารและยา ================= */
 
 const FOOD_FIELDS = [
-  { key: 'name', label: 'ชื่ออาหาร', type: 'text', placeholder: 'เช่น Royal Canin Renal' },
-  { key: 'amount', label: 'ปริมาณต่อมื้อ', type: 'text', placeholder: 'เช่น 1/2 ถ้วย, 50g (เว้นว่างได้)' },
-  { key: 'time', label: 'มื้อ/เวลา', type: 'text', placeholder: 'เช่น เช้า-เย็น (เว้นว่างได้)' },
+  { key: 'name', label: 'ชื่ออาหาร', type: 'text', placeholder: 'เช่น Royal Canin Renal', required: true },
+  { key: 'amount', label: 'ปริมาณต่อมื้อ', type: 'text', placeholder: 'เช่น 1/2 ถ้วย, 50g' },
+  { key: 'time', label: 'มื้อ/เวลา', type: 'text', placeholder: 'เช่น เช้า-เย็น' },
   { key: 'note', label: 'หมายเหตุ', type: 'text', placeholder: 'เช่น อุ่นก่อนให้ / ผสมยา' },
 ];
 
 const MED_FIELDS = [
-  { key: 'name', label: 'ชื่อยา', type: 'text', placeholder: 'เช่น Palladia' },
-  { key: 'am', label: 'โดสเช้า', type: 'text', placeholder: 'เช่น 1 หรือ 65mg (เว้นว่างได้)' },
-  { key: 'pm', label: 'โดสเย็น', type: 'text', placeholder: 'เว้นว่างได้' },
+  { key: 'name', label: 'ชื่อยา', type: 'text', placeholder: 'เช่น Palladia', required: true },
+  { key: 'am', label: 'โดสเช้า', type: 'text', placeholder: 'เช่น 1 หรือ 65mg' },
+  { key: 'pm', label: 'โดสเย็น', type: 'text' },
   { key: 'note', label: 'หมายเหตุ', type: 'text', placeholder: 'เช่น ก่อนอาหาร / Mon Wed Fri' },
 ];
 
@@ -1307,8 +1310,8 @@ async function delMed(idx) {
 /* ================= แท็บ 📅 นัดหมาย ================= */
 
 const APPT_FIELDS = [
-  { key: 'date', label: 'วันที่นัด', type: 'date' },
-  { key: 'hospital', label: 'โรงพยาบาลสัตว์ (เว้นว่างได้)', type: 'text' },
+  { key: 'date', label: 'วันที่นัด', type: 'date', required: true },
+  { key: 'hospital', label: 'โรงพยาบาลสัตว์', type: 'text' },
   { key: 'doctor', label: 'สัตวแพทย์', type: 'text' },
   { key: 'note', label: 'หมายเหตุ', type: 'textarea' },
 ];
@@ -1880,7 +1883,7 @@ function drawLabForm(panelId, cur) {
     <div class="edit-form">
       <h3>${cur ? '✏️ แก้ผลตรวจ' : '➕ เพิ่มผลตรวจ'}</h3>
       <div class="fld">
-        <label>วันที่ตรวจ</label>
+        <label>วันที่ตรวจ <span class="req">*</span></label>
         <input type="date" id="lfDate" value="${cur ? cur.date : todayISO}">
         <div id="lfDateHint"></div>
         ${(() => {
@@ -1902,7 +1905,7 @@ function drawLabForm(panelId, cur) {
         })()}
       </div>
       <div class="fld">
-        <label>ค่าที่ตรวจได้ (กรอกเท่าที่มี เว้นว่างได้)</label>
+        <label>ค่าที่ตรวจได้ (กรอกเท่าที่มี)</label>
         <div class="lab-input-grid" id="lfGrid">${cfgs.map(inputRow).join('')}</div>
         <button class="btn-ghost" id="lfAddParam" style="margin-top:10px">➕ เพิ่มค่าที่ไม่มีในรายการ</button>
       </div>
@@ -1963,7 +1966,7 @@ function drawLabForm(panelId, cur) {
 async function addLabParam(panelId) {
   const label = await TC.prompt('ชื่อค่าที่ต้องการเพิ่ม (เช่น Troponin, Cortisol)');
   if (!label) return;
-  const unit = await TC.prompt('หน่วย (เว้นว่างได้ เช่น ng/mL)') || '';
+  const unit = await TC.prompt('หน่วย (เช่น ng/mL)') || '';
   const key = 'p_' + Math.random().toString(36).slice(2, 8);
   const ek = { key, label: label.trim(), unit: unit.trim(), min: '', max: '', _new: true };
   LAB_EDIT.extraKeys.push(ek);
@@ -2429,7 +2432,7 @@ function editCustomList(id, idx) {
   const items = ((PET.data.custom || {})[id] || {}).items || [];
   openForm(`formc-${id}`, {
     title: idx === null ? '➕ เพิ่มรายการ' : '✏️ แก้',
-    fields: [{ key: 'text', label: 'ข้อความ', type: 'textarea' }],
+    fields: [{ key: 'text', label: 'ข้อความ', type: 'textarea', required: true }],
     values: { text: idx === null ? '' : items[idx] },
     onSave: async (v) => {
       if (!v.text) throw new Error('กรุณากรอกข้อความ');
@@ -2531,7 +2534,7 @@ function editCustomAlert(id) {
   openForm(`formc-${id}`, {
     title: '✏️ ตั้งเกณฑ์ไฟเตือน',
     fields: [
-      { key: 'title', label: 'ชื่อหัวข้อ', type: 'text', placeholder: 'เช่น เกณฑ์ฉีด Leuco Plus' },
+      { key: 'title', label: 'ชื่อหัวข้อ', type: 'text', placeholder: 'เช่น เกณฑ์ฉีด Leuco Plus', required: true },
       { key: 'sourceKey', label: 'ผูกกับค่าผลเลือด', type: 'select', options: opts },
       { key: 'direction', label: 'ทิศทางอันตราย', type: 'select', options: [
         { value: 'below', label: 'ค่ายิ่งต่ำยิ่งอันตราย (เช่น WBC)' },
@@ -2694,7 +2697,7 @@ function editDanger(src, idx) {
     fields: [
       { key: 'group', label: 'กลุ่ม', type: 'select', options: [
         { value: 'liverFailure', label: 'ตับวาย' }, { value: 'wbc', label: 'เม็ดเลือดขาว (WBC)' }] },
-      { key: 'text', label: 'ข้อความ', type: 'textarea', placeholder: 'เช่น BUN ต่ำมาก (ห้ามแตะ 10)' },
+      { key: 'text', label: 'ข้อความ', type: 'textarea', placeholder: 'เช่น BUN ต่ำมาก (ห้ามแตะ 10)', required: true },
     ],
     values: { group: src || 'liverFailure', text: cur },
     onSave: async (v) => {
@@ -2750,7 +2753,7 @@ function editWatch(idx) {
   const list = PET.data.watchList || [];
   openForm('watchForm', {
     title: idx === null ? '➕ เพิ่มสิ่งที่ต้องติดตาม' : '✏️ แก้',
-    fields: [{ key: 'text', label: 'ข้อความ', type: 'textarea', placeholder: 'เช่น ก้อนในตับ — ซาวด์ทุก 1-2 เดือน' }],
+    fields: [{ key: 'text', label: 'ข้อความ', type: 'textarea', placeholder: 'เช่น ก้อนในตับ — ซาวด์ทุก 1-2 เดือน', required: true }],
     values: { text: idx === null ? '' : list[idx] },
     onSave: async (v) => {
       if (!v.text) throw new Error('กรุณากรอกข้อความ');
@@ -2858,8 +2861,8 @@ function editGraphEntry(savePath, uid, idx) {
   openForm(`form-${uid}`, {
     title: idx === null ? '➕ เพิ่มบันทึก' : '✏️ แก้บันทึก',
     fields: [
-      { key: 'date', label: 'วันที่', type: 'date' },
-      { key: 'size', label: 'ค่า/ตัวเลข — เว้นว่างได้ถ้าไม่ได้วัด', type: 'text', placeholder: 'เช่น 1.4' },
+      { key: 'date', label: 'วันที่', type: 'date', required: true },
+      { key: 'size', label: 'ค่า/ตัวเลข', type: 'text', placeholder: 'เช่น 1.4' },
       { key: 'note', label: 'หมายเหตุ', type: 'textarea' },
       { key: 'alert', label: 'ทำเครื่องหมายเตือน (⚠️)', type: 'select', options: [
         { value: '', label: 'ไม่' }, { value: '1', label: 'ใช่ — เน้นเป็นจุดเตือน' }] },
