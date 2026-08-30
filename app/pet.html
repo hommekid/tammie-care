@@ -1084,7 +1084,7 @@ function initMermaid() {
 const TREAT_FIELDS = [
   { key: 'date', label: 'วันที่', type: 'date' },
   { key: 'hospital', label: 'โรงพยาบาลสัตว์ (เว้นว่างได้)', type: 'text' },
-  { key: 'doctor', label: 'หมอ', type: 'text' },
+  { key: 'doctor', label: 'สัตวแพทย์', type: 'text' },
   { key: 'specialty', label: 'แผนก', type: 'text' },
   { key: 'notes', label: 'บันทึก', type: 'textarea', placeholder: 'หมอบอกว่าอะไร ให้ยาอะไร ต้องทำอะไรต่อ...' },
   { key: 'photos', label: 'รูปภาพ (เลือกได้หลายรูป)', type: 'photos' },
@@ -1308,8 +1308,9 @@ async function delMed(idx) {
 
 const APPT_FIELDS = [
   { key: 'date', label: 'วันที่นัด', type: 'date' },
-  { key: 'doctor', label: 'หมอ / การตรวจ', type: 'text', placeholder: 'เช่น หมอปลาย หรือ ตรวจเลือด' },
-  { key: 'note', label: 'หมายเหตุ', type: 'textarea', placeholder: 'เช่น เอาปัสสาวะไปด้วย' },
+  { key: 'hospital', label: 'โรงพยาบาลสัตว์ (เว้นว่างได้)', type: 'text' },
+  { key: 'doctor', label: 'สัตวแพทย์', type: 'text' },
+  { key: 'note', label: 'หมายเหตุ', type: 'textarea' },
 ];
 
 function renderAppts(root) {
@@ -1368,6 +1369,7 @@ function apptCard(a) {
         <span class="appt-doctor">${TC.esc(a.doctor || '')}</span>
         ${when ? `<span class="appt-when${a.diff <= 1 ? ' urgent' : ''}">${when}</span>` : ''}
       </div>
+      ${a.hospital ? `<div class="appt-note" style="font-weight:600">🏥 ${TC.esc(a.hospital)}</div>` : ''}
       ${a.note ? `<div class="appt-note">${TC.esc(a.note)}</div>` : ''}
       ${actionsHTML(a._idx, a._idx)}
     </div>`;
@@ -1382,7 +1384,7 @@ function openApptForm(idx) {
     onSave: async (v) => {
       if (!v.date) throw new Error('กรุณาเลือกวันที่นัด');
       const arr = [...list];
-      const entry = { date: v.date, doctor: v.doctor, note: v.note };
+      const entry = { date: v.date, hospital: v.hospital, doctor: v.doctor, note: v.note };
       if (idx === null) arr.push(entry); else arr[idx] = entry;
       arr.sort((a, b) => new Date(a.date) - new Date(b.date));
       setCalFocus('appts', v.date);
