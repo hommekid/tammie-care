@@ -1,8 +1,9 @@
-# 🔎 แผน: ระบบขอเข้าครอบครัว + เชิญเข้าครอบครัว
+# 🔎 แผน: หลายครอบครัว + ระบบขอเข้า/เชิญเข้าครอบครัว (v2)
 
-> **สถานะ: 📝 แผน — ยังไม่เริ่มลงมือ** (วางแผน 12 ส.ค. 2026) · branch `v2-multiuser`
-> แตกรายละเอียดจากหัวข้อ "🔎 ระบบขอเข้าครอบครัว + ตั้งชื่อครอบครัว" ใน `TAMMIE_CARE_V2_PLAN.md`
-> อ่านคู่กับ `NOTES_gotchas.md` ก่อนลงมือเสมอ
+> **สถานะ: 📝 แผน — ยังไม่เริ่มลงมือ** · เขียนใหม่ทั้งฉบับ 2 ก.ย. 2026 · branch `v2-multiuser`
+> ฉบับก่อน (12 ส.ค. 2026) วางไว้บนสมมติฐาน **1 บัญชี = 1 ครอบครัว** ซึ่ง**ยกเลิกแล้ว** — เจ้าของโปรเจกต์ขอให้
+> 1 บัญชีอยู่ได้หลายครอบครัว และมีสิทธิ์แยกตามที่แอดมินของแต่ละบ้านมอบให้
+> อ่านคู่กับ `NOTES_gotchas.md` (กับดัก) และ `TAMMIE_CARE_V2_PLAN.md` (แผนรวม) ก่อนลงมือเสมอ
 
 ---
 
@@ -12,10 +13,16 @@
 
 | ใครเริ่ม | ทางเข้า | ใครกดยืนยัน |
 |---|---|---|
-| ผู้ใช้ (parent / สัตวแพทย์) | ค้นหาครอบครัว → กดขอเข้า | **admin ของครอบครัวนั้น** approve |
+| ผู้ใช้ (parent / สัตวแพทย์) | ค้นหาครอบครัว (ชื่อ หรือ รหัส) → กดขอเข้า | **admin ของครอบครัวนั้น** approve |
 | admin | เพิ่มด้วยอีเมล (แบบปัจจุบัน) | **ผู้ถูกเชิญ** กดยอมรับ |
 
 กันได้ 2 อย่างพร้อมกัน: คนแอบขอเข้าโดยไม่มีใครอนุมัติ · คนถูกลากเข้าครอบครัวโดยไม่รู้ตัว
+
+**เพิ่มจากฉบับเดิม (ข้อกำหนดใหม่):**
+
+- 1 บัญชี **เป็นสมาชิกได้หลายครอบครัว** — สิทธิ์ในแต่ละบ้านเป็นอิสระต่อกัน ตามที่แอดมินบ้านนั้นมอบให้
+- **สัตวแพทย์สร้างครอบครัวของตัวเองได้** (หมอก็เลี้ยงหมาเหมือนกัน) และไปเป็นสัตวแพทย์ของบ้านอื่นได้ด้วย
+  → บ้านตัวเอง = admin เต็มสิทธิ์ · บ้านอื่น = `vet_access` ดูอย่างเดียว (หมอแค่ไปติดตามอาการก็พอ)
 
 **ข้อจำกัดความเป็นส่วนตัว:** ค้นหาครอบครัวได้ = คนนอกเห็นได้แค่ **ชื่อครอบครัว** เท่านั้น
 ห้ามเห็นสัตว์ / สมาชิก / อีเมลใคร จนกว่าจะถูก approve
@@ -26,167 +33,300 @@
 
 | เรื่อง | เคาะเป็น | เหตุผล |
 |---|---|---|
-| วิธีให้คนนอกหาครอบครัวเจอ | **มีทั้ง 2 ทาง** — ค้นด้วยชื่อ + รหัสครอบครัว 6 หลัก | ครอบครัวที่ห่วงความเป็นส่วนตัวปิดการค้นด้วยชื่อได้ (`discoverable = false`) แล้วแจกรหัสแทน |
-| ที่อยู่ของ UI คำเชิญ/คำขอ | **หน้า `join.html` แยก** + แบนเนอร์เตือนบน `index.html` | `index.html` ติด `?v=` ไม่ได้ (entry point) — ยัดของใหญ่เข้าไปแล้วเจอปัญหาแคชค้างแน่ (NOTES ข้อ 1) |
-| 1 บัญชี อยู่กี่ครอบครัว | **คงไว้ 1 ครอบครัวก่อน** | รอบนี้โฟกัสที่ flow ขอ/เชิญ · schema เผื่อไว้ให้รองรับหลายครอบครัวทีหลังได้ ไม่ต้องรื้อ |
+| **ลำดับงาน** | **รื้อ multi-family ให้เสร็จก่อน (Phase A) แล้วค่อยทำ join (Phase B)** | โค้ดปัจจุบันคิดว่าคนมีบ้านเดียว — ทำ join ก่อนคือเปิดทางให้คนเจอบั๊กสิทธิ์เร็วขึ้น · แลกกับยังไม่เห็นฟีเจอร์ใหม่ 1 รอบ |
+| 1 บัญชี อยู่กี่ครอบครัว | **ไม่จำกัด** (เปลี่ยนจากฉบับเดิม) | ข้อกำหนดใหม่ · schema `family_members` รองรับอยู่แล้ว (pk = family_id+user_id) ไม่ต้องแก้ตาราง |
+| **สร้างครอบครัวเอง** | **ได้ 1 ครอบครัวต่อบัญชี** ผ่าน RPC `create_family` | หมอไม่จำเป็นต้องแยกบ้านหลายหลัง มีบ้านตัวเองหลังเดียวพอ · จำกัด 1 = กันสแปมบ้านร้าง · ไปบ้านอื่นให้ไปในฐานะสมาชิก/หมอแทน |
+| หน้าแรกเมื่ออยู่หลายบ้าน | **index.html ไฟล์เดียว 2 โหมด** — ไม่มี `?fid=` = หน้าเลือกบ้าน (เห็นแค่ชื่อ+รูป ยังไม่โชว์สัตว์) · `?fid=xxx` = การ์ดสัตว์ของบ้านนั้น (เหมือนหน้าแรกทุกวันนี้) | โค้ดเรนเดอร์การ์ดสัตว์อยู่ที่เดียว · bookmark บ้านที่ใช้บ่อยได้ · แลกกับ index.html ใหญ่ขึ้นและติด `?v=` ไม่ได้ (ต้อง hard refresh ตอนทดสอบ) |
+| **มีบ้านเดียว** | **ข้ามหน้าเลือก เข้ามาเจอการ์ดสัตว์เลย** | เคสปกติ (บ้านแทมมี่ตอนนี้) ต้องไม่ถูกบังคับกดเพิ่ม 1 ครั้งทุกครั้งที่เข้าเว็บ · 0 บ้าน = หน้าชวนสร้าง/ขอเข้า · 2+ บ้าน = หน้าเลือก |
+| ที่อยู่ของ UI คำขอ/คำเชิญ | **หน้า `join.html` แยก** + แบนเนอร์เตือนที่หน้าเลือกบ้าน | index.html เป็น entry point ติด `?v=` ไม่ได้ (NOTES ข้อ 1) — ยัดของใหญ่เพิ่มอีกจะเจอแคชค้างหนัก · join.html แยกแล้วแก้ง่ายกว่า |
+| **ความเป็นส่วนตัวของบ้าน** | สวิตช์ `is_public` ต่อครอบครัว · **public** = ค้นด้วยชื่อได้ (≥3 ตัวอักษร) + ใช้รหัสก็ได้ · **private** = ค้นด้วยชื่อไม่เจอเลย เข้าได้ทางรหัสเท่านั้น · default = public | ครอบครัวที่ห่วงความเป็นส่วนตัวปิดการค้นได้เอง โดยยังแจกรหัสให้คนที่ต้องการได้ |
+| **รหัสครอบครัว** | 6 ตัวจากชุด `A-Z2-9` (ตัด `O 0 I 1`) = 32⁶ ≈ 1,073 ล้านรหัส · **`unique` ที่ระดับ DB** · สุ่มวนจนไม่ชน · admin กดสร้างใหม่ได้ (รหัสเก่าตายทันที) | รหัส**ไม่ใช่บัตรผ่าน** — เดาถูกก็ได้แค่เห็นชื่อบ้าน + ส่งคำขอ ยังต้องรอ admin approve อยู่ดี จึงไม่ต้องทำ rate-limit ซับซ้อน |
+| **คนสุดท้ายออกจากบ้าน** | **บล็อก** — แอดมินคนสุดท้ายกด "ออกจากครอบครัว" ไม่ได้ ขึ้นข้อความให้ตั้งคนอื่นเป็นแอดมินก่อน (หรือลบครอบครัวทิ้ง — `delete_family` อยู่ใน backlog) | ไม่งั้นเกิด "บ้านผี" ที่มีสัตว์อยู่ข้างในแต่ไม่มีใครเข้าถึงได้เลย กู้ได้ทางเดียวคือเปิด SQL Editor |
+| **admin เปลี่ยนบทบาทตอน approve** | **เปลี่ยนได้** — เขาขอเป็น parent แต่ admin ให้เป็น vet (ดูอย่างเดียว) ได้ · UI ต้องบอกผู้ขอชัดเจนว่าสุดท้ายได้บทบาทอะไร | admin เป็นเจ้าของบ้าน ควรเป็นคนตัดสินสุดท้าย |
+| คนขอเลือกสิทธิ์ตัวเองได้ไหม | **ไม่ได้** — บังคับ `permission = 'view'` ตอนขอ | admin เป็นคนตั้งระดับสิทธิ์ตอน approve เท่านั้น |
+| admin เห็นอีเมลคนที่ขอเข้าไหม | **เห็นเต็ม** + บังคับผู้ขอใส่ข้อความแนะนำตัว | คนขอเป็นฝ่ายเริ่มเอง = ยินยอมโดยปริยาย · admin ต้องมีข้อมูลพอจะยืนยันตัวตนก่อนกด approve (ยิ่งสำคัญเมื่อชื่อบ้านซ้ำกันได้) |
 | เชิญอีเมลที่ยังไม่มีบัญชี | **ยังไม่รองรับ** — ใช้ปุ่ม "คัดลอกลิงก์เชิญ" แทน | แบบเต็มต้องเก็บ `invited_email` + แก้ trigger `handle_new_user` ให้ผูกคำเชิญตอนสมัคร — ซับซ้อนเกินความจำเป็นรอบแรก |
-| admin เห็นอีเมลคนที่ขอเข้าไหม | **เห็นเต็ม** + บังคับผู้ขอใส่ข้อความแนะนำตัว | คนขอเป็นฝ่ายเริ่มเอง = ยินยอมโดยปริยาย · admin ต้องมีข้อมูลพอจะยืนยันตัวตนก่อนกด approve |
-| คนขอเลือกสิทธิ์ตัวเองได้ไหม | **ไม่ได้** — บังคับ `view` ตอนขอ | admin เป็นคนตั้งระดับสิทธิ์ตอน approve เท่านั้น |
+| สิทธิ์ของ vet | **ดูอย่างเดียวเสมอ** (`vet_access.permission` มี check = 'view') | หมอแค่ไปติดตามอาการ ไม่ต้องเขียน · ถ้าอยากให้เขียนได้ ให้เชิญเป็น parent (edit) แทน |
 
 ---
 
-## 3. Schema — `supabase/09_join_requests.sql` (ไฟล์ใหม่ ไม่แตะ `01`/`02`)
+## 3. ทำไม Phase A ต้องมาก่อน — สภาพโค้ดปัจจุบัน
 
-### 3.1 เพิ่มคอลัมน์ใน `families`
+| จุด | ตอนนี้ | ปัญหาเมื่ออยู่หลายบ้าน |
+|---|---|---|
+| `lib.js` `getMyRole()` | คืน**สิทธิ์สูงสุดก้อนเดียว** จากทุกครอบครัวรวมกัน (`members.reduce` เลือก permission สูงสุด) | เป็น admin บ้าน A + vet บ้าน B → เข้าดูสัตว์บ้าน B **เห็นปุ่มแก้ไข/เพิ่มครบ** แล้วเด้ง error ตอนกดบันทึก · RLS กันข้อมูลได้ แต่ UX พังและคนใช้คิดว่าเว็บเสีย |
+| `pet.html` | `ROLE = await TC.getMyRole()` แล้วใช้ `ROLE.canEdit` / `ROLE.isAdmin` **~35 จุด** | ทุกจุดตัดสินจากสิทธิ์ global ไม่ใช่สิทธิ์ในบ้านของสัตว์ตัวนั้น |
+| `index.html` | `const fam = fams[0]` — โชว์ชื่อ/รูปครอบครัวแรกตัวเดียว · `listPets()` ดึงสัตว์**ทุกบ้านรวมกัน**มาเรียงในตาเดียว | สัตว์ต่างบ้านปนกัน ไม่รู้ตัวไหนบ้านไหน · ป้าย "โหมดสัตวแพทย์" เป็น global ติดผิดคน |
+| `family.html` | `FID = fams[0].id` + เช็ก `ROLE.isAdmin` แบบ global | เป็น admin บ้าน A → หน้าจัดการเปิดได้ แต่ถ้า `fams[0]` ดันเป็นบ้าน B ที่เป็นแค่ vet จะจัดการผิดบ้าน / error |
+| `getPet()` | select `id,slug,name,data` — **ไม่มี `family_id`** | pet.html ไม่รู้ว่าสัตว์ตัวนี้อยู่บ้านไหน จึงหาสิทธิ์ที่ถูกต้องไม่ได้ |
+| ตาราง `families` | ไม่มี insert policy เลย | สร้างครอบครัวจากเว็บไม่ได้ ต้องเปิด SQL Editor — ขัดกับข้อกำหนด "สัตวแพทย์สร้างบ้านตัวเองได้" |
+| `timeline.html` | ไม่ได้ใช้ ROLE เลย (อ่านอย่างเดียว) | ✅ ไม่ต้องแก้ |
 
-- `join_code text unique` — 6 ตัว จากชุด `A-Z2-9` (ตัด `O 0 I 1` ที่อ่านสับสน) · backfill ให้ครอบครัวที่มีอยู่แล้ว
-- `discoverable boolean not null default true` — ค้นด้วยชื่อเจอไหม (ปิดแล้วยังเข้าด้วยรหัสได้)
+---
 
-### 3.2 ตารางใหม่ `join_requests`
+## 4. 🔴 P0 · Phase A — รื้อโครงให้รองรับหลายครอบครัว
+
+### A1. `lib.js` — สิทธิ์เป็นราย-ครอบครัว
+
+แทน `getMyRole()` ด้วย:
+
+```js
+TC.myRoles()        // → { [family_id]: { role:'parent'|'vet', permission, canEdit, isAdmin } }  (cache ในโมดูล)
+TC.roleFor(fid)     // → object เดียวข้างบน (ไม่พบ = { role:null, canEdit:false, isAdmin:false })
+```
+
+- ดึงจาก `family_members` + `vet_access` ตรง ๆ — RLS ปล่อยให้อ่านแถวของบ้านที่ตัวเองอยู่แล้ว **ไม่ต้องทำ RPC ใหม่**
+- คนที่เป็นทั้ง parent และ vet ของบ้านเดียวกัน (ไม่ควรเกิด แต่กันไว้) → ให้ `parent` ชนะ
+- **เก็บ `getMyRole()` ไว้เป็น wrapper ที่ deprecated ไม่ได้** — ต้องลบทิ้ง ไม่งั้นเผลอเรียกแล้วได้สิทธิ์ผิดเงียบ ๆ
+
+### A2. `lib.js` — ข้อมูลสัตว์รู้บ้านของตัวเอง
+
+- `getPet(id)` เพิ่ม `family_id` ใน select (RLS ปล่อยอยู่แล้ว)
+- `listPets(fid)` รับพารามิเตอร์ filter (ไม่ส่ง = ทุกบ้านเหมือนเดิม) + เพิ่ม `family_id` ใน select
+- `myFamilies()` เพิ่มจำนวนสัตว์ต่อบ้าน (นับจาก `listPets()` ฝั่ง client ก็พอ ไม่ต้อง RPC)
+
+### A3. `pet.html` — เซ็ต ROLE จากบ้านของสัตว์ตัวนั้น
+
+```js
+const pet = await TC.getPet(id);
+ROLE = TC.roleFor(pet.family_id);     // ← บรรทัดเดียวจบ
+```
+
+**นี่คือจุดที่ประหยัดที่สุดของแผนทั้งหมด** — เซ็ต `ROLE` ครั้งเดียวหลังโหลด pet แล้ว **~35 จุดที่เขียน `ROLE.canEdit` / `ROLE.isAdmin` ไม่ต้องแก้เลยสักบรรทัด** · diff เล็กมากแต่ปิดปัญหาทั้งหมด
+⚠️ ต้องแน่ใจว่า `getPet` เสร็จ**ก่อน** render ทุกครั้ง (ตอนนี้เป็นอยู่แล้ว) และเพิ่มป้าย 🩺 ตาม `ROLE.role === 'vet'` ของบ้านนี้
+
+### A4. `index.html` — 2 โหมดในไฟล์เดียว
+
+| สภาพ | แสดง |
+|---|---|
+| ไม่มี `?fid=` · 0 ครอบครัว | หน้าชวน: "🏠 สร้างครอบครัวของฉัน" + "➕ เข้าร่วมครอบครัว" (+ คำเชิญค้างถ้ามี) |
+| ไม่มี `?fid=` · 1 ครอบครัว | **เรนเดอร์การ์ดสัตว์ของบ้านนั้นเลย** (เหมือนหน้าแรกทุกวันนี้ 100%) |
+| ไม่มี `?fid=` · 2+ ครอบครัว | การ์ดครอบครัว: รูป + ชื่อ + จำนวนสัตว์ + ป้ายบทบาท (👑 แอดมิน / ✏️ แก้ไขได้ / 👁 ดูอย่างเดียว / 🩺 สัตวแพทย์) → คลิก = `index.html?fid=xxx` |
+| มี `?fid=xxx` | การ์ดสัตว์ของบ้านนั้น + หัวข้อชื่อบ้าน + ปุ่ม "← ทุกครอบครัว" (ซ่อนถ้ามีบ้านเดียว) |
+
+- ปุ่ม 👪 จัดการ → `family.html?fid=xxx` โชว์เฉพาะเมื่อ `roleFor(fid).isAdmin`
+- ป้าย 🩺 "โหมดสัตวแพทย์" ย้ายมาผูกกับบ้านที่กำลังดู ไม่ใช่ทั้งบัญชี
+
+### A5. `family.html` — รับ `?fid=`
+
+- เช็ก `TC.roleFor(fid).isAdmin` ของ**บ้านนั้น** (ไม่ใช่ global)
+- ไม่มี `fid` → เป็น admin บ้านเดียวใช้บ้านนั้นเลย · หลายบ้าน = ให้เลือกก่อน
+- ปุ่ม "← กลับ" ชี้ `index.html?fid=<fid>`
+
+### A6. SQL `supabase/10_multi_family.sql` (ไฟล์ใหม่)
+
+```sql
+alter table public.families add column if not exists created_by uuid references public.profiles(id);
+-- backfill: created_by ของบ้านแทมมี่ = admin คนแรกของบ้าน
+```
+
+RPC ใหม่ 2 ตัว (ทั้งคู่ `security definer` + `set search_path = public`):
+
+| RPC | กติกาข้างใน |
+|---|---|
+| `create_family(p_name text) → uuid` | ชื่อห้ามว่าง · **นับ `families where created_by = auth.uid()` ต้อง = 0** ไม่งั้น raise "1 บัญชีสร้างครอบครัวได้ 1 ครอบครัว" · insert families (พร้อม `join_code` ถ้า Phase B ลงแล้ว) + insert `family_members(admin)` ให้ผู้สร้าง ใน transaction เดียว |
+| `leave_family(p_fid uuid) → text` | ลบแถวตัวเองจาก `family_members` หรือ `vet_access` · **กันแอดมินคนสุดท้าย**: ถ้าตัวเองเป็น admin และ `count(admin) <= 1` → raise "ต้องตั้งคนอื่นเป็นแอดมินก่อน หรือลบครอบครัวทิ้ง" |
+
+### A7. ทดสอบก่อนไป Phase B (ห้ามข้าม)
+
+- [ ] สร้างบัญชีทดสอบ: admin บ้าน A + vet บ้าน B → เปิดสัตว์บ้าน B **ต้องไม่มีปุ่มแก้ไข/เพิ่ม/⚙️ ใด ๆ** และยิง `set_pet_path` ตรงต้องไม่ผ่าน
+- [ ] บัญชีที่มีบ้านเดียว (บ้านแทมมี่) เข้าเว็บแล้ว **เจอการ์ดสัตว์ทันที** ไม่มีหน้าคั่น
+- [ ] บัญชี 2 บ้าน → เห็นหน้าเลือก · เข้าบ้านที่เป็น view → ไม่มีปุ่มแก้
+- [ ] `create_family` ครั้งที่ 2 ต่อบัญชี → ถูกปฏิเสธ
+- [ ] `leave_family` โดยแอดมินคนสุดท้าย → ถูกปฏิเสธ
+
+**ข้อดีของการแยก Phase A:** เลิกยุ่งกับเรื่องสิทธิ์ไปตลอดทั้งโปรเจกต์ · ทดสอบง่ายเพราะยังไม่มี flow ใหม่มาปน · ถ้าพังรู้ทันทีว่าพังเพราะการรื้อ ไม่ใช่เพราะฟีเจอร์ใหม่
+**ข้อเสีย:** 1 รอบ deploy ที่ผู้ใช้ยังไม่เห็นฟีเจอร์ใหม่ · index.html เป็น entry point ติด `?v=` ไม่ได้ → ทดสอบต้อง hard refresh ทุกครั้ง
+
+---
+
+## 5. 🟠 P1 · Phase B1 — Schema + RLS + RPC (`supabase/11_join_requests.sql`)
+
+ไฟล์ใหม่ ไม่แตะ `01_schema.sql` / `02_rls.sql` · รันซ้ำได้
+
+### 5.1 เพิ่มคอลัมน์ใน `families`
 
 | คอลัมน์ | ชนิด | หมายเหตุ |
 |---|---|---|
-| `id` | uuid pk | |
-| `family_id` | uuid → families | on delete cascade |
-| `user_id` | uuid → profiles | คนที่จะเข้าครอบครัว |
-| `role_requested` | text | `parent` / `vet` |
-| `permission` | text | `view`/`edit`/`admin` — ใช้ตอน approve · คำขอจาก user บังคับเป็น `view` |
-| `requested_by` | uuid → profiles | **ใครกดสร้างรายการนี้** |
-| `direction` | text **generated** | `requested_by = user_id → 'request'` ไม่งั้น `'invite'` |
-| `status` | text | `pending` / `approved` / `rejected` / `cancelled` |
-| `message` | text | ข้อความแนะนำตัวจากผู้ขอ |
-| `decided_by`, `decided_at` | uuid / timestamptz | ใครกดตัดสิน เมื่อไหร่ |
-| `created_at` | timestamptz | |
+| `join_code` | `text unique` | 6 ตัวจากชุด `A-Z2-9` (ตัด `O 0 I 1`) · ฟังก์ชัน `gen_join_code()` สุ่มวนจนกว่าจะ insert ผ่าน unique · **backfill ให้ทุกครอบครัวที่มีอยู่** |
+| `is_public` | `boolean not null default true` | true = ค้นด้วยชื่อเจอ · false = เข้าได้ทางรหัสเท่านั้น |
+
+### 5.2 ตารางใหม่ `join_requests`
+
+| คอลัมน์ | ชนิด | หมายเหตุ |
+|---|---|---|
+| `id` | `uuid pk default gen_random_uuid()` | |
+| `family_id` | `uuid → families` | `on delete cascade` |
+| `user_id` | `uuid → profiles` | คนที่จะเข้าครอบครัว |
+| `role_requested` | `text check in ('parent','vet')` | บทบาทที่ขอ/ถูกเชิญ — **admin เปลี่ยนได้ตอน approve** |
+| `permission` | `text check in ('view','edit','admin')` | ใช้ตอน approve · คำขอจาก user บังคับเป็น `view` |
+| `requested_by` | `uuid → profiles` | **ใครกดสร้างรายการนี้** |
+| `direction` | `text` **generated** | `requested_by = user_id → 'request'` ไม่งั้น `'invite'` |
+| `status` | `text check in ('pending','approved','rejected','cancelled')` default `'pending'` | |
+| `message` | `text` | ข้อความแนะนำตัวจากผู้ขอ |
+| `decided_by`, `decided_at` | `uuid` / `timestamptz` | ใครกดตัดสิน เมื่อไหร่ |
+| `created_at` | `timestamptz default now()` | |
 
 - `direction` เป็น **generated column** ไม่ใช่คอลัมน์ธรรมดา — คำนวณจาก `requested_by` เสมอ กันสถานะเพี้ยนจากการเขียนผิด
-- **unique partial index** `(family_id, user_id) where status = 'pending'` — กันคำขอซ้ำ/สแปม
+- **unique partial index** `(family_id, user_id) where status = 'pending'` — คำขอค้างได้ทีละ 1 ต่อบ้าน (กันสแปม + กันคำขอซ้อนคำเชิญ)
+- index `(user_id) where status='pending'` และ `(family_id) where status='pending'` ไว้ดึงเร็ว
 
-### 3.3 RLS ของ `join_requests`
+### 5.3 RLS ของ `join_requests`
 
 - `select` — `user_id = auth.uid()` **หรือ** `is_family_admin(family_id)`
 - `insert` / `update` / `delete` — **ไม่มี policy เลย** → เขียนได้ทางเดียวคือผ่าน RPC security definer
-- `revoke all ... from anon`
+- `revoke all on public.join_requests from anon`
 - **ไม่แก้ `families_select`** — คนนอกยังอ่านตาราง `families` ตรงไม่ได้ · การค้นหาไปผ่าน RPC เท่านั้น จึงเห็นได้แค่ `{id, name}`
 
----
+### 5.4 RPC — ทุกตัว `security definer` + `set search_path = public, auth` + grant เฉพาะ `authenticated`
 
-## 4. RPC (ทุกตัว `security definer` + `set search_path = public, auth` + grant เฉพาะ `authenticated`)
+**ค้นหา (2)**
 
-### ค้นหา
-
-1. `search_families(q text)` — ต้อง **≥3 ตัวอักษร** · เฉพาะ `discoverable = true` · `limit 10` · คืนแค่ `id + name`
-2. `lookup_family_by_code(p_code text)` — exact match ไม่สน `discoverable` (รหัส = capability)
-
-### ผู้ใช้ขอเข้า
-
-3. `request_join(fid, p_role, p_message)` — ผู้ขอ = `auth.uid()` เสมอ (ส่ง user_id เข้ามาไม่ได้)
-   guard: ยังไม่เป็นสมาชิก/vet ของครอบครัวนี้ · ยังไม่มีครอบครัวใด (Phase 1 = 1 ครอบครัว) · ไม่มี pending ค้าง · **ถูกปฏิเสธจากครอบครัวนี้ภายใน 24 ชม. ขอซ้ำไม่ได้** · pending รวมไม่เกิน 3 · **บังคับ `permission = 'view'`**
-
-### admin เชิญ
-
-4. `invite_member_by_email(fid, p_email, p_role, p_permission)` — admin เท่านั้น · สร้าง `join_requests` แถวใหม่ (ไม่ใช่ insert เข้าครอบครัวตรง)
-   - ⚠️ **ต้องเปลี่ยนพฤติกรรมของ `add_member_by_email` / `add_vet_by_email` เดิมให้สร้างคำเชิญแทนการ insert ตรง** — ไม่งั้นเส้นทางเก่ายังลากคนเข้าครอบครัวได้โดยไม่ยินยอม (นี่คือช่องที่ต้องปิดให้ได้)
-   - ยังคงข้อจำกัดเดิม: อีเมลนั้นต้องมีบัญชีในระบบแล้ว
-
-### ตอบคำขอ/คำเชิญ — ตัวเดียวจบ
-
-5. `respond_join_request(p_id, p_accept, p_permission default null)` — เช็กสิทธิ์ตาม `direction` **ใน DB**
-   - `direction = 'request'` → ผู้ตอบต้องเป็น **admin ของครอบครัวนั้น** (ตั้ง `permission` ตอน approve ได้)
-   - `direction = 'invite'` → ผู้ตอบต้องเป็น **`user_id` เอง** และใช้ `permission` ที่ admin ตั้งไว้ (**ห้ามยกระดับสิทธิ์ตัวเอง**)
-   - approve → insert `family_members` (parent) หรือ `vet_access` (vet) + ปิด `status` ใน transaction เดียว
-6. `cancel_join_request(p_id)` — ผู้เริ่มถอนเอง (user ถอนคำขอ · admin ถอนคำเชิญ) → `status = 'cancelled'`
-
-### อ่านรายการ
-
-7. `my_join_requests()` — คำเชิญ + คำขอของฉัน พร้อมชื่อครอบครัว
-8. `family_join_requests(fid)` — admin ดู pending ของครอบครัว พร้อมชื่อ/อีเมล/ข้อความของผู้ขอ
-
-### ตั้งค่าครอบครัว
-
-9. `regenerate_join_code(fid)` — admin สร้างรหัสใหม่ (รหัสเก่าใช้ไม่ได้ทันที)
-10. `set_family_discoverable(fid, p_on boolean)` — admin เปิด/ปิดการค้นด้วยชื่อ
-
----
-
-## 5. Frontend
-
-### 5.1 `app/join.html` — ไฟล์ใหม่
-
-3 ส่วนในหน้าเดียว:
-
-1. **คำเชิญ/คำขอค้างของฉัน** — ยอมรับ / ปฏิเสธ / ยกเลิก
-2. **ค้นหาครอบครัว** — ช่องชื่อ + ช่องรหัส → ผลลัพธ์แสดง **ชื่อครอบครัวอย่างเดียว** → เลือกบทบาท (ผู้ปกครอง / สัตวแพทย์) + ใส่ข้อความแนะนำตัว → ส่งคำขอ
-3. **สถานะคำขอที่ส่งไปแล้ว** — รออนุมัติ / ถูกปฏิเสธ / ยกเลิกเอง
-
-### 5.2 `app/family.html` (admin)
-
-- การ์ดใหม่ **"📥 คำขอเข้าครอบครัว (n)"** — โชว์ชื่อ/อีเมล/ข้อความ → approve (เลือกสิทธิ์) หรือปฏิเสธ
-- การ์ดใหม่ **"✉️ คำเชิญที่ส่งแล้ว — รอตอบรับ"** — ยกเลิกได้
-- การ์ดใหม่ **"🔗 รหัสครอบครัว"** — โชว์รหัส + คัดลอก + สร้างใหม่ + สวิตช์ "ให้ค้นเจอด้วยชื่อครอบครัว"
-- **ปุ่ม "เพิ่ม" → "ส่งคำเชิญ"** + ข้อความกำกับว่าต้องรออีกฝ่ายกดยอมรับก่อนถึงเข้าจริง
-- **ปุ่ม "คัดลอกลิงก์เชิญ"** — ได้ `https://tammie-care.hommekidgo.workers.dev/login.html?next=join.html` ส่งทางไลน์ให้คนที่ยังไม่มีบัญชี (สมัครเสร็จเด้งเข้าหน้าคำเชิญทันที)
-
-### 5.3 `app/index.html`
-
-- มีครอบครัวอยู่แล้ว + มี pending → แบนเนอร์ **"🔔 มีคำเชิญ n รายการ"** ลิงก์ไป `join.html`
-- ยังไม่มีครอบครัวเลย → เปลี่ยน empty state เดิม ("ยังไม่มีสัตว์เลี้ยงที่คุณเข้าถึงได้") เป็น **คำเชิญที่ค้างอยู่ + ปุ่ม "เข้าร่วมครอบครัว →"**
-
-### 5.4 `app/login.html`
-
-- สมัครเสร็จ → พาไป `join.html` แทนข้อความเดิม "บอกผู้ดูแลครอบครัวให้เพิ่มอีเมลนี้"
-
-### 5.5 `app/lib.js`
-
-เพิ่ม wrapper: `searchFamilies` · `lookupFamilyByCode` · `requestJoin` · `inviteMember` · `respondJoinRequest` · `cancelJoinRequest` · `myJoinRequests` · `familyJoinRequests` · `regenJoinCode` · `setFamilyDiscoverable`
-
-⚠️ **bump `?v=25 → 26` ทุกไฟล์ใน `app/`**: `sed -i '' 's/theme.css?v=25/theme.css?v=26/; s/lib.js?v=25/lib.js?v=26/' app/*.html`
-
----
-
-## 6. ลำดับลงมือ
-
-| # | งาน | ผลลัพธ์ |
+| # | RPC | กติกา |
 |---|---|---|
-| 1 | `supabase/09_join_requests.sql` | schema + RLS + RPC ทั้งหมด (รันใน SQL Editor, รันซ้ำได้) |
-| 2 | `supabase/10_test_join.sql` | test checkpoint ตามข้อ 7 — **ไม่ผ่านครบห้ามไปต่อ** |
-| 3 | `app/lib.js` + bump `?v=` | wrapper ครบ 10 ตัว |
-| 4 | `app/join.html` | หน้าใหม่ ทำงานได้ครบ 3 ส่วน |
-| 5 | `app/family.html` | 3 การ์ดใหม่ + เปลี่ยนคำปุ่มเป็น "ส่งคำเชิญ" |
-| 6 | `app/index.html` + `app/login.html` | แบนเนอร์ + empty state + ปลายทางหลังสมัคร |
-| 7 | อัปเดต `NOTES_gotchas.md` + `TAMMIE_CARE_V2_PLAN.md` | จดกับดักที่เจอระหว่างทำ |
-| 8 | push `v2-multiuser` → รอ build ~1 นาที | ทดสอบบนมือถือจริง (hard refresh) |
+| 1 | `search_families(q text)` | ต้อง **≥3 ตัวอักษร** · เฉพาะ `is_public = true` · `limit 10` · คืนแค่ `{id, name}` (+ flag ว่าเราอยู่บ้านนี้แล้วหรือมีคำขอค้าง เพื่อให้ UI ไม่ให้กดซ้ำ) |
+| 2 | `lookup_family_by_code(p_code text)` | exact match (upper+trim) ไม่สน `is_public` · คืน `{id, name}` |
+
+**ผู้ใช้ขอเข้า (3)**
+
+| # | RPC | กติกา |
+|---|---|---|
+| 3 | `request_join(p_fid uuid, p_role text, p_message text)` | ผู้ขอ = `auth.uid()` เสมอ (ส่ง user_id เข้ามาไม่ได้) · guard: ยังไม่เป็นสมาชิก/vet ของบ้านนี้ · ไม่มี pending ค้างกับบ้านนี้ · **ถูกปฏิเสธจากบ้านนี้ภายใน 24 ชม. ขอซ้ำไม่ได้** · pending รวมทั้งหมดไม่เกิน 3 · **บังคับ `permission = 'view'`** · `message` ห้ามว่าง |
+| 4 | `cancel_join_request(p_id uuid)` | ผู้เริ่มถอนเอง (user ถอนคำขอ · admin ถอนคำเชิญ) → `status = 'cancelled'` |
+| 5 | `my_join_requests()` | คำเชิญ + คำขอของฉัน **พร้อมชื่อครอบครัว** (ต้องเป็น security definer เพราะยังไม่เป็นสมาชิก จึงอ่าน `families` ตรงไม่ได้) |
+
+**admin (4)**
+
+| # | RPC | กติกา |
+|---|---|---|
+| 6 | `invite_member(p_fid uuid, p_email text, p_role text, p_permission text)` | admin เท่านั้น · **สร้างแถว `join_requests` (ไม่ใช่ insert เข้าครอบครัวตรง)** · อีเมลนั้นต้องมีบัญชีแล้ว · กันเชิญคนที่อยู่บ้านนี้แล้ว |
+| 7 | `family_join_requests(p_fid uuid)` | admin ดู pending ของบ้าน **พร้อมชื่อ/อีเมล/ข้อความของผู้ขอ** (security definer — `profiles_select` ไม่ยอมให้เห็นคนนอกบ้าน) |
+| 8 | `regenerate_join_code(p_fid uuid)` | admin สร้างรหัสใหม่ (รหัสเก่าใช้ไม่ได้ทันที) |
+| 9 | `set_family_public(p_fid uuid, p_on boolean)` | admin เปิด/ปิดการค้นด้วยชื่อ |
+
+**ตัวตัดสิน (1) — หัวใจของความปลอดภัยทั้งระบบ**
+
+| # | RPC | กติกา |
+|---|---|---|
+| 10 | `respond_join_request(p_id uuid, p_accept boolean, p_permission text default null, p_role text default null)` | เช็กสิทธิ์**ตาม `direction` ใน DB**: <br>· `direction='request'` → ผู้ตอบต้องเป็น **admin ของบ้านนั้น** · ตั้ง `permission` **และเปลี่ยน `role` ได้** ตอน approve <br>· `direction='invite'` → ผู้ตอบต้องเป็น **`user_id` เอง** และใช้ `permission`/`role` ที่ admin ตั้งไว้ (**ห้ามยกระดับสิทธิ์ตัวเอง** — เมิน argument ที่ส่งมา) <br>· approve → insert `family_members` (parent) หรือ `vet_access` (vet) + set `status/decided_by/decided_at` **ใน transaction เดียว** · กันเป็นทั้ง parent และ vet ของบ้านเดียวกัน <br>· status ที่ไม่ใช่ `pending` → raise ทันที (กดซ้ำ/กดชนกัน) |
+
+### 5.5 ⚠️ ปิดช่องทางเก่า (สำคัญที่สุดในไฟล์นี้)
+
+```sql
+drop function if exists public.add_member_by_email(uuid, text, text);
+drop function if exists public.add_vet_by_email(uuid, text);
+```
+
+ถ้าไม่ drop เส้นทางเก่ายัง**ลากคนเข้าครอบครัวได้โดยไม่ยินยอม** = ผิดหลักการข้อ 1 ของเอกสารนี้ทั้งฉบับ
+⚠️ `create or replace function` เปลี่ยน return type ไม่ได้ — และการ "แก้พฤติกรรมข้างใน" ยังทิ้งชื่อเดิมไว้ให้เผลอเรียก จึงเลือก **drop จริง** แล้วให้ทุกทางไปผ่าน `invite_member`
+
+### 5.6 `supabase/12_test_join.sql` — test checkpoint
+
+รูปแบบเดียวกับ `03_test_checkpoint.sql` · **ไม่ผ่านครบห้ามไปต่อ**
+⚠️ `set_config('request.jwt.claims', ...)` **ก่อน** `set_config('role','authenticated')` เสมอ ไม่งั้นอ่าน `auth.users` ไม่ได้ (ERROR 42501 — NOTES ข้อ 3)
 
 ---
 
-## 7. Test checklist (ทำใน `10_test_join.sql` + ทดสอบมือบนเว็บ)
+## 6. 🟡 P2 · Phase B2 — Frontend
+
+### 6.1 `app/lib.js` — wrapper 12 ตัว
+
+`createFamily` · `leaveFamily` · `searchFamilies` · `lookupFamilyByCode` · `requestJoin` · `inviteMember` · `respondJoinRequest` · `cancelJoinRequest` · `myJoinRequests` · `familyJoinRequests` · `regenJoinCode` · `setFamilyPublic`
+
+⚠️ **bump `?v=43 → 44` ทุกไฟล์ใน `app/`**:
+```bash
+sed -i '' 's/theme.css?v=43/theme.css?v=44/g; s/lib.js?v=43/lib.js?v=44/g' app/*.html
+```
+
+### 6.2 `app/join.html` — ไฟล์ใหม่ (3 ส่วนในหน้าเดียว)
+
+1. **คำเชิญ/คำขอค้างของฉัน** — ชื่อบ้าน + บทบาท/สิทธิ์ที่จะได้ → ยอมรับ / ปฏิเสธ / ยกเลิก
+2. **ค้นหาครอบครัว** — ช่องชื่อ (≥3 ตัว) + ช่องรหัส 6 หลัก → ผลลัพธ์แสดง **ชื่อครอบครัวอย่างเดียว** → เลือกบทบาท (ผู้ปกครอง / สัตวแพทย์) + **ใส่ข้อความแนะนำตัว (บังคับ)** → ส่งคำขอ
+3. **สถานะคำขอที่ส่งไปแล้ว** — รออนุมัติ / ถูกปฏิเสธ / ยกเลิกเอง · บอกด้วยว่าถ้าถูกปฏิเสธต้องรอ 24 ชม.
+
+### 6.3 `app/family.html` — 4 การ์ดใหม่ + เปลี่ยนคำปุ่ม
+
+- **📥 คำขอเข้าครอบครัว (n)** — ชื่อ/อีเมล/ข้อความ → approve (**เลือกบทบาท + สิทธิ์ได้**) หรือปฏิเสธ
+- **✉️ คำเชิญที่ส่งแล้ว — รอตอบรับ** — ยกเลิกได้
+- **🔗 รหัสครอบครัว** — โชว์รหัส + คัดลอก + สร้างใหม่ + **สวิตช์ "ให้คนอื่นค้นเจอด้วยชื่อครอบครัว" (public/private)** พร้อมคำอธิบายว่า private = เข้าได้ทางรหัสเท่านั้น
+- **🚪 ออกจากครอบครัวนี้** (สำหรับสมาชิกทั่วไปด้วย ไม่ใช่แค่ admin) — แอดมินคนสุดท้ายกดแล้วขึ้นข้อความให้ตั้งคนอื่นก่อน
+- **ปุ่ม "เพิ่ม" → "ส่งคำเชิญ"** + ข้อความกำกับว่า *ต้องรออีกฝ่ายกดยอมรับก่อนถึงเข้าจริง*
+- **ปุ่ม "คัดลอกลิงก์เชิญ"** → `https://tammie-care.hommekidgo.workers.dev/login.html?next=join.html` (ส่งทางไลน์ให้คนที่ยังไม่มีบัญชี · สมัครเสร็จเด้งเข้าหน้าคำเชิญทันที)
+
+### 6.4 `app/index.html`
+
+- หน้าเลือกบ้าน: ปุ่ม **"🏠 สร้างครอบครัวของฉัน"** (ซ่อนถ้าสร้างไปแล้ว 1) + **"➕ เข้าร่วมครอบครัว"** → join.html
+- มีคำเชิญค้าง → แบนเนอร์ **"🔔 มีคำเชิญ n รายการ"** ลิงก์ไป join.html (โชว์ทั้งโหมดเลือกบ้านและโหมดการ์ดสัตว์)
+- empty state เดิม ("ยังไม่มีสัตว์เลี้ยงที่คุณเข้าถึงได้") → เปลี่ยนเป็นหน้าชวนสร้าง/ขอเข้า
+
+### 6.5 `app/login.html`
+
+- สมัครเสร็จ (ไม่มี session เพราะเปิด confirm email) → ข้อความใหม่ชี้ไป `join.html` แทน "บอกผู้ดูแลครอบครัวให้เพิ่มอีเมลนี้"
+- สมัครเสร็จ (มี session) → `nextPage()` ซึ่งจะเป็น `join.html` ถ้ามาจากลิงก์เชิญ
+- ⚠️ `nextPage()` มี regex กัน open-redirect อยู่แล้ว (`/^[\w.-]+\.html(\?.*)?$/`) — `join.html` ผ่านอยู่แล้ว ไม่ต้องแก้
+
+---
+
+## 7. 🟢 P3 · ปิดงาน
+
+- **D1** อัปเดตเอกสาร: `NOTES_gotchas.md` (ข้อ 17 = สิทธิ์เป็นราย-family แล้ว · ข้อ 18 = กับดักที่เจอจริงระหว่างทำ) · `FEATURES.md` · `TAMMIE_CARE_V2_PLAN.md` · ไฟล์นี้ mark ✅
+- **D2** push `v2-multiuser` → รอ build ~1 นาที → **ทดสอบบนมือถือจริง + hard refresh (Cmd+Shift+R) หรือ incognito**
+
+---
+
+## 8. ✅ Test checklist (ต้องผ่านครบก่อนถือว่าเสร็จ)
+
+**สิทธิ์ราย-ครอบครัว (Phase A)**
+
+- [ ] admin บ้าน A + vet บ้าน B → เปิดสัตว์บ้าน B **ไม่มีปุ่มแก้ไขใด ๆ** และยิง `set_pet_path` ตรงไม่ผ่าน
+- [ ] บัญชีบ้านเดียว → เข้าเว็บเจอการ์ดสัตว์ทันที (ไม่มีหน้าคั่น)
+- [ ] บัญชี 2 บ้าน → เห็นหน้าเลือก · ป้ายบทบาทถูกต้องรายบ้าน
+- [ ] `create_family` ครั้งที่ 2 ต่อบัญชี → ถูกปฏิเสธ
+- [ ] `leave_family` โดยแอดมินคนสุดท้าย → ถูกปฏิเสธ
+
+**ความเป็นส่วนตัว (Phase B)**
 
 - [ ] คนนอกเรียก `search_families` เจอ **แค่ชื่อ** — ยิง `pets` / `family_members` / `profiles` ตรง ได้ 0 แถว
-- [ ] ค้นด้วยคำ 2 ตัวอักษร → ถูกปฏิเสธ · ครอบครัวที่ `discoverable = false` ค้นด้วยชื่อไม่เจอ แต่เข้าด้วยรหัสได้
-- [ ] user ขอเข้า → admin เห็นคำขอ → approve → user เห็นสัตว์ทันที
+- [ ] ค้นด้วยคำ 2 ตัวอักษร → ถูกปฏิเสธ
+- [ ] บ้าน `is_public = false` ค้นด้วยชื่อ**ไม่เจอ** แต่ `lookup_family_by_code` เจอ
+- [ ] `regenerate_join_code` แล้วรหัสเก่าใช้ไม่ได้ทันที
+
+**flow ยืนยัน 2 ทาง (Phase B)**
+
+- [ ] user ขอเข้า → admin เห็นคำขอ พร้อมอีเมล+ข้อความ → approve → user เห็นสัตว์ทันที
 - [ ] admin เชิญ → **ผู้ถูกเชิญยังไม่เห็นอะไรเลยจนกว่าจะกดยอมรับ**
+- [ ] admin approve แล้ว**เปลี่ยนบทบาท** parent → vet ได้ และผลลัพธ์เข้า `vet_access` ไม่ใช่ `family_members`
 - [ ] non-admin เรียก `respond_join_request` ของ `direction='request'` → exception
 - [ ] ผู้ใช้เรียก `respond_join_request` ด้วย `id` ของคนอื่น → exception
 - [ ] ผู้ถูกเชิญยกระดับ `permission` ตัวเองตอนกดยอมรับ → ไม่มีผล (ใช้ค่าที่ admin ตั้ง)
-- [ ] ถูกปฏิเสธแล้วขอครอบครัวเดิมซ้ำภายใน 24 ชม. → ถูกปฏิเสธ
-- [ ] vet ที่ถูก approve → เข้า `vet_access` ไม่ใช่ `family_members` · เขียนข้อมูลไม่ได้
-- [ ] คนที่มีครอบครัวแล้วกดขอเข้าครอบครัวอื่น → ถูกปฏิเสธ (ข้อจำกัด Phase 1)
+- [ ] ถูกปฏิเสธแล้วขอบ้านเดิมซ้ำภายใน 24 ชม. → ถูกปฏิเสธ · pending เกิน 3 → ถูกปฏิเสธ
+- [ ] กด approve ซ้ำ 2 ครั้ง (หรือ admin 2 คนกดพร้อมกัน) → ครั้งที่ 2 raise ไม่เกิดแถวซ้ำ
+- [ ] vet ที่ถูก approve → เข้า `vet_access` · เขียนข้อมูลไม่ได้
+- [ ] **`add_member_by_email` เดิม → ต้อง error ว่าไม่มีฟังก์ชันนี้แล้ว**
 
 ---
 
-## 8. กับดักที่ต้องระวัง (จาก `NOTES_gotchas.md`)
+## 9. กับดักที่ต้องระวัง (จาก `NOTES_gotchas.md`)
 
-- **แคช** — bump `?v=` ทุกไฟล์ · `index.html` / `family.html` / `login.html` / `join.html` เป็น entry point ติด `?v=` ไม่ได้ → ต้อง **hard refresh (Cmd+Shift+R)** หรือ incognito ตอนทดสอบ · workers.dev ต้องรอ build ~1 นาทีหลัง push
-- **ไฟล์ทดสอบ SQL** — `set_config('request.jwt.claims', ...)` **ก่อน** `set_config('role','authenticated')` เสมอ ไม่งั้นอ่าน `auth.users` ไม่ได้ (ERROR 42501)
+- **แคช (ข้อ 1)** — bump `?v=` ทุกไฟล์ · `index.html` / `family.html` / `login.html` / `join.html` เป็น entry point ติด `?v=` ไม่ได้ → **hard refresh (Cmd+Shift+R)** หรือ incognito ตอนทดสอบ · workers.dev ต้องรอ build ~1 นาทีหลัง push
+- **`profiles_select` ไม่ครอบคนนอกบ้าน** — admin จะเห็นชื่อ/อีเมลผู้ขอได้ก็ต่อเมื่อผ่าน RPC security definer (`family_join_requests`) เท่านั้น · เช่นเดียวกับชื่อบ้านใน `my_join_requests` (ผู้ขอยังอ่าน `families` ตรงไม่ได้)
+- **ไฟล์ทดสอบ SQL (ข้อ 3)** — `set_config('request.jwt.claims', ...)` **ก่อน** `set_config('role','authenticated')` เสมอ
 - **ห้าม** `grant select on auth.users to authenticated` เด็ดขาด — เปิดให้ทุกคนอ่านอีเมลทุกคน
 - ทุก RPC ต้อง `set search_path = public, auth` กัน hijack
+- **`create or replace function` เปลี่ยน return type ไม่ได้** — ต้อง `drop function` ก่อน
 - `join.html` ต้องอยู่ใน `app/` — `wrangler.toml` เสิร์ฟเฉพาะโฟลเดอร์นี้
-- `create or replace function` เปลี่ยน return type ไม่ได้ — ถ้าจะแก้ signature ของ `add_member_by_email` ต้อง `drop function` ก่อน
+- **dialog (ข้อ 8)** — `TC.confirm` / `TC.prompt` คืน Promise → ทุกที่ที่เรียกใหม่ต้อง `async` + `await` เสมอ ไม่งั้น `if (TC.confirm(...))` จริงตลอด
+- **`alert()` ไม่บล็อก (ข้อ 8)** — ห้ามเขียนโค้ดที่ต้อง "รอผู้ใช้รับทราบก่อน" ต่อท้าย `alert()`
+- **ทดสอบบนมือถือจริงเสมอ (ข้อ 9)** — ช่อง input/select เนทีฟหน้าตาต่างจาก desktop มาก
+- **ลำดับไฟล์ SQL** — `08_profile_admin.sql` recreate `set_pet_path` ถ้ารัน `06` ใหม่ต้องรัน `08` ตามหลังเสมอ · ลำดับใหม่: `01 → 02 → 04 → 05 → 06 → 07 → 08 → 09 → 10_multi_family → 11_join_requests → (12_test_join)`
 
 ---
 
-## 9. อยู่นอกขอบเขตรอบนี้ (backlog)
+## 10. อยู่นอกขอบเขตรอบนี้ (backlog)
 
+- `delete_family(fid)` — ลบครอบครัวทั้งหลัง (ต้องเตือนหลายชั้น + ลบสัตว์/รูปใน Storage ตาม) · จำเป็นเมื่อคนสุดท้ายอยากออกจริง ๆ
 - เชิญอีเมลที่ยังไม่มีบัญชี (`invited_email` + ผูกตอนสมัครใน trigger `handle_new_user`)
-- แจ้งเตือนทางอีเมล/LINE เมื่อมีคำขอหรือคำเชิญใหม่ (ติดโควตา SMTP — ดู NOTES ข้อ 7)
-- 1 บัญชีอยู่หลายครอบครัว + ตัวสลับครอบครัวใน UI
+- แจ้งเตือนทางอีเมล/LINE เมื่อมีคำขอหรือคำเชิญใหม่ (ติดโควตา SMTP — NOTES ข้อ 7 · ทางออกที่แนะนำคือ Google OAuth หรือ custom SMTP)
+- สร้างครอบครัวได้มากกว่า 1 ต่อบัญชี (ถ้าวันหนึ่งมีเคสจริง)
 - ประวัติคำขอย้อนหลังแบบเต็ม / audit log
+- ให้สัตวแพทย์เขียน clinical notes ได้ (ต้องมีตาราง + write policy ใหม่)
