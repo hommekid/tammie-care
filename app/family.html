@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=41">
+<link rel="stylesheet" href="theme.css?v=43">
 <style>
   .mrow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px;
           padding: 11px 14px; background: var(--surface); margin-bottom: 8px; flex-wrap: wrap; }
@@ -65,9 +65,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=41"></script>
+<script src="lib.js?v=43"></script>
 <script>
-let FID = null, ME = null, ROLE = null;
+let FID = null, ME = null, ROLE = null, FAM_PHOTO = null;
 
 (async function main() {
   ME = await TC.requireAuth();
@@ -86,6 +86,7 @@ let FID = null, ME = null, ROLE = null;
   const fams = await TC.myFamilies();
   if (!fams.length) { c.innerHTML = '<div class="empty">ไม่พบครอบครัว</div>'; return; }
   FID = fams[0].id;
+  FAM_PHOTO = fams[0].photo || null;
   let famName = fams[0].name;
   document.getElementById('famName').textContent = famName;
 
@@ -118,6 +119,21 @@ async function render() {
   const permLabel = { view: 'ดูอย่างเดียว', edit: 'แก้ไขได้', admin: 'ผู้ดูแล (admin)' };
 
   c.innerHTML = `
+    <div class="card" style="display:flex;align-items:center;gap:16px">
+      ${FAM_PHOTO
+        ? `<img src="${FAM_PHOTO}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--sky-soft)">`
+        : '<div style="width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--surface2);border:2px solid var(--border)">🐾</div>'}
+      <div style="flex:1;min-width:0">
+        <h2 class="sec" style="margin-bottom:6px">🖼️ รูปครอบครัว</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <label class="btn-ghost" style="cursor:pointer;margin:0">📷 ${FAM_PHOTO ? 'เปลี่ยนรูป' : 'เพิ่มรูป'}
+            <input type="file" id="famPhotoFile" accept="image/*" style="display:none"></label>
+          ${FAM_PHOTO ? '<a class="rm" id="famPhotoRm" style="cursor:pointer">ลบรูป</a>' : ''}
+        </div>
+        <div class="saving" id="famPhotoMsg" style="margin-top:6px"></div>
+      </div>
+    </div>
+
     <div class="card">
       <h2 class="sec">👪 สมาชิกครอบครัว (${ov.members.length})</h2>
       <div id="members"></div>
@@ -169,6 +185,28 @@ async function render() {
       <a class="rm" data-rmmem="${m.user_id}">ถอด</a>
     </div>`;
   }).join('');
+
+  // ----- รูปครอบครัว -----
+  document.getElementById('famPhotoFile').onchange = async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    const msg = document.getElementById('famPhotoMsg');
+    let dataUrl;
+    try { dataUrl = await TC.cropSquare(file, { out: 256, quality: 0.82, asDataUrl: true }); }
+    catch (err) { return; }   // กดยกเลิกครอป = ไม่ทำอะไร
+    msg.textContent = 'กำลังบันทึก...';
+    try {
+      await TC.setFamilyPhoto(FID, dataUrl);
+      FAM_PHOTO = dataUrl;
+      render();
+    } catch (err) { msg.textContent = err.message; }
+  };
+  const rmBtn = document.getElementById('famPhotoRm');
+  if (rmBtn) rmBtn.onclick = async () => {
+    if (!await TC.confirm('ลบรูปครอบครัว?', { okLabel: 'ลบรูป', danger: true })) return;
+    try { await TC.setFamilyPhoto(FID, null); FAM_PHOTO = null; render(); }
+    catch (err) { document.getElementById('famPhotoMsg').textContent = err.message; }
+  };
 
   document.querySelectorAll('[data-perm]').forEach((sel) => {
     sel.onchange = () => guard('memMsg', () => TC.setMemberPermission(FID, sel.dataset.perm, sel.value));

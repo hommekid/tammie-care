@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
 <link rel="manifest" href="site.webmanifest">
 <meta name="theme-color" content="#fdf4eb">
-<link rel="stylesheet" href="theme.css?v=41">
+<link rel="stylesheet" href="theme.css?v=43">
 <style>
   .pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
   .pet-card {
@@ -32,6 +32,8 @@
   .pet-card .nick { font-size: 14px; color: var(--sky); font-family: var(--cute); font-weight: 500; }
   .pet-card .breed, .pet-card .age { font-size: 13px; color: var(--text-dim); }
   .status-note { font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
+  .fam-ico { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; vertical-align: -6px; margin-right: 3px; border: 1px solid var(--sky-soft); }
+  .fam-name { color: #b07d22; font-weight: 700; font-size: 17px; margin-left: 3px; }
   .pill { margin-top: 12px; }
   .appt-alert {
     display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
@@ -86,7 +88,7 @@
 </div>
 
 <div class="container">
-  <div class="section-label">🐾 สมาชิกครอบครัว</div>
+  <div class="section-label" id="famLabel">🐾 สมาชิกครอบครัว</div>
   <div class="pet-grid" id="petGrid"><div class="loading">กำลังโหลด...</div></div>
 </div>
 
@@ -94,7 +96,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
-<script src="lib.js?v=41"></script>
+<script src="lib.js?v=43"></script>
 <script>
 const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ปกติ', alert: '🚨 ต้องดูแล' };
 
@@ -137,6 +139,17 @@ const statusLabel = { watch: '⚠️ เฝ้าระวัง', ok: '✓ ป�
       }
       if (role.isAdmin) document.getElementById('manageLink').style.display = '';
     } catch (_) { /* ปุ่มจัดการซ่อนไว้ */ }
+
+    // ชื่อครอบครัว + รูป → ต่อท้าย section label (ไม่มีก็คงไว้ที่ 🐾)
+    try {
+      const fams = await TC.myFamilies();
+      const fam = fams && fams[0];
+      if (fam) {
+        const icon = fam.photo ? `<img src="${fam.photo}" class="fam-ico" alt="">` : '🐾';
+        document.getElementById('famLabel').innerHTML =
+          `${icon} สมาชิกครอบครัว${fam.name ? ' <span class="fam-name">' + TC.esc(fam.name) + '</span>' : ''}`;
+      }
+    } catch (_) { /* คงไว้ที่ 🐾 สมาชิกครอบครัว */ }
   })();
 
   if (!pets.length) {

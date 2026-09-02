@@ -244,9 +244,98 @@ const TC = (() => {
     if (error) throw new Error(saveErrorTH(error));
   }
 
-  /** รายชื่อครอบครัวของฉัน (ไว้โชว์ในหน้าจัดการ) */
+  /** ตั้งรูปครอบครัว (data URL ย่อแล้ว) — admin เท่านั้น · ส่ง null เพื่อลบรูป */
+  async function setFamilyPhoto(fid, dataUrl) {
+    const { error } = await sb.from('families').update({ photo: dataUrl }).eq('id', fid);
+    if (error) throw new Error(saveErrorTH(error));
+  }
+
+  /** ย่อรูปเป็น data URL (jpeg) — ใช้กับรูปครอบครัวที่เก็บใน DB ตรงๆ ไม่ผ่าน Storage */
+  function resizeToDataUrl(file, maxSide = 256, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width: w, height: h } = img;
+        if (Math.max(w, h) > maxSide) { const r = maxSide / Math.max(w, h); w = Math.round(w * r); h = Math.round(h * r); }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('เปิดไฟล์รูปไม่ได้')); };
+      img.src = url;
+    });
+  }
+
+  /** ครอปรูปเป็นสี่เหลี่ยมจัตุรัส (เลื่อน/ซูม, canvas ล้วน) — ใช้ร่วมกันทั้งโปรไฟล์สัตว์ + รูปครอบครัว
+   *  opts: { out=ขนาดผลลัพธ์, quality, asDataUrl } · คืน Blob (default) หรือ data URL (asDataUrl:true)
+   *  ใช้ CSS .cropper/.crop-* ใน theme.css · reject('cancel') ถ้ากดยกเลิก */
+  function cropSquare(file, { out = 600, quality = 0.9, asDataUrl = false } = {}) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objURL = URL.createObjectURL(file);
+      img.onload = () => {
+        const V = Math.min(300, window.innerWidth - 80);
+        const minScale = V / Math.min(img.naturalWidth, img.naturalHeight);
+        let scale = minScale; const maxScale = minScale * 4;
+        let left = (V - img.naturalWidth * scale) / 2;
+        let top = (V - img.naturalHeight * scale) / 2;
+
+        const ov = document.createElement('div');
+        ov.className = 'cropper';
+        ov.innerHTML =
+          '<div class="crop-panel"><div class="crop-title">เลื่อน/ซูมให้พอดีกรอบ</div>' +
+          `<div class="crop-view" style="width:${V}px;height:${V}px"><img class="crop-img" draggable="false"><div class="crop-ring"></div></div>` +
+          '<input type="range" class="crop-zoom" min="1" max="4" step="0.01" value="1">' +
+          '<div class="crop-btns"><button class="btn crop-ok">ใช้รูปนี้</button><button class="btn-ghost crop-cancel">ยกเลิก</button></div></div>';
+        document.body.appendChild(ov);
+
+        const imgEl = ov.querySelector('.crop-img');
+        imgEl.src = objURL;
+        const clamp = () => {
+          const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+          left = Math.min(0, Math.max(V - w, left));
+          top = Math.min(0, Math.max(V - h, top));
+        };
+        const apply = () => {
+          clamp();
+          imgEl.style.width = img.naturalWidth * scale + 'px';
+          imgEl.style.height = img.naturalHeight * scale + 'px';
+          imgEl.style.left = left + 'px'; imgEl.style.top = top + 'px';
+        };
+        apply();
+
+        let dragging = false, px = 0, py = 0;
+        const view = ov.querySelector('.crop-view');
+        view.addEventListener('pointerdown', (e) => { dragging = true; px = e.clientX; py = e.clientY; view.setPointerCapture(e.pointerId); });
+        view.addEventListener('pointermove', (e) => { if (!dragging) return; left += e.clientX - px; top += e.clientY - py; px = e.clientX; py = e.clientY; apply(); });
+        view.addEventListener('pointerup', () => { dragging = false; });
+        ov.querySelector('.crop-zoom').oninput = (e) => {
+          const cx = (V / 2 - left) / scale, cy = (V / 2 - top) / scale;
+          scale = Math.min(maxScale, Math.max(minScale, minScale * Number(e.target.value)));
+          left = V / 2 - cx * scale; top = V / 2 - cy * scale; apply();
+        };
+        const cleanup = () => { URL.revokeObjectURL(objURL); ov.remove(); };
+        ov.querySelector('.crop-cancel').onclick = () => { cleanup(); reject(new Error('cancel')); };
+        ov.querySelector('.crop-ok').onclick = () => {
+          const sx = -left / scale, sy = -top / scale, sSize = V / scale;
+          const cv = document.createElement('canvas');
+          cv.width = out; cv.height = out;
+          cv.getContext('2d').drawImage(img, sx, sy, sSize, sSize, 0, 0, out, out);
+          if (asDataUrl) { cleanup(); resolve(cv.toDataURL('image/jpeg', quality)); }
+          else cv.toBlob((b) => { cleanup(); b ? resolve(b) : reject(new Error('crop fail')); }, 'image/jpeg', quality);
+        };
+      };
+      img.onerror = () => { URL.revokeObjectURL(objURL); reject(new Error('เปิดรูปไม่ได้')); };
+      img.src = objURL;
+    });
+  }
+
+  /** รายชื่อครอบครัวของฉัน (+ รูป) ไว้โชว์ในหน้าจัดการ/หน้าแรก */
   async function myFamilies() {
-    const { data, error } = await sb.from('families').select('id,name');
+    const { data, error } = await sb.from('families').select('id,name,photo');
     if (error) throw error;
     return data;
   }
@@ -413,7 +502,7 @@ const TC = (() => {
   return { sb, requireAuth, signOut, getMyRole, listPets, getPet, signedUrl, fillImg,
            setPetPath, uploadPhoto, resizeImage,
            familyOverview, addMember, addVet, setMemberPermission, removeMember, removeVet,
-           createPet, setPetProfile, setPetArchived, deletePet, myFamilies, renameFamily, myProfile, updateMyName,
+           createPet, setPetProfile, setPetArchived, deletePet, myFamilies, renameFamily, setFamilyPhoto, resizeToDataUrl, cropSquare, myProfile, updateMyName,
            calcAge, ageText, thDate, thDateShort, nextAppt, authErrorTH, esc, TH_MONTHS,
            confirm: TCModal.confirm, prompt: TCModal.prompt };
 })();

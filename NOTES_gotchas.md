@@ -8,7 +8,7 @@
 ## ⚡ กับดักที่เจอบ่อย (เจอซ้ำแน่ถ้าไม่รู้)
 
 ### 1. แคช JS/HTML ค้าง — อาการ "แก้แล้วไม่เปลี่ยน"
-- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 41** (`sed -i '' 's/theme.css?v=41/theme.css?v=42/g; s/lib.js?v=41/lib.js?v=42/g' app/*.html`)
+- `theme.css` และ `lib.js` ติด `?v=NN` cache-bust แล้ว — **แก้ CSS/lib ต้อง bump เลข `?v=` ทุกไฟล์** · **เลขปัจจุบัน = 43** (`sed -i '' 's/theme.css?v=43/theme.css?v=44/g; s/lib.js?v=43/lib.js?v=44/g' app/*.html`)
 - **`index.html` / `pet.html` / `family.html` / `login.html` เอง ติด `?v=` ไม่ได้** (เป็น entry point) → เวลาแก้ inline JS ในไฟล์พวกนี้ ต้อง **hard refresh (Cmd+Shift+R)** หรือ incognito
 - อาการคลาสสิกที่หลงเชื่อว่าเป็นบั๊กโค้ด แต่จริง ๆ คือแคช: "ยังเห็น section เดิม", "TC.xxx is not a function", "ปุ่มเก่ายังอยู่" → **เช็กแคชก่อนเสมอ**
 - บน workers.dev ต้องรอ build (~1 นาที) หลัง push ด้วย
@@ -85,6 +85,8 @@ select set_config('role', 'authenticated', true);
 - **เป็น entry point ใหม่** — ติด `?v=` ไม่ได้ (hard refresh) · แต่ **ไม่ได้แก้ theme.css/lib.js เลย จึงไม่ต้อง bump `?v=`** (ยังชี้ v เดิม) · timeline.html อยู่ใน `app/` → wrangler เสิร์ฟให้อยู่แล้ว
 - **ไม่ import ฟังก์ชันจาก pet.html** — timeline.html มี catInfo/treatLabel/SYM_* ของตัวเอง (ถ้าเพิ่มหมวด/สีใหม่ใน pet.html ต้องซิงก์ default ที่นี่ด้วย ถ้าจะให้ตรง)
 - เทียบช่วงวันด้วย string ISO (`>=from && <=to`) — ได้เพราะ `YYYY-MM-DD` เรียงตามตัวอักษร = เรียงตามเวลา
+- **filter ตามหมวด** (chip) — event มี `cat` (weight/lab/treat/หรือ source หมวดอาการ) · `FILTER` (Set) เปิดทุกหมวดครั้งแรก · หาหมอมี sub-filter `HOSP`/`DOC` (จาก `treatValues(d,'hospital'/'doctor')`) · ปุ่มช่วง 7/30/60/365 (default 30)
+- **การรักษา + นัดหมาย มี field `hospital` (โรงพยาบาลสัตว์)** — รองรับหลาย รพ. · โชว์ในปฏิทิน/การ์ดนัด/timeline · label "หมอ"→"สัตวแพทย์" ทั้งสองฟอร์ม
 
 ### 14. รวมปฏิทิน — แท็บ "🗓️ ปฏิทิน" เดียว แทน อาการ+การรักษา (13 ส.ค. 2026)
 - แท็บ `daily` + `treat` **ถูกยุบเป็น `calendar`** ใน `TABS` + dispatch · `renderDaily`/`renderTreat` ถูกลบทิ้ง เหลือ **`renderCalendar()`** ตัวเดียวรวม events อาการ+การรักษาบน `buildCalendar` เดียว (key `'calendar'`)
@@ -144,6 +146,14 @@ select set_config('role', 'authenticated', true);
 - Phase 1 รองรับ **1 ครอบครัว/บัญชี** (ใช้ครอบครัวแรก) — ระบบขอเข้าหลายครอบครัวอยู่ใน backlog
 
 ---
+
+### 16. รูปโปรไฟล์ครอบครัว — เก็บเป็น data URL ใน `families.photo` (13 ส.ค. 2026)
+- **ต้องรัน `supabase/09_family_photo.sql`** ก่อน (`alter table families add column photo text`) ไม่งั้น select/update ฟิลด์นี้ error
+- **ไม่ใช้ Storage bucket** (ต่างจากรูปสัตว์) — รูปครอบครัวมีตัวเดียว/เล็ก · ย่อ ~256px เป็น data URL jpeg (`TC.resizeToDataUrl`) เก็บใน text column ตรงๆ → ไม่ต้องมี storage policy/signed URL
+- อ่าน = สมาชิก/หมอ (RLS `families_select`) · แก้ = admin (`families_update`) · `TC.setFamilyPhoto(fid, dataUrl|null)`
+- `myFamilies()` select `id,name,photo` · หน้าแรก (`index.html`) เอา `fam.photo` แทน 🐾 ที่ section label + ต่อท้ายชื่อครอบครัว · หน้าจัดการ (`family.html`) มีการ์ดเพิ่ม/เปลี่ยน/ลบรูป
+- ⚠️ data URL ใหญ่ได้ถ้าไม่ย่อ — รูปครอบครัวใช้ **`TC.cropSquare(file, {out:256, asDataUrl:true})`** (ครอปสี่เหลี่ยม เลื่อน+ซูม เหมือนโปรไฟล์สัตว์) เสมอ
+- **cropper ย้ายไป `lib.js` เป็น `TC.cropSquare(file, {out, quality, asDataUrl})`** แล้ว (เดิมอยู่ใน pet.html ชื่อ `openCropper`) — โปรไฟล์สัตว์ + รูปครอบครัวใช้ตัวเดียวกัน · Blob (default) หรือ data URL · reject('cancel') ตอนกดยกเลิก · CSS `.cropper/.crop-*` อยู่ใน theme.css
 
 ## 📁 ลำดับไฟล์ SQL (รันตามลำดับถ้าตั้ง DB ใหม่)
 `01_schema` → `02_rls` → (`03_test_checkpoint` ไม่บังคับ) → `04_seed_real` → `05_storage_policies` → `06_edit_rpc` → `07_family_rpc` → `08_profile_admin`
