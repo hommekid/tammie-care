@@ -1824,7 +1824,11 @@ function drawLabForm(panelId, cur) {
       <h3>${cur ? '✏️ แก้ผลตรวจ' : '➕ เพิ่มผลตรวจ'}</h3>
       <div class="fld">
         <label>วันที่ตรวจ <span class="req">*</span></label>
-        <input type="date" id="lfDate" value="${cur ? cur.date : todayISO}">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="date" id="lfDate" value="${cur ? cur.date : todayISO}" style="flex:1;min-width:0">
+          ${labsOf(panelId).length ? `<button type="button" class="btn-ghost" id="lfCalBtn" style="white-space:nowrap">📅 ดูวันที่มีผล</button>` : ''}
+        </div>
+        <div id="lfCal" class="lab-cal" style="display:none"></div>
         <div id="lfDateHint"></div>
         ${(() => {
           const existing = labsOf(panelId).map((r) => r.date);   // เรียงใหม่สุดก่อนแล้ว
@@ -1886,6 +1890,72 @@ function drawLabForm(panelId, cur) {
   };
   dateInp.addEventListener('change', checkDup);
   checkDup();
+
+  // ปฏิทินเดือน: วันที่มีผลมีวงสีทอง · กดวันมีผล = แก้ผลวันนั้น · กดวันว่าง = ตั้งวันที่เพื่อเพิ่มผลใหม่
+  const calBtn = document.getElementById('lfCalBtn');
+  if (calBtn) {
+    const calBox = document.getElementById('lfCal');
+    const byDate = {};   // 'YYYY-MM-DD' → [rows]
+    labsOf(panelId).forEach((r) => { (byDate[r.date] = byDate[r.date] || []).push(r); });
+    const months = [...new Set(Object.keys(byDate).map((d) => d.slice(0, 7)))].sort();   // เดือนที่มีผล เก่า→ใหม่
+    const TH_M = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    const pad = (n) => String(n).padStart(2, '0');
+    let ym = (dateInp.value && byDate[dateInp.value] ? dateInp.value : months[months.length - 1] + '-01').slice(0, 7);
+
+    const drawCal = () => {
+      const y = +ym.slice(0, 4), m = +ym.slice(5, 7);
+      const first = new Date(y, m - 1, 1).getDay();
+      const days = new Date(y, m, 0).getDate();
+      const prev = [...months].reverse().find((k) => k < ym);   // ข้ามเดือนที่ไม่มีผล
+      const next = months.find((k) => k > ym);
+      const nInMonth = Object.keys(byDate).filter((d) => d.startsWith(ym)).length;
+      let cells = '';
+      for (let i = 0; i < first; i++) cells += '<span></span>';
+      for (let d = 1; d <= days; d++) {
+        const iso = `${ym}-${pad(d)}`;
+        const cls = ['lab-cal-day', byDate[iso] ? 'has' : '', iso === dateInp.value ? 'sel' : '', iso === todayISO ? 'today' : ''].join(' ');
+        cells += `<span class="${cls}" data-d="${iso}" title="${byDate[iso] ? 'มีผล — กดเพื่อแก้' : 'กดเพื่อเลือกวันนี้'}">${d}</span>`;
+      }
+      calBox.innerHTML = `
+        <div class="lab-cal-head">
+          <button type="button" data-go="${prev || ''}" ${prev ? '' : 'disabled'}>‹</button>
+          <span>${TH_M[m - 1]} ${y + 543} <small>(มีผล ${nInMonth} วัน)</small></span>
+          <button type="button" data-go="${next || ''}" ${next ? '' : 'disabled'}>›</button>
+        </div>
+        <div class="lab-cal-grid">
+          ${['อา','จ','อ','พ','พฤ','ศ','ส'].map((w) => `<b>${w}</b>`).join('')}
+          ${cells}
+        </div>
+        <div class="lab-cal-legend"><i class="dot"></i> มีผลตรวจ · ‹ › ข้ามไปเดือนที่มีผล</div>`;
+      calBox.querySelectorAll('[data-go]').forEach((b) => {
+        b.onclick = () => { if (b.dataset.go) { ym = b.dataset.go; drawCal(); } };
+      });
+      calBox.querySelectorAll('.lab-cal-day').forEach((c) => {
+        c.onclick = () => {
+          const rows = byDate[c.dataset.d];
+          if (rows) {
+            const row = rows.find((r) => r !== cur) || rows[0];
+            if (row === cur) return;   // กำลังแก้วันนี้อยู่แล้ว
+            const gi = (PET.data.labs || []).indexOf(row);
+            if (gi >= 0) { LAB_EDIT = { idx: gi, extraKeys: [], holder: _lfHolder }; drawLabForm(panelId, row); }
+          } else {
+            dateInp.value = c.dataset.d;
+            checkDup();
+            drawCal();
+          }
+        };
+      });
+    };
+    calBtn.onclick = () => {
+      const show = calBox.style.display === 'none';
+      calBox.style.display = show ? '' : 'none';
+      calBtn.classList.toggle('on', show);
+      if (show) drawCal();
+    };
+    dateInp.addEventListener('change', () => {
+      if (calBox.style.display !== 'none' && dateInp.value) { ym = dateInp.value.slice(0, 7); drawCal(); }
+    });
+  }
 
   document.getElementById('lfAddParam').onclick = () => addLabParam(panelId);
   document.getElementById('lfCancel').onclick = () => { LAB_EDIT = null; document.getElementById(_lfHolder).innerHTML = ''; };
