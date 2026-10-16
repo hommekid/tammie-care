@@ -322,6 +322,8 @@ details.lab-history > summary { cursor: pointer; font-size: 12.5px; color: var(-
 .lab-date-chip { font-family: var(--mono); font-size: 11.5px; padding: 4px 10px; border-radius: 20px;
   background: var(--surface2); border: 1px solid var(--gold-dim); color: var(--gold); cursor: pointer; }
 .lab-date-chip:hover { background: rgba(217,158,62,0.14); }
+.lab-tbl th.lab-th-edit { cursor: pointer; color: var(--sky); }
+.lab-tbl th.lab-th-edit:hover { background: var(--surface2); text-decoration: underline; }
 
 /* ---------- โหมดแก้ไข ---------- */
 .edit-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }

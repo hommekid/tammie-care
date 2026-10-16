@@ -1723,7 +1723,12 @@ function drawLabChart(panelId, key) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { title: (t) => t[0].label } } },
+      onClick: (evt, els) => { if (els.length) editLabRow(panelId, rows[els[0].index]); },
+      onHover: (evt, els) => { if (ROLE.canEdit) evt.native.target.style.cursor = els.length ? 'pointer' : ''; },
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        title: (t) => t[0].label,
+        footer: () => (ROLE.canEdit ? 'กดจุดเพื่อแก้ผลวันนี้' : ''),
+      } } },
       scales: {
         y: { ticks: { color: '#8c7f6f' }, grid: { color: '#efe0cd' } },
         x: { ticks: { color: '#8c7f6f', font: { size: 10 } }, grid: { display: false } },
@@ -1743,7 +1748,9 @@ function renderLabTable(panelId, page) {
   holder.innerHTML = `
     <div class="lab-tbl-scroll">
       <table class="lab-tbl">
-        <thead><tr><th>ค่า</th>${slice.map((r) => `<th>${TC.thDateShort(r.date)}</th>`).join('')}</tr></thead>
+        <thead><tr><th>ค่า</th>${slice.map((r, i) => ROLE.canEdit
+          ? `<th class="lab-th-edit" data-ri="${i}" title="กดเพื่อแก้ผลวันนี้">${TC.thDateShort(r.date)} ✏️</th>`
+          : `<th>${TC.thDateShort(r.date)}</th>`).join('')}</tr></thead>
         <tbody>
           ${cfgs.map((c) => `<tr>
             <td>${TC.esc(c.label)}</td>
@@ -1765,9 +1772,23 @@ function renderLabTable(panelId, page) {
   holder.querySelectorAll('[data-pg]').forEach((b) => {
     b.onclick = () => renderLabTable(panelId, Number(b.dataset.pg));
   });
+  holder.querySelectorAll('th[data-ri]').forEach((th) => {
+    th.onclick = () => editLabRow(panelId, slice[Number(th.dataset.ri)]);
+  });
 }
 
 /* ---------- เพิ่ม/แก้ผลตรวจ ---------- */
+
+// เปิดฟอร์มแก้ผลรายการนี้ ในหมวดของมันเอง (ใช้จากหัวตาราง/จุดบนกราฟ) แล้วเลื่อนไปที่ฟอร์ม
+function editLabRow(panelId, row) {
+  if (!ROLE.canEdit || !row) return;
+  const gi = (PET.data.labs || []).indexOf(row);
+  if (gi < 0) return;
+  const holderId = `labFormInline-${panelId}`;
+  openLabForm(gi, holderId);
+  const h = document.getElementById(holderId);
+  if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 let LAB_EDIT = null;   // {panel, extraKeys:[{key,label,unit}...]}
 
@@ -1808,18 +1829,14 @@ function drawLabForm(panelId, cur) {
         ${(() => {
           const existing = labsOf(panelId).map((r) => r.date);   // เรียงใหม่สุดก่อนแล้ว
           if (!existing.length) return '';
-          const SHOW = 12;
-          const head = existing.slice(0, SHOW);
-          const rest = existing.slice(SHOW);
+          const RECENT = 6;   // ทางลัดแค่ไม่กี่วันล่าสุด — วันอื่นใช้ปฏิทินด้านบน หรือกดวันที่ในตาราง/กราฟ
+          const recent = existing.slice(0, RECENT);
           return `<div style="margin-top:8px;font-size:11.5px;color:var(--text-dim)">
-            มีผลหมวดนี้แล้ว ${existing.length} วัน (กดเพื่อแก้):
+            มีผลหมวดนี้แล้ว ${existing.length} วัน · ล่าสุด (กดเพื่อแก้):
             <div class="lab-date-chips">
-              ${head.map((dt) => `<span class="lab-date-chip" data-dt="${dt}">${TC.thDateShort(dt)}</span>`).join('')}
-              ${rest.length ? `<span class="lab-date-chip" id="lfMoreChips" style="border-style:dashed">+${rest.length} เพิ่มเติม</span>` : ''}
-              <span class="lab-date-chips" id="lfRestChips" style="display:none">
-                ${rest.map((dt) => `<span class="lab-date-chip" data-dt="${dt}">${TC.thDateShort(dt)}</span>`).join('')}
-              </span>
+              ${recent.map((dt) => `<span class="lab-date-chip" data-dt="${dt}">${TC.thDateShort(dt)}</span>`).join('')}
             </div>
+            ${existing.length > RECENT ? `<div style="margin-top:6px">วันอื่น: เลือกวันในปฏิทินด้านบน หรือกดวันที่ในตาราง/กราฟของหมวดนี้</div>` : ''}
           </div>`;
         })()}
       </div>
@@ -1843,13 +1860,6 @@ function drawLabForm(panelId, cur) {
   // ไม่มีตัวเลือกหมวดในฟอร์มแล้ว — ฟอร์มเปิดอยู่ในหมวดของตัวเองเสมอ (panelId มาจากหมวดที่กาง)
   if (cur) document.getElementById('lfDelete').onclick = () => delLab(panelId, cur);
 
-  // ปุ่มกางชิปที่เหลือ (กันชิปพรืดเมื่อมีผลเยอะ)
-  const moreBtn = document.getElementById('lfMoreChips');
-  if (moreBtn) moreBtn.onclick = () => {
-    document.getElementById('lfRestChips').style.display = 'inline';
-    moreBtn.remove();
-  };
-
   // ชิปวันที่: กดเพื่อแก้ผลของวันนั้น
   document.querySelectorAll('.lab-date-chip').forEach((chip) => {
     chip.onclick = () => {
@@ -1858,16 +1868,21 @@ function drawLabForm(panelId, cur) {
     };
   });
 
-  // เตือนถ้าพิมพ์วันที่ตรงกับผลที่มีอยู่แล้ว (ตอนเพิ่มใหม่)
+  // ช่องวันที่ = ตัวค้นหา: ถ้าเลือกวันที่มีผลอยู่แล้ว → ปุ่มสลับไปแก้ผลวันนั้น
   const dateInp = document.getElementById('lfDate');
   const checkDup = () => {
     const hint = document.getElementById('lfDateHint');
-    if (!hint || cur) return;   // ตอนแก้อยู่แล้วไม่ต้องเตือน
-    const dup = labsOf(panelId).find((r) => r.date === dateInp.value);
-    hint.innerHTML = dup
-      ? `<div class="msg msg-info" style="margin:8px 0 0;padding:8px 12px;font-size:12.5px">
-           วันนี้มีผลหมวดนี้อยู่แล้ว — บันทึกจะเพิ่มเป็นอีกรายการ ถ้าต้องการแก้ให้กดชิปวันด้านล่าง</div>`
-      : '';
+    if (!hint) return;
+    const dup = labsOf(panelId).find((r) => r.date === dateInp.value && r !== cur);
+    if (!dup) { hint.innerHTML = ''; return; }
+    hint.innerHTML = `<div class="msg msg-info" style="margin:8px 0 0;padding:8px 12px;font-size:12.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>${cur ? 'วันนี้มีผลอีกรายการอยู่แล้ว' : 'วันนี้มีผลหมวดนี้อยู่แล้ว — ถ้าบันทึกจะเพิ่มเป็นอีกรายการ'}</span>
+        <button type="button" class="btn-ghost" id="lfGoDup" style="padding:4px 12px;font-size:12.5px">✏️ แก้ผล ${TC.thDateShort(dup.date)} แทน</button>
+      </div>`;
+    document.getElementById('lfGoDup').onclick = () => {
+      const gi = (PET.data.labs || []).indexOf(dup);
+      if (gi >= 0) { LAB_EDIT = { idx: gi, extraKeys: [], holder: _lfHolder }; drawLabForm(panelId, dup); }
+    };
   };
   dateInp.addEventListener('change', checkDup);
   checkDup();

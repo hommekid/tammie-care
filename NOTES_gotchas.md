@@ -155,6 +155,13 @@ select set_config('role', 'authenticated', true);
 - ⚠️ data URL ใหญ่ได้ถ้าไม่ย่อ — รูปครอบครัวใช้ **`TC.cropSquare(file, {out:256, asDataUrl:true})`** (ครอปสี่เหลี่ยม เลื่อน+ซูม เหมือนโปรไฟล์สัตว์) เสมอ
 - **cropper ย้ายไป `lib.js` เป็น `TC.cropSquare(file, {out, quality, asDataUrl})`** แล้ว (เดิมอยู่ใน pet.html ชื่อ `openCropper`) — โปรไฟล์สัตว์ + รูปครอบครัวใช้ตัวเดียวกัน · Blob (default) หรือ data URL · reject('cancel') ตอนกดยกเลิก · CSS `.cropper/.crop-*` อยู่ใน theme.css
 
+### 17. ฟอร์มผลเลือด — หาวันเพื่อแก้ผลย้อนหลัง (16 ต.ค. 2026)
+- เดิม: ชิป 12 วัน + ปุ่ม "+N เพิ่มเติม" ที่กดไม่ติด (ปุ่มใช้ class `lab-date-chip` → `querySelectorAll('.lab-date-chip')...onclick` ที่ผูกทีหลังทับ onclick ของปุ่ม) และถ้ากางหมดเมื่อมีเป็นร้อยวันจะยาวพรืด · เคยลองจัดกลุ่มตามเดือนแล้วเปลี่ยนเป็นแบบนี้แทน
+- **ช่องวันที่ = ตัวค้นหา**: `checkDup` ใน `drawLabForm` — ถ้าวันที่เลือกมีผลในหมวดอยู่แล้ว (ไม่นับ `cur`) ขึ้นปุ่ม `#lfGoDup` "✏️ แก้ผล <วัน> แทน" → `drawLabForm(panelId, dup)` (ทำงานทั้งตอนเพิ่มและตอนแก้)
+- **ชิปเหลือแค่ทางลัด 6 วันล่าสุด** (`RECENT`) ไม่มีปุ่มกางแล้ว
+- **กดแก้จากตาราง/กราฟ**: `editLabRow(panelId, row)` หา index ด้วย `PET.data.labs.indexOf(row)` → `openLabForm(gi, 'labFormInline-<panel>')` + scrollIntoView · หัวคอลัมน์วันที่ในตาราง (`th.lab-th-edit[data-ri]`) และจุดบนกราฟ (Chart.js `onClick` → `rows[els[0].index]`; rows ของกราฟเรียงเก่า→ใหม่ ต่างจากตาราง) · เฉพาะ `ROLE.canEdit`
+- ⚠️ ระวัง: ตัวควบคุมที่ใช้ class เดียวกับรายการ แล้วผูก handler แบบ querySelectorAll จะโดนทับ — ใช้ class แยกเสมอ
+
 ## 📁 ลำดับไฟล์ SQL (รันตามลำดับถ้าตั้ง DB ใหม่)
 `01_schema` → `02_rls` → (`03_test_checkpoint` ไม่บังคับ) → `04_seed_real` → `05_storage_policies` → `06_edit_rpc` → `07_family_rpc` → `08_profile_admin`
 
